@@ -4,7 +4,7 @@ metadata:
   name: apps
   namespace: argocd
 spec:
-  project: base
+  project: default
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
