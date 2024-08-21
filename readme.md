@@ -1,5 +1,9 @@
-# Cluster v2
+# jyje/cluster
+
+## Kubernetes Cluster v2
 Second version of my Raspberry Pi cluster powered by MicroK8s.
+
+Keywords: DevOps, MLOps, LLMOps, DevSecOps, MicroK8s
 
 ## Introduction
 The first version was a private project, but it has lots of secrets and sensitive information.
