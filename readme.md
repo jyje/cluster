@@ -10,7 +10,7 @@ The helm carts are moved to [**helm-charts**](https://github.com/jyje/helm-chart
 TBA
 
 ## Maintainers
-- [jyje](github.com/jyje)
+- [jyje](https://github.com/jyje)
 
 ## License
 MIT
