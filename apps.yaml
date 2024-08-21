@@ -7,7 +7,7 @@ spec:
   project: base
   source:
     repoURL: https://github.com/jyje/cluster
-    targetRevision: main
+    targetRevision: develop
     path: apps
     directory:
       recurse: true
