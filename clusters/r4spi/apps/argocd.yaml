@@ -17,7 +17,7 @@ spec:
         argocd-apps:
           enabled: true
           projects:
-            - name: base
+            base:
               clusterResourceWhitelist:
                 - group: '*'
                   kind: '*'
