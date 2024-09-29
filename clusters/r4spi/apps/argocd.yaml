@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-cd-stack
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/argo-cd-stack-0.0.2
+    helm:
+      valueFiles:
+        - values.yaml
+      values: |
+        argo-cd:
+          enabled: true
+        argocd-apps:
+          enabled: true
+          projects:
+            - name: base
+              clusterResourceWhitelist:
+                - group: '*'
+                  kind: '*'
+              destinations:
+                - namespace: '*'
+                  server: 'https://kubernetes.default.svc'
+              sourceRepos:
+                - '*'
+        argocd-image-updater:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {}
