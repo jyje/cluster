@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: open-webui
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/open-webui-3.3.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        ollama:
+          enabled: false
+        pipelines:
+          enabled: false
+        ollamaUrls:
+          - http://ollama:11434
+        replicaCount: 3
+        ingress:
+          enabled: true
+          class: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+          host: ollama.app.jyje.live
+          tls: true
+          existingSecret: ollama-letsencrypt-tls
+        persistence:
+          enabled: true
+          size: 10Gi
+          accessModes:
+            - ReadWriteMany
+          storageClass: longhorn
+        extraEnvVars: []
+  destination:
+    namespace: ollama-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
