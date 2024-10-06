@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/ollama-0.61.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        replicaCount: 1
+        ollama:
+          models:
+            - qwen2.5:3b  # 1.9 GB
+            - llama3.2:3b # 2.0 GB
+            - phi3.5:3.8b # 2.2 GB
+            - gemma2:9b   # 5.4 GB
+        resources:
+          requests:
+            memory: 4096Mi
+            cpu: 1000m
+          limits:
+            memory: 4096Mi
+            cpu: 2000m
+  destination:
+    namespace: ollama-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
