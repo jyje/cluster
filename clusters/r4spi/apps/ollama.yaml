@@ -12,13 +12,12 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
-        replicaCount: 1
+        replicaCount: 2
         ollama:
           models:
             - qwen2.5:3b  # 1.9 GB
             - llama3.2:3b # 2.0 GB
             - phi3.5:3.8b # 2.2 GB
-            - gemma2:9b   # 5.4 GB
         resources:
           requests:
             memory: 4096Mi
@@ -26,6 +25,11 @@ spec:
           limits:
             memory: 4096Mi
             cpu: 2000m
+        persistentVolume:
+          enabled: true
+          accessModes:
+            - ReadWriteMany
+          storageClass: longhorn
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
