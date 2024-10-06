@@ -25,6 +25,8 @@ spec:
           limits:
             memory: 4096Mi
             cpu: 2000m
+        nodeSelector:
+          app.jyje.live/node.family: raspi-5b
         persistentVolume:
           enabled: true
           accessModes:
