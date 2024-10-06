@@ -15,8 +15,7 @@ spec:
         replicaCount: 2
         config:
           data:
-            INHERITED_ANNOTATIONS: |
-              reflector.v1.k8s.emberstack.com/reflection-allowed
+            INHERITED_ANNOTATIONS: "reflector.v1.k8s.emberstack.com/reflection-allowed"
   destination:
     namespace: cnpg-system
     server: 'https://kubernetes.default.svc'
