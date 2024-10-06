@@ -27,21 +27,21 @@ spec:
             enabled: false
           redis:
             enabled: false
-          ingress:
-            enabled: true
-            annotations:
-              cert-manager.io/cluster-issuer: letsencrypt-prod
-              nginx.ingress.kubernetes.io/configuration-snippet: |
-                more_set_headers "Access-Control-Allow-Origin: $http_origin";
-              nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
-              nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
-              nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
-              nginx.ingress.kubernetes.io/enable-cors: "true"
-            ingressClassName: nginx
-            hostname: cd.app.jyje.live
-            tls: true
           server:
             replicas: 2  
+            ingress:
+              enabled: true
+              annotations:
+                cert-manager.io/cluster-issuer: letsencrypt-prod
+                nginx.ingress.kubernetes.io/configuration-snippet: |
+                  more_set_headers "Access-Control-Allow-Origin: $http_origin";
+                nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+                nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+                nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+                nginx.ingress.kubernetes.io/enable-cors: "true"
+              ingressClassName: nginx
+              hostname: cd.app.jyje.live
+              tls: true
           repoServer:
             replicas: 1
         argocd-apps:
