@@ -12,7 +12,7 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
-        crd:
+        crds:
           enabled: true
           keep: true
   destination:
