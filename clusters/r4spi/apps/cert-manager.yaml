@@ -11,6 +11,10 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      valuesObject:
+        crd:
+          enabled: true
+          keep: true
   destination:
     namespace: kube-system
     server: 'https://kubernetes.default.svc'
