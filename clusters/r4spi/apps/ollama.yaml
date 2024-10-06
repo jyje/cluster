@@ -20,10 +20,10 @@ spec:
             - phi3.5:3.8b # 2.2 GB
         resources:
           requests:
-            memory: 4096Mi
+            memory: 6144Mi
             cpu: 1000m
           limits:
-            memory: 4096Mi
+            memory: 6144Mi
             cpu: 2000m
         nodeSelector:
           app.jyje.live/node.family: raspi-5b
