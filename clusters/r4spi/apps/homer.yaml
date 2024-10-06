@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homer
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/homer-alpha0.0.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        controllers:
+          main:
+            replicas: 2
+            strategy: RollingUpdate
+            initContainers:
+              get-assets:
+                image:
+                  repository: alpine/git
+                  tag: latest
+                  imagePullPolicy: Always
+                command: [sh, -c]
+                args: |
+                  git clone -b jyje https://github.com/jyje/homer.git /repo &&
+                  find /repo/public/assets/ \
+                    -type f \
+                    -name "*.dist" \
+                    -exec rm {} \; &&
+                  cp -r /repo/public/assets/* /www/assets/
+            containers:
+              main:
+                image:
+                  repository: b4bz/homer
+                  tag: v24.04.1
+                  pullPolicy: Always
+                env:
+                - name: TZ
+                  value: Seoul/Asia
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 1000
+                  runAsGroup: 1000
+
+        service:
+          main:
+            type: ClusterIP
+            ports:
+              http:
+                port: 8080
+
+        ingress:
+          main:
+            enabled: true
+            className: nginx
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+            hosts:
+            - host: app.jyje.live
+              paths:
+              - service:
+                  name: homer
+                  port: 8080
+                path: /
+            tls:
+            - hosts:
+              - app.jyje.live
+              secretName: app-letsencrypt-tls
+
+        persistence:
+          assets:
+            enabled: true
+            type: emptyDir
+            globalMounts:
+            - path: /www/assets
+          
+  destination:
+    namespace: kube-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
