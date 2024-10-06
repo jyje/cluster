@@ -1,5 +1,5 @@
 helm upgrade --install --cleanup-on-fail \
     -n argocd --create-namespace \
-    -f charts/argo-cd-stack/values.yaml \
+    -f helm/argo-cd-stack-0.0.2/values.yaml \
     argo-cd-stack \
-    charts/argo-cd-stack 
+    helm/argo-cd-stack-0.0.2
