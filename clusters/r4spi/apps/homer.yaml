@@ -43,14 +43,12 @@ spec:
                   runAsNonRoot: true
                   runAsUser: 1000
                   runAsGroup: 1000
-
         service:
           main:
             type: ClusterIP
             ports:
               http:
                 port: 8080
-
         ingress:
           main:
             enabled: true
@@ -68,16 +66,14 @@ spec:
             - hosts:
               - app.jyje.live
               secretName: app-letsencrypt-tls
-
         persistence:
           assets:
             enabled: true
             type: emptyDir
             globalMounts:
-            - path: /www/assets
-          
+            - path: /www/assets          
   destination:
-    namespace: kube-system
+    namespace: homer
     server: 'https://kubernetes.default.svc'
   syncPolicy:
     syncOptions:
