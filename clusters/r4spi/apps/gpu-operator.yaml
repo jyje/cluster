@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-operator
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/gpu-operator-v24.6.2
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        operator:
+          defaultRuntime: containerd
+        validator:
+          driver:
+            env:
+              - name: DISABLE_DEV_CHAR_SYMLINK_CREATION
+                value: "true"
+        driver:
+          enabled: false
+        migManager:
+          enabled: false
+        nodeStatusExporter:
+          enabled: false
+  destination:
+    namespace: gpu-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
