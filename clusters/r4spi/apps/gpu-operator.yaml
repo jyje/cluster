@@ -36,8 +36,9 @@ spec:
         nodeStatusExporter:
           enabled: false
         node-feature-discovery:
-          nodeSelector:
-            node-role.kubernetes.io/gpu: ""
+          worker:
+            nodeSelector:
+              node-role.kubernetes.io/gpu: ""
   destination:
     namespace: gpu-system
     server: 'https://kubernetes.default.svc'
