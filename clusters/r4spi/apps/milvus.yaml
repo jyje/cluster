@@ -43,8 +43,10 @@ spec:
                   - attu.app.jyje.live
         minio:
           enabled: false
+          tls:
+            enabled: false
         etcd:
-          enabled: false
+          enabled: true
         pulsar:
           enabled: false
         externalS3:
