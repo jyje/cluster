@@ -12,10 +12,10 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
-        replicaCount: 2
+        replicaCount: 1
         ollama:
           models:
-            ## Models
+            ## Foundation Models
             # - qwen2.5:3b         # 1.9 GB
             # - qwen2.5-coder:1.5b # 1.0 GB
             # - llama3.2:1b        # 1.3 GB
@@ -28,11 +28,9 @@ spec:
             - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
         resources:
           requests:
-            memory: 4096Mi
-            cpu: 1000m
+            memory: 20000Mi
           limits:
-            memory: 4096Mi
-            cpu: 2000m
+            memory: 20000Mi
         nodeSelector:
           # app.jyje.live/node.family: raspi-5b
           node-role.kubernetes.io/gpu: ""
