@@ -18,13 +18,13 @@ spec:
             ## Foundation Models
             # - qwen2.5:3b         # 1.9 GB
             # - qwen2.5-coder:1.5b # 1.0 GB
+            - qwen2.5:14b          # 9.0 GB
             # - llama3.2:1b        # 1.3 GB
-            # - llama3.2:3b        # 2.0 GB
+            - llama3.2:3b          # 2.0 GB
             # - phi3.5:3.8b        # 2.2 GB
             # - gemma2:2b          # 1.6 GB
             - gemma2:9b            # 5.4 GB
-            - gemma2:27b           # 16.0 GB
-            
+
             ## Embeddings
             - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
         resources:
