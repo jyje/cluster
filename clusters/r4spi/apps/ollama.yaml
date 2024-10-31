@@ -35,8 +35,10 @@ spec:
             memory: 16000Mi
             nvidia.com/gpu: 1
         nodeSelector:
-          # app.jyje.live/node.family: raspi-5b
           node-role.kubernetes.io/gpu: ""
+        tolerations:
+          - key: node-role.kubernetes.io/gpu
+            operator: Exists
         persistentVolume:
           enabled: true
           accessModes:
