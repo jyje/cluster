@@ -22,15 +22,18 @@ spec:
             # - llama3.2:3b        # 2.0 GB
             # - phi3.5:3.8b        # 2.2 GB
             # - gemma2:2b          # 1.6 GB
-            - gemma2:9b           # 5.4 GB
+            - gemma2:9b            # 5.4 GB
+            - gemma2:27b           # 16.0 GB
             
             ## Embeddings
             - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
         resources:
           requests:
-            memory: 20000Mi
+            memory: 16000Mi
+            nvidia.com/gpu: 1
           limits:
-            memory: 20000Mi
+            memory: 16000Mi
+            nvidia.com/gpu: 1
         nodeSelector:
           # app.jyje.live/node.family: raspi-5b
           node-role.kubernetes.io/gpu: ""
