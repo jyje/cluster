@@ -1,6 +1,7 @@
 ![otwld ollama helm chart banner](./banner.png)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/ollama-helm)](https://artifacthub.io/packages/search?repo=ollama-helm)
+![GitHub License](https://img.shields.io/github/license/otwld/ollama-helm)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/ollama-helm)](https://artifacthub.io/packages/helm/ollama-helm/ollama)
 [![Build Status](https://drone.otwld.com/api/badges/otwld/ollama-helm/status.svg)](https://drone.otwld.com/otwld/ollama-helm)
 [![Discord](https://img.shields.io/badge/Discord-OTWLD-blue?logo=discord&logoColor=white)](https://discord.gg/U24mpqTynB)
 
@@ -88,11 +89,11 @@ ollama:
   
 ingress:
   enabled: true
-    hosts:
-    - host: ollama.domain.lan
-      paths:
-        - path: /
-          pathType: Prefix
+  hosts:
+  - host: ollama.domain.lan
+    paths:
+      - path: /
+        pathType: Prefix
 ```
 
 - *API is now reachable at `ollama.domain.lan`*
@@ -178,14 +179,14 @@ ingress:
 | service.nodePort | int | `31434` | Service node port when service type is 'NodePort' |
 | service.port | int | `11434` | Service port |
 | service.type | string | `"ClusterIP"` | Service type |
+| service.loadBalancerIP | string | `""` | Loadbalancer IP address |
 | serviceAccount.annotations | object | `{}` | Annotations to add to the service account |
 | serviceAccount.automount | bool | `true` | Automatically mount a ServiceAccount's API credentials? |
 | serviceAccount.create | bool | `true` | Specifies whether a service account should be created |
 | serviceAccount.name | string | `""` | The name of the service account to use. If not set and create is true, a name is generated using the fullname template |
 | tolerations | list | `[]` | Tolerations for pod assignment |
 | topologySpreadConstraints | object | `{}` | Topology Spread Constraints for pod assignment |
-| updateStrategy | object | `{"type":""}` | How to replace existing pods |
-| updateStrategy.type | string | `""` | Can be "Recreate" or "RollingUpdate". Default is RollingUpdate |
+| updateStrategy.type | string | `"Recreate"` | Can be "Recreate" or "RollingUpdate". Default is RollingUpdate |
 | volumeMounts | list | `[]` | Additional volumeMounts on the output Deployment definition. |
 | volumes | list | `[]` | Additional volumes on the output Deployment definition. |
 ----------------------------------------------

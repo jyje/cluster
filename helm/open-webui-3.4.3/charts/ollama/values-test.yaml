@@ -6,6 +6,10 @@ persistentVolume:
   storageClass: "longhorn"
 
 
+service:
+  type: Loadbalancer
+
+
 ollama:
   gpu:
     # -- Enable GPU integration

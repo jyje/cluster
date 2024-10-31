@@ -2,13 +2,9 @@ annotations:
   artifacthub.io/category: ai-machine-learning
   artifacthub.io/changes: |
     - kind: changed
-      description: upgrade app version to 0.3.11
-    - kind: fixed
-      description: lifecycle postStart hook wait ollama service before pulling models
-    - kind: removed
-      description: remove duplicated environment variables already defined in Dockerfile
+      description: upgrade app version to 0.3.14
 apiVersion: v2
-appVersion: 0.3.11
+appVersion: 0.3.14
 description: Get up and running with large language models locally.
 home: https://ollama.ai/
 icon: https://ollama.ai/public/ollama.png
@@ -26,4 +22,4 @@ sources:
 - https://github.com/ollama/ollama
 - https://github.com/otwld/ollama-helm
 type: application
-version: 0.59.0
+version: 0.63.0

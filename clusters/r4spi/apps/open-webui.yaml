@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
-    path: helm/open-webui-3.3.1
+    path: helm/open-webui-3.4.3
     helm:
       valueFiles:
         - values.yaml
@@ -41,7 +41,15 @@ spec:
           accessModes:
             - ReadWriteMany
           storageClass: longhorn
-        extraEnvVars: []
+        extraEnvVars:
+          - name: VECTOR_DB
+            value: milvus
+          - name: MILVUS_URI
+            value: milvus.ollama-system.svc.cluster.local:19530
+          - name: RAG_EMBEDDING_ENGINE
+            value: ollama
+          - name: RAG_EMBEDDING_MODEL
+            value: hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
