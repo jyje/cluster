@@ -45,7 +45,7 @@ spec:
           - name: VECTOR_DB
             value: milvus
           - name: MILVUS_URI
-            value: milvus.ollama-system.svc.cluster.local:19530
+            value: http://milvus.milvus-system.svc.cluster.local:19530
           - name: RAG_EMBEDDING_ENGINE
             value: ollama
           - name: RAG_EMBEDDING_MODEL
