@@ -15,7 +15,8 @@ spec:
         cluster:
           enabled: false
         nodeSelector:
-          node-role.kubernetes.io/gpu: ""
+          app.jyje.live/node.family: raspberry-pi
+          app.jyje.live/raspi.type: 5b
         tolerations:
           - key: node-role.kubernetes.io/gpu
             operator: Exists
