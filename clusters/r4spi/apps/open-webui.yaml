@@ -45,7 +45,11 @@ spec:
           - name: VECTOR_DB
             value: milvus
           - name: MILVUS_URI
-            value: http://milvus.milvus-system.svc.cluster.local:19530
+            value: milvus.milvus-system.svc.cluster.local:19530
+            # valueFrom:
+            #   secretKeyRef:
+            #     name: pipelines-api-key
+            #     key: api-key
           - name: RAG_EMBEDDING_ENGINE
             value: ollama
           - name: RAG_EMBEDDING_MODEL
