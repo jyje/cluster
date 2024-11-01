@@ -50,6 +50,9 @@ spec:
                 - milvus.app.jyje.live
         attu:
           enabled: true
+          env: # not valid yet
+            - name: MILVUS_URL
+              value: https://milvus.app.jyje.live
           ingress:
             enabled: true
             ingressClassName: nginx
