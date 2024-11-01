@@ -25,6 +25,29 @@ spec:
         service:
           type: NodePort
           nodePort: 31953
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+            nginx.ingress.kubernetes.io/backend-protocol: GRPC
+            nginx.ingress.kubernetes.io/listen-ports-ssl: '[19530]'
+            nginx.ingress.kubernetes.io/proxy-body-size: 4m
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          rules:
+            - host: milvus.app.jyje.live
+              path: "/"
+              pathType: "Prefix"
+          tls:
+            - secretName: milvus-letsencrypt-tls
+              hosts:
+                - milvus.app.jyje.live
         attu:
           enabled: true
           ingress:
