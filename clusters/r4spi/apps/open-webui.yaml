@@ -45,11 +45,10 @@ spec:
           - name: VECTOR_DB
             value: milvus
           - name: MILVUS_URI
-            value: milvus.milvus-system.svc.cluster.local:19530
-            # valueFrom:
-            #   secretKeyRef:
-            #     name: pipelines-api-key
-            #     key: api-key
+            valueFrom:
+              secretKeyRef:
+                name: openwebui-creds
+                key: milvus.uri
           - name: RAG_EMBEDDING_ENGINE
             value: ollama
           - name: RAG_EMBEDDING_MODEL
