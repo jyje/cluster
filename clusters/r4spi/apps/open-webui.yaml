@@ -19,8 +19,6 @@ spec:
         ollamaUrls:
           - http://ollama:11434
         replicaCount: 1
-        image:
-          tag: "v0.3.32"
         ingress:
           enabled: true
           class: nginx
