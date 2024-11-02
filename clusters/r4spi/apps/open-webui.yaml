@@ -30,9 +30,9 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
-          host: ollama.app.jyje.live
+          host: llm.app.jyje.live
           tls: true
-          existingSecret: ollama-letsencrypt-tls
+          existingSecret: llm-letsencrypt-tls
         persistence:
           enabled: true
           size: 10Gi
@@ -48,9 +48,9 @@ spec:
                 name: openwebui-creds
                 key: milvus.uri
           - name: RAG_EMBEDDING_ENGINE
-            value: ollama
+            value: openai
           - name: RAG_EMBEDDING_MODEL
-            value: hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF
+            value: text-embedding-3-small
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
