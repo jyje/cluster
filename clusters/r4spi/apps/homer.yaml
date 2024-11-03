@@ -14,8 +14,12 @@ spec:
       valuesObject:
         controllers:
           main:
+            type: deployment
             replicas: 2
             strategy: RollingUpdate
+            rollingUpdate:
+              surge: 25%
+              unavailable: "0"
             initContainers:
               get-assets:
                 image:
@@ -34,11 +38,16 @@ spec:
               main:
                 image:
                   repository: b4bz/homer
-                  tag: v24.04.1
+                  tag: v24.10.2
                   pullPolicy: Always
                 env:
-                - name: TZ
-                  value: Seoul/Asia
+                  - name: TZ
+                    value: Seoul/Asia
+                ports:
+                  - name: http
+                    protocol: TCP
+                    port: 8080
+                    containerPort: 8080
                 securityContext:
                   runAsNonRoot: true
                   runAsUser: 1000
@@ -56,16 +65,16 @@ spec:
             annotations:
               cert-manager.io/cluster-issuer: letsencrypt-prod
             hosts:
-            - host: app.jyje.live
-              paths:
-              - service:
-                  name: homer
-                  port: 8080
-                path: /
+              - host: app.jyje.live
+                paths:
+                  - service:
+                      name: homer
+                      port: 8080
+                    path: /
             tls:
-            - hosts:
-              - app.jyje.live
-              secretName: app-letsencrypt-tls
+              - hosts:
+                  - app.jyje.live
+                secretName: app-letsencrypt-tls
         persistence:
           assets:
             enabled: true
