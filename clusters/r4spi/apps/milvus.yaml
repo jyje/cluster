@@ -48,6 +48,10 @@ spec:
             - secretName: milvus-letsencrypt-tls
               hosts:
                 - milvus.app.jyje.live
+        standalone:
+          persistence:
+            persistentVolumeClaim:
+              size: 10Gi
         attu:
           enabled: true
           env: # not valid yet
