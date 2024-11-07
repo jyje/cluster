@@ -36,7 +36,7 @@ spec:
             persistence:
               size: 200Mi
         redis:
-          enabled: true
+          enabled: false
           master:
             extraEnvVars:
               - name: MALLOC
