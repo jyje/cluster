@@ -15,10 +15,10 @@ spec:
         infisical:
           enabled: true
           replicaCount: 1
-        ingress-nginx:
-          enabled: false
         ingress:
           enabled: true
+          nginx:
+            enabled: false
           hostName: infisical.app.jyje.live
           ingressClassName: nginx
           tls:
@@ -33,6 +33,20 @@ spec:
             persistence:
               size: 200Mi
           readReplicas:
+            persistence:
+              size: 200Mi
+        redis:
+          enabled: true
+          master:
+            extraEnvVars:
+              - name: MALLOC
+                value: libc
+            persistence:
+              size: 200Mi
+          replica:
+            extraEnvVars:
+              - name: MALLOC
+                value: libc
             persistence:
               size: 200Mi
   destination:
