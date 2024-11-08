@@ -3,7 +3,7 @@ annotations:
     - kind: changed
       description: Refactor for homer v23.10.1
 apiVersion: v2
-appVersion: v23.10.1
+appVersion: v24.11.1
 dependencies:
 - name: common
   repository: http://bjw-s.github.io/helm-charts/
@@ -19,4 +19,4 @@ maintainers:
 name: homer
 sources:
 - https://github.com/bastienwirtz/homer
-version: 0.0.1
+version: 0.0.2
