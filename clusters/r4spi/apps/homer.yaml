@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
-    path: helm/homer-alpha0.0.1
+    path: helm/homer-alpha0.0.2
     helm:
       valueFiles:
         - values.yaml
