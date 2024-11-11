@@ -20,7 +20,7 @@ spec:
           - http://ollama:11434
         replicaCount: 1
         ingress:
-          enabled: false
+          enabled: true
           class: nginx
           annotations:
             cert-manager.io/cluster-issuer: letsencrypt-prod
