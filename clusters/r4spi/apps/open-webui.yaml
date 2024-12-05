@@ -12,6 +12,8 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        image:
+          tag: "0.4.6"
         ollama:
           enabled: false
         pipelines:
@@ -22,7 +24,7 @@ spec:
         updateStrategy:
           type: RollingUpdate
           rollingUpdate:
-            partition: 0
+            partition: 1
         ingress:
           enabled: true
           class: nginx
