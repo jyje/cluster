@@ -30,6 +30,10 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
+            nginx.ingress.kubernetes.io/affinity: "cookie"
+            nginx.ingress.kubernetes.io/session-cookie-name: "route"
+            nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+            nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
           host: llm.app.jyje.live
           tls: true
           existingSecret: llm-letsencrypt-tls
