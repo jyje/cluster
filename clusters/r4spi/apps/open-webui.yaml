@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
-    path: helm/open-webui-3.4.3
+    path: helm/open-webui-4.0.6
     helm:
       valueFiles:
         - values.yaml
