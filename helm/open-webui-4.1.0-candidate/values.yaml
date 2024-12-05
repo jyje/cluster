@@ -37,6 +37,7 @@ clusterDomain: cluster.local
 annotations: {}
 podAnnotations: {}
 replicaCount: 1
+updateStrategy: {}
 # -- Open WebUI image tags can be found here: https://github.com/open-webui/open-webui/pkgs/container/open-webui
 image:
   repository: ghcr.io/open-webui/open-webui

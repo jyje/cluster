@@ -75,6 +75,7 @@ helm upgrade --install open-webui open-webui/open-webui
 | podAnnotations | object | `{}` |  |
 | podSecurityContext | object | `{}` | Configure pod security context ref: <https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-containe> |
 | replicaCount | int | `1` |  |
+| updateStrategy | object | `{}` |  |
 | resources | object | `{}` |  |
 | service | object | `{"annotations":{},"containerPort":8080,"labels":{},"loadBalancerClass":"","nodePort":"","port":80,"type":"ClusterIP"}` | Service values to expose Open WebUI pods to cluster |
 | serviceAccount.annotations | object | `{}` |  |
