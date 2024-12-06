@@ -87,6 +87,7 @@ helm upgrade --install open-webui open-webui/open-webui
 | topologySpreadConstraints | list | `[]` | Topology Spread Constraints for pod assignment |
 | volumeMounts | object | `{"container":[],"initContainer":[]}` | Configure container volume mounts ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/> |
 | volumes | list | `[]` | Configure pod volumes ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/> |
+| extraResources | list | `[]` | Extra resources to deploy with Open WebUI |
 
 ----------------------------------------------
 

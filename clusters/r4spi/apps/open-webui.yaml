@@ -59,6 +59,18 @@ spec:
             value: openai
           - name: RAG_EMBEDDING_MODEL
             value: text-embedding-3-small
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: openwebui-creds
+            spec:
+              encryptedData:
+                milvus.uri: AgAjSXUHupwXPff1Q40ZiTcLhC/dzUKQOEsrbatf5ogUFBRp2o7Sdzz6NTxvHiyIlTQu8Fg2fTaXNeL+9z4S1885Sq8ydW+30QKifFSDTItNNvhvRCN8/gWNARFU7vQZgdf/EdipJbmezjKLZ1mGAWJPG7IlhoMEHKfoID2hd2qHFjTZsfV009kK6egPyErqCaZPhNLKPaoDxAhJlc2/r6ilDC7Psu3chRgX4iODqsOjLWJ2xr5rXWhr60sNIraI3k8p2AroV+vWBmY7eKSIDH7IMztMWk7rqrSBL8kCS0Kx9sCeVHUqU0a487iv+tsn0ofhqqAVcWuTmeXfLrb2az9OvzaZIGXx4pqy9oOSbgyRPFk0bSYNddIBnWoc8ByRDUthIUNRDVv0TkBgUgYk9ztItFmvR69+cCyBYEuv+aFr9BffVrlY5xfHZhhm/TznNU0AMZpr1sqjvhYE+WFRk9tKD1QPRGR5HN+itm521OxPbcZY9eprQg8oG+a13mJTquHlmGt9N7JvybiFLJ3zpLUOuWM+qPeia9+dX56J4Vq8jKnWP4Ky8NQIpN9nVCjlAWZV7Yin9do4O1UrxZD6m3+ZV2lOfwf0W5DuKIdjagcjzRNV/6d7CrtLMWy/HKYYwm5GUXoaRONXZYfcBGf4Qaf3SsLRVpwCWFa1xgzE58i8HHncbiCE5NsSn9aKBrnO3xExNrHf6sIUQLJreCa6jSRDioasehdbnOo58eDvl43s2wez5ZqbYWCJUrYgZiIbJsoMCEQYsZ3DtArlyDRY3XQcY09fzF9R
+              template:
+                type: Opaque
+                metadata:
+                  name: openwebui-creds
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
