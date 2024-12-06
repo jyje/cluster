@@ -12,6 +12,10 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        defaultPodOptions:
+          hostIPC: {}
+          hostNetwork: {}
+          hostPID: {}
         controllers:
           main:
             type: deployment
@@ -48,6 +52,25 @@ spec:
                     protocol: TCP
                     port: 8080
                     containerPort: 8080
+                probes:
+                  liveness:
+                    spec:
+                      initialDelaySeconds: 0
+                      periodSeconds: 10
+                      timeoutSeconds: 1
+                      failureThreshold: 3
+                  readiness:
+                    spec:
+                      initialDelaySeconds: 0
+                      periodSeconds: 10
+                      timeoutSeconds: 1
+                      failureThreshold: 3
+                  startup:
+                    spec:
+                      initialDelaySeconds: 0
+                      timeoutSeconds: 1
+                      periodSeconds: 5
+                      failureThreshold: 3
                 securityContext:
                   runAsNonRoot: true
                   runAsUser: 1000
