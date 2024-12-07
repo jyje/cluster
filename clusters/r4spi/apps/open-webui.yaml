@@ -12,6 +12,9 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        image:
+          tag: "0.4"
+          pullPolicy: "Always"
         ollama:
           enabled: false
         pipelines:
