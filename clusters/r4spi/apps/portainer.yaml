@@ -7,11 +7,13 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
-    path: helm/portainer-1.0.55
+    path: helm/portainer-1.0.59
     helm:
       valueFiles:
         - values.yaml
       valuesObject:
+        image:
+          tag: 2.24.1
         service:
           type: ClusterIP
         ingress:
