@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
-    path: helm/open-webui-5.0.0-edited
+    path: helm/open-webui-5.1.0-candidate
     helm:
       valueFiles:
         - values.yaml
@@ -40,6 +40,24 @@ spec:
           host: llm.app.jyje.live
           tls: true
           existingSecret: llm-letsencrypt-tls
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          failureThreshold: 1
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/db
+            port: http
+          failureThreshold: 1
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          failureThreshold: 30
+          periodSeconds: 10
         persistence:
           enabled: true
           size: 10Gi
