@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: develop
-    path: helm/open-webui-4.1.0-candidate
+    path: helm/open-webui-5.0.0-edited
     helm:
       valueFiles:
         - values.yaml
@@ -21,11 +21,7 @@ spec:
           enabled: false
         ollamaUrls:
           - http://ollama:11434
-        replicaCount: 2
-        updateStrategy:
-          type: RollingUpdate
-          rollingUpdate:
-            partition: 0
+        replicaCount: 3
         ingress:
           enabled: true
           class: nginx
