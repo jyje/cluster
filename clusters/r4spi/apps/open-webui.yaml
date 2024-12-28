@@ -56,8 +56,9 @@ spec:
           httpGet:
             path: /health
             port: http
-          failureThreshold: 30
-          periodSeconds: 10
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20
         persistence:
           enabled: true
           size: 10Gi
