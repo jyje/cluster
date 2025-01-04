@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/cert-manager-v1.16.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        crds:
+          enabled: true
+          keep: true
+  destination:
+    namespace: kube-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

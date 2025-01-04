@@ -1,0 +1,103 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: milvus
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/milvus-4.2.17
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        cluster:
+          enabled: false
+        nodeSelector:
+          app.jyje.live/node.family: raspberry-pi
+          app.jyje.live/raspi.type: 5b
+        extraConfigFiles:
+          user.yaml: |+
+            common:
+              security:
+                authorizationEnabled: true
+        service:
+          type: NodePort
+          nodePort: 31953
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+            nginx.ingress.kubernetes.io/backend-protocol: GRPC
+            nginx.ingress.kubernetes.io/listen-ports-ssl: '[19530]'
+            nginx.ingress.kubernetes.io/proxy-body-size: 4m
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          rules:
+            - host: milvus.app.jyje.live
+              path: "/"
+              pathType: "Prefix"
+          tls:
+            - secretName: milvus-letsencrypt-tls
+              hosts:
+                - milvus.app.jyje.live
+        # standalone:
+        #   persistence:
+        #     persistentVolumeClaim:
+        #       size: 10Gi
+        attu:
+          enabled: true
+          env: # not valid yet
+            - name: MILVUS_URL
+              value: https://milvus.app.jyje.live
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+              nginx.ingress.kubernetes.io/configuration-snippet: |
+                more_set_headers "Access-Control-Allow-Origin: $http_origin";
+              nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+              nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+              nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+              nginx.ingress.kubernetes.io/enable-cors: "true"
+            hosts:
+              - attu.app.jyje.live
+            tls:
+              - secretName: attu-letsencrypt-tls
+                hosts:
+                  - attu.app.jyje.live
+        minio:
+          enabled: true
+          resources:
+            requests:
+              memory: 200Mi
+          tls:
+            enabled: false
+          persistence:
+            enabled: true
+            storageClass: longhorn
+            accessMode: ReadWriteOnce
+            size: 10Gi
+        etcd:
+          enabled: true
+        pulsar:
+          enabled: false
+        externalS3:
+          enabled: false
+        externalEtcd:
+          enabled: false
+  destination:
+    namespace: milvus-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

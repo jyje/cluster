@@ -1,0 +1,5 @@
+# -- Array of cert-manager Issuer [configurations](https://cert-manager.io/docs/configuration/) (see [examples](./examples/))
+issuers: []
+
+# -- Array of cert-manager ClusterIssuer [configurations](https://cert-manager.io/docs/configuration/) (see [examples](./examples/))
+clusterIssuers: []

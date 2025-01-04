@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudnative-pg
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/cloudnative-pg-0.22.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        replicaCount: 2
+        config:
+          data:
+            INHERITED_ANNOTATIONS: "reflector.v1.k8s.emberstack.com/reflection-allowed"
+  destination:
+    namespace: cnpg-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+    automated: {}

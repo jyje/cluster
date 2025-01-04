@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-issuers
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/cert-manager-issuers-0.2.5
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        clusterIssuers:
+          - name: letsencrypt-stag
+            spec:
+              acme:
+                email: jyjeon@outlook.com
+                server: https://acme-staging-v02.api.letsencrypt.org/directory
+                privateKeySecretRef:
+                  name: letsencrypt-stag
+                solvers:
+                  - http01:
+                      ingress:
+                        ingressClassName: nginx
+          - name: letsencrypt-prod
+            spec:
+              acme:
+                email: jyjeon@outlook.com
+                server: https://acme-v02.api.letsencrypt.org/directory
+                privateKeySecretRef:
+                  name: letsencrypt-prod
+                solvers:
+                  - http01:
+                      ingress:
+                        ingressClassName: nginx
+  destination:
+    namespace: kube-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

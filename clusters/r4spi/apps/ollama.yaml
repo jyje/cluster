@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/ollama-0.61.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        replicaCount: 1
+        ollama:
+          models:
+            ## Foundation Models
+            - qwen2.5:3b           # 1.9 GB
+            # - qwen2.5-coder:1.5b # 1.0 GB
+            # - qwen2.5:14b        # 9.0 GB
+            # - llama3.2:1b        # 1.3 GB
+            - llama3.2:3b          # 2.0 GB
+            # - phi3.5:3.8b        # 2.2 GB
+            # - gemma2:2b          # 1.6 GB
+            - gemma2:9b            # 5.4 GB
+
+            ## Embeddings
+            - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
+        resources:
+          requests:
+            memory: 16000Mi
+            nvidia.com/gpu: 1
+          limits:
+            memory: 16000Mi
+            nvidia.com/gpu: 1
+        nodeSelector:
+          node-role.kubernetes.io/gpu: ""
+        tolerations:
+          - key: node-role.kubernetes.io/gpu
+            operator: Exists
+        persistentVolume:
+          enabled: true
+          accessModes:
+            - ReadWriteMany
+          storageClass: longhorn
+  destination:
+    namespace: ollama-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

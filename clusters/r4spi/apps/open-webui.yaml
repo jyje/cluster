@@ -1,0 +1,98 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: open-webui
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/open-webui-5.1.0-candidate
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        image:
+          tag: "0.5"
+          pullPolicy: "Always"
+        ollama:
+          enabled: false
+        pipelines:
+          enabled: false
+        ollamaUrls:
+          - http://ollama:11434
+        replicaCount: 3
+        ingress:
+          enabled: true
+          class: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+            nginx.ingress.kubernetes.io/affinity: "cookie"
+            nginx.ingress.kubernetes.io/session-cookie-name: "route"
+            nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+            nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+          host: llm.app.jyje.live
+          tls: true
+          existingSecret: llm-letsencrypt-tls
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          failureThreshold: 1
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/db
+            port: http
+          failureThreshold: 1
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20
+        persistence:
+          enabled: true
+          size: 10Gi
+          accessModes:
+            - ReadWriteMany
+          storageClass: longhorn
+        extraEnvVars:
+          - name: VECTOR_DB
+            value: milvus
+          - name: MILVUS_URI
+            valueFrom:
+              secretKeyRef:
+                name: openwebui-creds
+                key: milvus.uri
+          - name: RAG_EMBEDDING_ENGINE
+            value: openai
+          - name: RAG_EMBEDDING_MODEL
+            value: text-embedding-3-small
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: openwebui-creds
+            spec:
+              encryptedData:
+                milvus.uri: AgAjSXUHupwXPff1Q40ZiTcLhC/dzUKQOEsrbatf5ogUFBRp2o7Sdzz6NTxvHiyIlTQu8Fg2fTaXNeL+9z4S1885Sq8ydW+30QKifFSDTItNNvhvRCN8/gWNARFU7vQZgdf/EdipJbmezjKLZ1mGAWJPG7IlhoMEHKfoID2hd2qHFjTZsfV009kK6egPyErqCaZPhNLKPaoDxAhJlc2/r6ilDC7Psu3chRgX4iODqsOjLWJ2xr5rXWhr60sNIraI3k8p2AroV+vWBmY7eKSIDH7IMztMWk7rqrSBL8kCS0Kx9sCeVHUqU0a487iv+tsn0ofhqqAVcWuTmeXfLrb2az9OvzaZIGXx4pqy9oOSbgyRPFk0bSYNddIBnWoc8ByRDUthIUNRDVv0TkBgUgYk9ztItFmvR69+cCyBYEuv+aFr9BffVrlY5xfHZhhm/TznNU0AMZpr1sqjvhYE+WFRk9tKD1QPRGR5HN+itm521OxPbcZY9eprQg8oG+a13mJTquHlmGt9N7JvybiFLJ3zpLUOuWM+qPeia9+dX56J4Vq8jKnWP4Ky8NQIpN9nVCjlAWZV7Yin9do4O1UrxZD6m3+ZV2lOfwf0W5DuKIdjagcjzRNV/6d7CrtLMWy/HKYYwm5GUXoaRONXZYfcBGf4Qaf3SsLRVpwCWFa1xgzE58i8HHncbiCE5NsSn9aKBrnO3xExNrHf6sIUQLJreCa6jSRDioasehdbnOo58eDvl43s2wez5ZqbYWCJUrYgZiIbJsoMCEQYsZ3DtArlyDRY3XQcY09fzF9R
+              template:
+                type: Opaque
+                metadata:
+                  name: openwebui-creds
+  destination:
+    namespace: ollama-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

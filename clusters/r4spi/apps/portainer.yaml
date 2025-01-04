@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portainer
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/portainer-1.0.59
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        image:
+          tag: 2.24.1
+        service:
+          type: ClusterIP
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+          hosts:
+            - host: portainer.app.jyje.live
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: portainer
+                      port:
+                        number: 9000
+          tls:
+            - secretName: portainer.app.jyje.live
+              hosts:
+                - portainer.app.jyje.live
+  destination:
+    namespace: portainer
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

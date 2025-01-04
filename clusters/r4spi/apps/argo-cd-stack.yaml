@@ -1,0 +1,74 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-cd-stack
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/argo-cd-stack-0.0.2
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        argo-cd:
+          enabled: true
+          global:
+            domain: cd.app.jyje.live
+          configs:
+            params:
+              server.insecure: true
+            secret:
+              argocdServerAdminPassword: "$2a$10$90zWm98rCpY2pZSwbV4Eg.4WzpgLDZbe3tdQK25ZIyCGtxmgjFxl6"
+              argocdServerAdminPasswordMtime: "2024-10-06T08:30:00Z"
+          controller:
+            replicas: 1
+            metrics:
+              enabled: true
+          dex:
+            enabled: false
+          server:
+            replicas: 2  
+            ingress:
+              enabled: true
+              annotations:
+                cert-manager.io/cluster-issuer: letsencrypt-prod
+                nginx.ingress.kubernetes.io/configuration-snippet: |
+                  more_set_headers "Access-Control-Allow-Origin: $http_origin";
+                nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+                nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+                nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+                nginx.ingress.kubernetes.io/enable-cors: "true"
+              ingressClassName: nginx
+              tls: true
+          repoServer:
+            replicas: 1
+        argocd-apps:
+          enabled: true
+          projects:
+            base:
+              clusterResourceWhitelist:
+                - group: '*'
+                  kind: '*'
+              destinations:
+                - namespace: '*'
+                  server: 'https://kubernetes.default.svc'
+              sourceRepos:
+                - '*'
+            ai:
+              clusterResourceWhitelist:
+                - group: '*'
+                  kind: '*'
+              destinations:
+                - namespace: '*'
+                  server: 'https://kubernetes.default.svc'
+              sourceRepos:
+                - '*'
+        argocd-image-updater:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {}

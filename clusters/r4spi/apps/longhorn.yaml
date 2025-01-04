@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: develop
+    path: helm/longhorn-1.7.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        persistence:
+          defaultClassReplicaCount: 2
+        preUpgradeChecker:
+          jobEnabled: false
+        csi:
+          kubeletRootDir: /var/snap/microk8s/common/var/lib/kubelet
+        defaultSettings:
+          defaultDataPath: longhorn
+          guaranteedInstanceManagerCPU: 1
+        longhornUI:
+          replicas: 1
+  destination:
+    namespace: longhorn-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
