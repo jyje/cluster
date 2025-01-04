@@ -8,7 +8,7 @@ spec:
   project: base
   source:
     repoURL: https://github.com/jyje/cluster
-    targetRevision: develop
+    targetRevision: main
     path: clusters/r4spi/apps
     directory:
       recurse: true

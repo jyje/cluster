@@ -6,7 +6,7 @@ spec:
   project: ai
   source:
     repoURL: https://github.com/jyje/cluster
-    targetRevision: develop
+    targetRevision: main
     path: helm/open-webui-5.1.0-candidate
     helm:
       valueFiles:
