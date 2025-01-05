@@ -1,0 +1,22 @@
+name: 🔎 probe cluster
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+
+env:
+  TARGET_URL: https://app.jyje.live
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Send request
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 5 $TARGET_URL)
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Ping failed with status $STATUS"
+            exit 1
+          else
+            echo "Ping succeeded with status $STATUS"
+          fi

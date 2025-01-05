@@ -6,7 +6,7 @@ spec:
   project: ai
   source:
     repoURL: https://github.com/jyje/cluster
-    targetRevision: develop
+    targetRevision: main
     path: helm/ollama-0.61.0
     helm:
       valueFiles:
