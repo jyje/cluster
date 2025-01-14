@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Send request
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 5 $TARGET_URL)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 30 $TARGET_URL)
           if [ "$STATUS" -ne 200 ]; then
             echo "Ping failed with status $STATUS"
             exit 1
