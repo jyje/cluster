@@ -78,6 +78,8 @@ spec:
             value: openai
           - name: RAG_EMBEDDING_MODEL
             value: text-embedding-3-small
+          - name: SOCKET_LOG_LEVEL
+            value: debug
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
