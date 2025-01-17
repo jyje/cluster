@@ -88,6 +88,16 @@ spec:
             size: 10Gi
         etcd:
           enabled: true
+          livenessProbe:
+            enabled: true
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 7
+          readinessProbe:
+            enabled: true
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 7
         pulsar:
           enabled: false
         externalS3:
