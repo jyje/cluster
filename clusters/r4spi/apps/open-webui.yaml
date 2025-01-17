@@ -94,11 +94,11 @@ spec:
                   name: openwebui-creds
         websocket:
           enabled: true
-          url: redis://open-webui-redis-master:6379/0
-          redis:
-            enabled: false
-        redis-cluster:
-          enabled: true
+        #   url: redis://open-webui-redis-master:6379/0
+        #   redis:
+        #     enabled: false
+        # redis-cluster:
+        #   enabled: true
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
