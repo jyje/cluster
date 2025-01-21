@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: homer
+  name: homer-legacy
 spec:
   project: base
   source:
