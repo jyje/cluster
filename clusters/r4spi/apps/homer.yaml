@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homer
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/homer-k8s-0.3.3
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        fullnameOverride: homer
+        ingress:
+          enabled: true
+          className: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+          hosts:
+            - host: homer.app.jyje.live
+              paths:
+                - service:
+                    name: homer
+                    port: 8080
+                  path: /
+          tls:
+            - secretName: homer-letsencrypt-tls
+              hosts:
+                - homer.app.jyje.live
+              
+  destination:
+    namespace: homer-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
