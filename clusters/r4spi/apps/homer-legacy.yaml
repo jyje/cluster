@@ -12,6 +12,8 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        global:
+          fullnameOverride: homer
         controllers:
           main:
             type: deployment
