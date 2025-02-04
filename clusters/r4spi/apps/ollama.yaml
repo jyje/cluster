@@ -32,9 +32,16 @@ spec:
               - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
             run:
               - exaone3.5:2.4b
+        ## Raspberry Pi Resources
+        resources:
+          requests:
+            memory: 4Gi
+          limits:
+            memory: 4Gi
         nodeSelector:
           app.jyje.live/node.family: raspberry-pi
           app.jyje.live/raspi.type: 5b
+        ## GPU Resources
         # resources:
         #   requests:
         #     memory: 16000Mi
