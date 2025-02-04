@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/homer-k8s-0.3.4
+    path: helm/homer-k8s-0.3.5-jyje
     helm:
       valueFiles:
         - values.yaml
@@ -30,7 +30,10 @@ spec:
             - secretName: homer-letsencrypt-tls
               hosts:
                 - homer.app.jyje.live
-              
+        homer:
+          image:
+            repository: b4bz/homer
+            tag: v25.02.1              
   destination:
     namespace: homer-system
     server: 'https://kubernetes.default.svc'
