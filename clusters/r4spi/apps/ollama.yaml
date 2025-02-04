@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/ollama-0.61.0
+    path: helm/ollama-1.4.0
     helm:
       valueFiles:
         - values.yaml
@@ -15,30 +15,38 @@ spec:
         replicaCount: 1
         ollama:
           models:
-            ## Foundation Models
-            - qwen2.5:3b           # 1.9 GB
-            # - qwen2.5-coder:1.5b # 1.0 GB
-            # - qwen2.5:14b        # 9.0 GB
-            # - llama3.2:1b        # 1.3 GB
-            - llama3.2:3b          # 2.0 GB
-            # - phi3.5:3.8b        # 2.2 GB
-            # - gemma2:2b          # 1.6 GB
-            - gemma2:9b            # 5.4 GB
+            pull:
+              ## Foundation Models
+              # - qwen2.5:3b         # 1.9 GB
+              # - qwen2.5-coder:1.5b # 1.0 GB
+              # - qwen2.5:14b        # 9.0 GB
+              # - llama3.2:1b        # 1.3 GB
+              - llama3.2:3b          # 2.0 GB
+              # - phi3.5:3.8b        # 2.2 GB
+              # - gemma2:2b          # 1.6 GB
+              # - gemma2:9b          # 5.4 GB
+              - exaone3.5:2.4b       # 1.6 GB
+              - gemma2:2b            # 1.4 GB
 
-            ## Embeddings
-            - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
-        resources:
-          requests:
-            memory: 16000Mi
-            nvidia.com/gpu: 1
-          limits:
-            memory: 16000Mi
-            nvidia.com/gpu: 1
+              ## Embeddings
+              - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
+            run:
+              - exaone3.5:2.4b
         nodeSelector:
-          node-role.kubernetes.io/gpu: ""
-        tolerations:
-          - key: node-role.kubernetes.io/gpu
-            operator: Exists
+          app.jyje.live/node.family: raspberry-pi
+          app.jyje.live/raspi.type: 5b
+        # resources:
+        #   requests:
+        #     memory: 16000Mi
+        #     nvidia.com/gpu: 1
+        #   limits:
+        #     memory: 16000Mi
+        #     nvidia.com/gpu: 1
+        # nodeSelector:
+        #   node-role.kubernetes.io/gpu: ""
+        # tolerations:
+        #   - key: node-role.kubernetes.io/gpu
+        #     operator: Exists
         persistentVolume:
           enabled: true
           accessModes:
