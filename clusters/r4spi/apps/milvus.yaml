@@ -17,11 +17,11 @@ spec:
         nodeSelector:
           app.jyje.live/node.family: raspberry-pi
           app.jyje.live/raspi.type: 5b
-        # extraConfigFiles:
-        #   user.yaml: |+
-        #     common:
-        #       security:
-        #         authorizationEnabled: true
+        extraConfigFiles:
+          user.yaml: |+
+            common:
+              security:
+                authorizationEnabled: true
         service:
           type: NodePort
           nodePort: 31953
