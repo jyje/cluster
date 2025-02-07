@@ -1,7 +1,7 @@
 annotations:
   licenses: MIT
 apiVersion: v2
-appVersion: 0.5.4
+appVersion: 0.5.10
 dependencies:
 - condition: ollama.enabled
   import-values:
@@ -41,4 +41,4 @@ sources:
 - https://github.com/otwld/ollama-helm/
 - https://hub.docker.com/r/ollama/ollama
 - https://charts.bitnami.com/bitnami
-version: 5.4.0
+version: 5.10.0
