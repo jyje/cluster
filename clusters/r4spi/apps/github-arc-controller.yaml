@@ -1,0 +1,24 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: github-arc-controller
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/gha-runner-scale-set-controller-0.10.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        fullnameOverride: github-arc-controller
+  destination:
+    namespace: arc-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+    automated: {}

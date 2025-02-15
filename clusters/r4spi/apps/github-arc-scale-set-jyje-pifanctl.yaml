@@ -1,0 +1,30 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: github-arc-scale-set-jyje-pifanctl
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/gha-runner-scale-set-0.10.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        runnerScaleSetName: r4spi-microk8s
+        githubConfigUrl: https://github.com/jyje/pifanctl
+        githubConfigSecret: pre-defined-secret
+        controllerServiceAccount:
+          name: gha-runner-scale-set-controller
+          namespace: arc-system
+        minRunners: 0
+        maxRunners: 5
+  destination:
+    namespace: arc-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
