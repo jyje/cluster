@@ -21,6 +21,8 @@ spec:
           namespace: arc-system
         minRunners: 0
         maxRunners: 5
+        containerMode:
+          type: dind
   destination:
     namespace: arc-system
     server: 'https://kubernetes.default.svc'
