@@ -22,9 +22,6 @@ spec:
             common:
               security:
                 authorizationEnabled: true
-        service:
-          type: NodePort
-          nodePort: 31953
         ingress:
           enabled: true
           ingressClassName: nginx
