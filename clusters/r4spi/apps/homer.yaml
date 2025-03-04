@@ -33,7 +33,7 @@ spec:
         homer:
           image:
             repository: b4bz/homer
-            tag: v25.02.1              
+            tag: v25.03.1              
   destination:
     namespace: homer-system
     server: 'https://kubernetes.default.svc'
