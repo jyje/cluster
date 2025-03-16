@@ -68,10 +68,7 @@ spec:
           storageClass: longhorn
         extraEnvVars:
           - name: OPENAI_API_BASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: openwebui-creds
-                key: openai.api.base
+            value: https://api.openai.com/v1
           - name: OPENAI_API_KEY
             valueFrom:
               secretKeyRef:
