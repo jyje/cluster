@@ -12,8 +12,9 @@ The first version was a private project, but it has lots of secrets and sensitiv
 So, I decided to create a new one from scratch and make it public.
 The helm carts are moved to [**helm-charts**](https://github.com/jyje/helm-charts) repository.
 
-## Documentation
-TBA
+## Architecture
+
+![Architecture](docs/diagrams/hardware-architecture.png)
 
 ## Maintainers
 - [jyje](https://github.com/jyje)
