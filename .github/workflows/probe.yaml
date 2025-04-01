@@ -2,8 +2,8 @@ name: 🔎 probe cluster
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/30 * * * *"
+  # schedule:
+  #   - cron: "*/30 * * * *"
 
 env:
   TARGET_URL: https://app.jyje.live
