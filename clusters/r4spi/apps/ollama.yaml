@@ -25,19 +25,20 @@ spec:
               # - phi3.5:3.8b        # 2.2 GB
               # - gemma2:2b          # 1.6 GB
               # - gemma2:9b          # 5.4 GB
-              - exaone3.5:2.4b       # 1.6 GB
+              # - exaone3.5:2.4b     # 1.6 GB
               # - gemma2:2b          # 1.4 GB
+              - gemma3:1b
 
               ## Embeddings
               - hf.co/soichisumi/multilingual-e5-large-Q8_0-GGUF:latest
             run:
-              - exaone3.5:2.4b
+              - gemma3:1b
         ## Raspberry Pi Resources
         resources:
           requests:
-            memory: 4Gi
+            memory: 3Gi
           limits:
-            memory: 4Gi
+            memory: 3Gi
         nodeSelector:
           app.jyje.live/node.family: raspberry-pi
           app.jyje.live/raspi.type: 5b
