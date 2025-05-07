@@ -1,0 +1,12 @@
+dependencies:
+- name: argo-cd
+  repository: https://argoproj.github.io/argo-helm
+  version: 8.0.0
+- name: argocd-apps
+  repository: https://argoproj.github.io/argo-helm
+  version: 2.0.2
+- name: argocd-image-updater
+  repository: https://argoproj.github.io/argo-helm
+  version: 0.12.1
+digest: sha256:157f2556bd119b8fc69b70c26d67fd14791caea3250bedf3e72423f065e04bca
+generated: "2025-05-07T22:07:38.268544+09:00"

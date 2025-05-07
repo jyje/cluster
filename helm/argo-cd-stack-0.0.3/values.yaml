@@ -1,0 +1,10 @@
+argo-cd:
+  enabled: true
+  fullnameOverride: argocd
+
+argocd-apps:
+  enabled: true
+
+argocd-image-updater:
+  enabled: true
+  fullnameOverride: argocd-image-updater

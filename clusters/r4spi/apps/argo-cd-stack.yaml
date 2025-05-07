@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/argo-cd-stack-0.0.2
+    path: helm/argo-cd-stack-0.0.3
     helm:
       valueFiles:
         - values.yaml
