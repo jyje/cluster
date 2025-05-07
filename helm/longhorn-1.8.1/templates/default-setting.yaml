@@ -6,12 +6,6 @@ metadata:
   labels: {{- include "longhorn.labels" . | nindent 4 }}
 data:
   default-setting.yaml: |-
-    {{- if not (kindIs "invalid" .Values.defaultSettings.backupTarget) }}
-    backup-target: {{ .Values.defaultSettings.backupTarget }}
-    {{- end }}
-    {{- if not (kindIs "invalid" .Values.defaultSettings.backupTargetCredentialSecret) }}
-    backup-target-credential-secret: {{ .Values.defaultSettings.backupTargetCredentialSecret }}
-    {{- end }}
     {{- if not (kindIs "invalid" .Values.defaultSettings.allowRecurringJobWhileVolumeDetached) }}
     allow-recurring-job-while-volume-detached: {{ .Values.defaultSettings.allowRecurringJobWhileVolumeDetached }}
     {{- end }}
@@ -39,6 +33,9 @@ data:
     {{- if not (kindIs "invalid" .Values.defaultSettings.upgradeChecker) }}
     upgrade-checker: {{ .Values.defaultSettings.upgradeChecker }}
     {{- end }}
+    {{- if not (kindIs "invalid" .Values.defaultSettings.upgradeResponderURL) }}
+    upgrade-responder-url: {{ .Values.defaultSettings.upgradeResponderURL }}
+    {{- end }}
     {{- if not (kindIs "invalid" .Values.defaultSettings.defaultReplicaCount) }}
     default-replica-count: {{ .Values.defaultSettings.defaultReplicaCount }}
     {{- end }}
@@ -48,11 +45,11 @@ data:
     {{- if not (kindIs "invalid" .Values.defaultSettings.defaultLonghornStaticStorageClass) }}
     default-longhorn-static-storage-class: {{ .Values.defaultSettings.defaultLonghornStaticStorageClass }}
     {{- end }}
-    {{- if not (kindIs "invalid" .Values.defaultSettings.backupstorePollInterval) }}
-    backupstore-poll-interval: {{ .Values.defaultSettings.backupstorePollInterval }}
-    {{- end }}
     {{- if not (kindIs "invalid" .Values.defaultSettings.failedBackupTTL) }}
     failed-backup-ttl: {{ .Values.defaultSettings.failedBackupTTL }}
+    {{- end }}
+    {{- if not (kindIs "invalid" .Values.defaultSettings.backupExecutionTimeout) }}
+    backup-execution-timeout: {{ .Values.defaultSettings.backupExecutionTimeout }}
     {{- end }}
     {{- if not (kindIs "invalid" .Values.defaultSettings.restoreVolumeRecurringJobs) }}
     restore-volume-recurring-jobs: {{ .Values.defaultSettings.restoreVolumeRecurringJobs }}
@@ -241,4 +238,7 @@ data:
     {{- end }}
     {{- if not (kindIs "invalid" .Values.defaultSettings.rwxVolumeFastFailover) }}
     rwx-volume-fast-failover: {{ .Values.defaultSettings.rwxVolumeFastFailover}}
+    {{- end }}
+    {{- if not (kindIs "invalid" .Values.defaultSettings.v2DataEngineCPUMask) }}
+    v2-data-engine-cpu-mask: {{ .Values.defaultSettings.v2DataEngineCPUMask }}
     {{- end }}

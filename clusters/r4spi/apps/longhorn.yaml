@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/longhorn-1.7.1
+    path: helm/longhorn-1.8.1
     helm:
       valueFiles:
         - values.yaml
