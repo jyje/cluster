@@ -21,6 +21,7 @@ spec:
         defaultSettings:
           defaultDataPath: longhorn
           guaranteedInstanceManagerCPU: 1
+          taintToleration: "node-role.kubernetes.io/control-plane:NoSchedule"
         longhornUI:
           replicas: 1
   destination:
