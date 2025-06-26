@@ -12,6 +12,11 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        global:
+          tolerations:
+            - key: "node-role.kubernetes.io/control-plane"
+              operator: "Exists"
+              effect: "NoSchedule"
         persistence:
           defaultClassReplicaCount: 2
         preUpgradeChecker:
