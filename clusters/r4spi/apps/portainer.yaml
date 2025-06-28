@@ -28,7 +28,7 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
           hosts:
-            - host: portainer.app.jyje.live
+            - host: portainer.app.jyje.onlive
               paths:
                 - path: /
                   pathType: Prefix
@@ -38,9 +38,9 @@ spec:
                       port:
                         number: 9000
           tls:
-            - secretName: portainer.app.jyje.live
+            - secretName: portainer.app.jyje.onlive
               hosts:
-                - portainer.app.jyje.live
+                - portainer.app.jyje.onlive
   destination:
     namespace: portainer
     server: 'https://kubernetes.default.svc'

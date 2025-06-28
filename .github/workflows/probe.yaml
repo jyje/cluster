@@ -6,7 +6,7 @@ on:
     - cron: "*/30 * * * *"
 
 env:
-  TARGET_URL: https://app.jyje.live
+  TARGET_URL: https://app.jyje.onlive
 
 jobs:
   ping:

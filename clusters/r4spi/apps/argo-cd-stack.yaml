@@ -15,7 +15,7 @@ spec:
         argo-cd:
           enabled: true
           global:
-            domain: cd.app.jyje.live
+            domain: cd.app.jyje.onlive
           configs:
             params:
               server.insecure: true
