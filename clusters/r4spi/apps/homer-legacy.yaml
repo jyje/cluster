@@ -86,7 +86,7 @@ spec:
             annotations:
               cert-manager.io/cluster-issuer: letsencrypt-prod
             hosts:
-              - host: app.jyje.live
+              - host: app.jyje.online
                 paths:
                   - service:
                       name: homer
@@ -94,7 +94,7 @@ spec:
                     path: /
             tls:
               - hosts:
-                  - app.jyje.live
+                  - app.jyje.online
                 secretName: app-letsencrypt-tls
         persistence:
           assets:

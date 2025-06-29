@@ -15,8 +15,8 @@ spec:
         cluster:
           enabled: false
         nodeSelector:
-          app.jyje.live/node.family: raspberry-pi
-          app.jyje.live/raspi.type: 5b
+          app.jyje.online/node.family: raspberry-pi
+          app.jyje.online/raspi.type: 5b
         extraConfigFiles:
           user.yaml: |+
             common:
@@ -38,13 +38,13 @@ spec:
             nginx.ingress.kubernetes.io/proxy-body-size: 4m
             nginx.ingress.kubernetes.io/ssl-redirect: "true"
           rules:
-            - host: milvus.app.jyje.live
+            - host: milvus.app.jyje.online
               path: "/"
               pathType: "Prefix"
           tls:
             - secretName: milvus-letsencrypt-tls
               hosts:
-                - milvus.app.jyje.live
+                - milvus.app.jyje.online
         standalone:
           persistence:
             persistentVolumeClaim:
@@ -53,7 +53,7 @@ spec:
           enabled: true
           env: # not valid yet
             - name: MILVUS_URL
-              value: https://milvus.app.jyje.live
+              value: https://milvus.app.jyje.online
           ingress:
             enabled: true
             ingressClassName: nginx
@@ -66,11 +66,11 @@ spec:
               nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
               nginx.ingress.kubernetes.io/enable-cors: "true"
             hosts:
-              - attu.app.jyje.live
+              - attu.app.jyje.online
             tls:
               - secretName: attu-letsencrypt-tls
                 hosts:
-                  - attu.app.jyje.live
+                  - attu.app.jyje.online
         minio:
           enabled: true
           resources:

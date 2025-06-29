@@ -38,7 +38,7 @@ spec:
             nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
             nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
             nginx.ingress.kubernetes.io/proxy-body-size: "4096m"
-          host: llm.app.jyje.live
+          host: llm.app.jyje.online
           tls: true
           existingSecret: llm-letsencrypt-tls
         livenessProbe:

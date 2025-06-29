@@ -1,6 +1,6 @@
 # jyje/cluster
 
-[![Dashboard](docs/assets/homer-dashboard.png)](https://app.jyje.live)
+[![Dashboard](docs/assets/homer-dashboard.png)](https://app.jyje.online)
 
 ## Kubernetes Cluster v2
 Second version of my Raspberry Pi cluster powered by MicroK8s.
