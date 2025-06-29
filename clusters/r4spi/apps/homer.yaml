@@ -19,7 +19,7 @@ spec:
           annotations:
             cert-manager.io/cluster-issuer: letsencrypt-prod
           hosts:
-            - host: homer.app.jyje.live
+            - host: homer.app.jyje.online
               paths:
                 - service:
                     name: homer
@@ -29,7 +29,7 @@ spec:
           tls:
             - secretName: homer-letsencrypt-tls
               hosts:
-                - homer.app.jyje.live
+                - homer.app.jyje.online
         homer:
           image:
             repository: b4bz/homer
