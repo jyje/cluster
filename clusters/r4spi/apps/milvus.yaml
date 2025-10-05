@@ -48,7 +48,7 @@ spec:
         standalone:
           persistence:
             persistentVolumeClaim:
-              size: 10Gi
+              size: 1Gi
         attu:
           enabled: true
           env: # not valid yet
@@ -82,7 +82,7 @@ spec:
             enabled: true
             storageClass: longhorn
             accessMode: ReadWriteOnce
-            size: 10Gi
+            size: 1Gi
         etcd:
           enabled: true
           livenessProbe:
