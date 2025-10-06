@@ -85,6 +85,11 @@ spec:
             size: 1Gi
         etcd:
           enabled: true
+          persistence:
+            enabled: true
+            storageClass: longhorn
+            accessMode: ReadWriteOnce
+            size: 1Gi
           livenessProbe:
             enabled: true
             periodSeconds: 60
