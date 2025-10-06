@@ -74,19 +74,19 @@ spec:
           #     secretKeyRef:
           #       name: openwebui-creds
           #       key: openai.api.key
-          - name: VECTOR_DB
-            value: milvus
-          - name: MILVUS_URI
-            valueFrom:
-              secretKeyRef:
-                name: openwebui-creds
-                key: milvus.uri
-          - name: RAG_EMBEDDING_ENGINE
-            value: openai
-          - name: RAG_EMBEDDING_MODEL
-            value: text-embedding-3-small
-          - name: SOCKET_LOG_LEVEL
-            value: debug
+          # - name: VECTOR_DB
+          #   value: milvus
+          # - name: MILVUS_URI
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: openwebui-creds
+          #       key: milvus.uri
+          # - name: RAG_EMBEDDING_ENGINE
+          #   value: openai
+          # - name: RAG_EMBEDDING_MODEL
+          #   value: text-embedding-3-small
+          # - name: SOCKET_LOG_LEVEL
+          #   value: debug
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
