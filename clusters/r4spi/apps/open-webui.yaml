@@ -74,16 +74,6 @@ spec:
               secretKeyRef:
                 name: openwebui-creds
                 key: openai.api.key
-          - name: GEMINI_API_BASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: openwebui-creds
-                key: gemini.api.base
-          - name: GEMINI_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: openwebui-creds
-                key: gemini.api.key
           - name: VECTOR_DB
             value: milvus
           - name: MILVUS_URI
@@ -108,8 +98,6 @@ spec:
                 metadata:
                   name: openwebui-creds
               encryptedData:
-                gemini.api.base: AgBv6Z75ID030VJH4UcvlyMFBygkz3u6pZRCL+q7Itvc7sWdAxVITqIKjXTEDmyB4b607a6NO2CEUqMzG3TPjOaY5smgLbrHbN9/u7wwU3mUy9U1IACcfIHs0VwbSl+CecWzJLi91EE+WM2gBuOoUeVUTqHuLLfht/9nhQd0xNvI1mH5TZFUc//ogjLoAepUl7eEAdOffiPDgGJrcvH7/UGBkpyQSRxBwcfB6r6umANj6e75cF7D912CSpnYG1Ze+D4TcPth+YkB0z+4qYlsIUK4ZmzrlRbbnWf5nOL21Y3TJ+mLq/uNEmIIqQUifQFZJ6wi2VOuvygdpJrazLa48BH43/BjtYT/3Ts2pDv+RlyzA2JOVHPaiIQgiut48LK+bfYQpN0YMjcxagZAeCDjobeGz9XIKsDvm0DXoXuIPrKkFdKArnXzhfBnqfVpJ3quQSMZGITc4GftEFjghBtwRQC3HWdytIDjVhDg8Fhq/uSS5sboqnWJAI9ajsWKC0h5mteQFYRb9KwVqAVFCzwp1DRhLQJRTS4sVzDkmrAwOgpMfcOf/LYPWpQOKC+VVH5wMhjJNfeMjmiEuQzQY9D9vZjWISCnevY7/tEjyPmGQ+pb/JgkHapry884wI2KHBptxSdskSjJ8UCQOd5Ay83gYQlsjN1Em86FdpuWOWxp8OsR0Z83dMD4AQsKhksrH05fXWnSg8ZnxVSXepmyhWMA6cD+vlnbPdGpL8W5POuv0MF31jQjnn3D+KoK+kBUBXFss8s=
-                gemini.api.key: AgASNNKuowtLuFRyQahANbNt8KkAt9Lvif2DVc1Tv8m+uFAF/VDWj64BCMLvYXxCe5lOOJsFsiHtiC4PsJqNhmufTIbr8jT1UhfmmdqqDQSAMGbNtjxVqRSX796aldRN7vXBJ93FE1w1gZb4pjgJQ5JrCJD6Zbd8McNAtPSY+iijYh1QMBgO9K2nVClIx+KoYnkNCwYXMi2Z+78CqF2oi9MJlRuyRt+rhp30qkOz6JmC+r50qBPzoxmsX7PAwl6ymE1DcxHs9y9fN5AOYTUpvtiZuBt5TMTeKz3Yggb4cWIp6NRDxTPEpjy6PXO9B1WbglFMnc5MpNzFTiC9WW3E7AXK/jub4YzE3zkGxbp++TB9pXMHzF0flLadJgaB8Luq4vlz88r87sXbROQ/eVCfQsq9H6hhb0UGe2RcsL/Zccu8m9JtkXwlIzSjdqbvjU8ccA7GfVPL/euI5NyYtjCB6GMVSg8lGfxrm+RvAyFuzbm8DILZ7mFYYvves7rMihMyoSemfqONKdscp1q8CD+sXr/6LBFi2cLmaWzvcgxtbYgz2oqqSl79l0rKKkTEGKbSj/lfQPfVwC4EwUvRcLDSjT7+5xYPgmhotR0n3/GxPaXzxvyNGkfTbL433Jkv4Wbr9XXlSFbS3j+VWsD4/8NGGHUQPZ04RjbsFcEPOQhecyQethKPm7ckI5EHl3XK49ge7EarzFls9aJ+yoCKVOt6v4+nejaPv0gY6CE0GPHUZokEU890VUFYnYg=
                 milvus.uri: AgAbH5D+PMVJTh4OhqTNpGDbQ8L1S7oQeckO2C6GV7aM48e3LD0mxiMkT744j9B6ybvIZHMAamBg575xfl8iCNqizpnoetjBD+8dnwhgqNV4oocHLf8mRx4jN3vvdWbYpMeg/ZHwwiqWjSFa2tsHyHGoRrSg17bwbZAoVv9PHne/2Posr0828kMOr40RYIFIEHhpNeOLLbrAqr97mFYUUIbFvBv1Vu1UUQdpZSOUJZ3VbQD7dvgyAmiUCwom/gklg7wlqXXg0HtvkTPOnjW4ZvsxoFeqUn2bJa2GtOkqiAWQA5d3zuiZ10Pvg7j2q2LaK78mIcESXcVNEiyxvcEvp3L63wi0FYfY68KWOhAbr5IdrI/2d1DS/YG2zyHhqh7EbyEnaQpnQeaafSxhG8ek4gQKR5cgKLDGgMZh+QMgB0dw2wMqs62hJmv7W4paG+N0almlCsBwUbHq2G+l+epf08SKDGIohLLv54ss/xy5Vg4ErnSbjWvl//dDtv7OJWQH4uaypbeXZo2CKqXKPm+SfMbJErE9XosXmdqsXdM8V7nz0+9d7m/7o1hvhIsTELKoLT74Pu036ofM8oz43RPH/3MnEr+i22gB6vINDA6smtFnaUgxfXCgwFT8vc4vryH0GOMJIMLAGx7dqKnuJQfta9hWGtUbqqsmhnPHY4rh5HVbEHwSukvm2E7LdoT0YRCzy/nJZVxQaIuyPpXNBz2G2L8ZDaFoD+I2VfWxo8kFh7pR8NEdtWdYHysD6ztsr0EGIkVDTmCqcYceS8dm0QcZGdaJN/cnMYyH
                 openai.api.base: AgB7KoeHf32krZMo95QDfrgsxUBBbZ0egcdDmGsgyPMe+ySTVhBGe/YH238P9IHvEvocRe4zyuFgr8wvU2Bx/bU65gCbKcgKeF863Pia2pUGnn1BN3ah5AmMaZE9W4Bj9UOScKeGEz4LxFJhVEn4cHVPM+mUT0qV7Bxe0dxEowhrnC9SbOMZzGq5gU7OJFPcXmasSxENCzH8IVclyrZ2Z8w03/+xspbOBbJ6GYbgCAV6zFzbZfZDK441S546Orcgy1a5rZhcslSIbviMKDdfngbC1NMLB4MwTG/gmTfrcJIX+RXL+FCPfWlBPAfIfZ/HzmfSpIGXNgP5qJlDRrM7O26WI/KZosE9LG2ligo0cP28Usjc031gvGNRJw9vs0HLPFlIzz1t4u8ssZyxoE1yg0mvHKUTkpaFv0B9oPNx6/8RueWIhxveMRr6TkWz30Gvo0uCDmzJV4vWEsWNriLAtCDHM4rDch5VGmyj1A9FWudDhT8gt/pTQBjFnu2MxJLfWp6846HJnwA7wl6xbryHyZysTzDqbZRSkA1T0S24nXHLN8TEIt2SoDLvsZm1TyETsfEbhNdARECJEpqrtH+zcD2cTYjqZevznFLs7xlqezy++HfP4ljRcUJB0qEgkkwhy8ksB3uoBKgssu5mPjRdNJfnec5Twb6LztSXVOHA3nOiZRl5ZrodKfhpHMAb1JklYSRfW9WjBryytEvIdppg9PtFTeFkGJYYBZJn
                 openai.api.key: AgCGtEtUNFwNBK8MVfMULPlnxWedYxoZkgbGvoWUrXLLBt0qGsaSJrfUDJFvb2xavIuPiEvUjr2d21lzialwxvW9PWAigzIGqXcBakIY2WtjP9cSpIbmiU6j8zVueJUCgApeQpfDOriIQ6bBNptjjFvChUTJZwBrr20tRFmMmxubnSsjI/ru1wp09WLX24MgOiLuNggN0Bm6jecwKXzOjDDSIZ2b5TzDdA07oGQ9kOTF4u6p5qx00grm6BmiqOeaE54sWlij2XkGW0f3W2bTfqqXR8jmtnOBvLpLFghNawm8ZW5kjxFTQO5UQO5xvuXls8FhUp1chQqtwt0fsLpPYcSmbJ3i/zGGFnO2Rk6zCn5wKNTJRFmXNEplNeaU1gtqdsbGmP16vWHBl9PnTJU60Vfjo5Mqr5cNx27IOhhTvlr9RuK0hFkt/+vnzYqTbdAzghVwAHFNoNPKWYUrEI7OdAOxjWSbELtbI/gkgM6iezyB+vCtlRRGgVwNdLTbbhhFI1vcuhaFmmtfzWmUZ92JGZlNtm61GtQhmv6i39vlVzz0S7UitACZRU4fN0hPDMO6ybayjBJSEE8i6zd/ys1yPw/1LQvK3Ih67BmS7fRUKUIA/R1undd1e+U3obxqQFP+dmnWqAxwXbXmMixnlDxFYckwoNq5AXji+xJ5VqKXt+tCDJ8lZNJDGXxd30psbETV4QyFbsY5iz4tNYPrIjeJyxQRczRmxbuAnVIgGp86sLN6iDeIiTPeeHbtaixD0Sz+kUuFL6nLl/sOJXLoY8O5+gHa4/LykybW+MQq9WTjNPV1RNGkoYoR1PVNwxHzYpQdwuYHTKx0QRulsm54lrrAlS9ATBJcJBzdsEwzPCDpfUXdfdJ+3rE5HvGQ6UqSqXee5SMj1e+NRnsNCa3NniAILykplL6sVw==
