@@ -14,6 +14,10 @@ spec:
       valuesObject:
         cluster:
           enabled: false
+        image:
+          all:
+            repository: milvusdb/milvus
+            tag: v2.6.2
         nodeSelector:
           app.jyje.online/node.family: raspberry-pi
           app.jyje.online/raspi.type: 5b
