@@ -51,6 +51,10 @@ spec:
               size: 1Gi
         attu:
           enabled: true
+          image:
+            repository: zilliz/attu
+            tag: v2.5.12
+            pullPolicy: IfNotPresent
           env: # not valid yet
             - name: MILVUS_URL
               value: https://milvus.app.jyje.online
