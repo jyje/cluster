@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/milvus-4.2.17
+    path: helm/milvus-4.2.48
     helm:
       valueFiles:
         - values.yaml
@@ -101,6 +101,8 @@ spec:
             timeoutSeconds: 10
             failureThreshold: 7
         pulsar:
+          enabled: false
+        pulsarv3:
           enabled: false
         externalS3:
           enabled: false
