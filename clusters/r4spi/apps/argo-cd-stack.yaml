@@ -16,12 +16,15 @@ spec:
           enabled: true
           global:
             domain: cd.app.jyje.online
+            image:
+              repository: quay.io/argoproj/argocd
+              tag: "v3.1.8"
           configs:
             params:
               server.insecure: true
             secret:
-              argocdServerAdminPassword: "$2a$10$90zWm98rCpY2pZSwbV4Eg.4WzpgLDZbe3tdQK25ZIyCGtxmgjFxl6"
-              argocdServerAdminPasswordMtime: "2024-10-06T08:30:00Z"
+              argocdServerAdminPassword: "$2a$10$Fxz3iaT9JpTioBr8vPRvYONv5kRrdxfX1KHck46ueCPMl.Qmr.Rhq"
+              argocdServerAdminPasswordMtime: "2025-10-07T07:31:00Z"
           controller:
             replicas: 1
             metrics:
