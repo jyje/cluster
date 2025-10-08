@@ -28,11 +28,11 @@ spec:
           # taintToleration: "node-role.kubernetes.io/control-plane:NoSchedule"
           autoSalvage: false
           defaultDataPath: longhorn
-          guaranteedInstanceManagerCPU: 1
-          defaultReplicaCount: 2
-          replicaReplenishmentWaitInterval: 600
-          concurrentReplicaRebuildPerNodeLimit: 1
-          concurrentVolumeBackupRestorePerNodeLimit: 1
+          guaranteedInstanceManagerCPU: "1"
+          defaultReplicaCount: "2"
+          replicaReplenishmentWaitInterval: "600"
+          concurrentReplicaRebuildPerNodeLimit: "1"
+          concurrentVolumeBackupRestorePerNodeLimit: "1"
         longhornUI:
           replicas: 1
   destination:
