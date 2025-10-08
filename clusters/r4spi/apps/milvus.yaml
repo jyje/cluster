@@ -13,7 +13,7 @@ spec:
         - values.yaml
       valuesObject:
         cluster:
-          enabled: false
+          enabled: true
         image:
           all:
             repository: milvusdb/milvus
