@@ -13,7 +13,7 @@ spec:
         - values.yaml
       valuesObject:
         cluster:
-          enabled: true
+          enabled: false # Cluster mode is not supported for Raspberry Pies
         image:
           all:
             repository: milvusdb/milvus
