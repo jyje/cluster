@@ -7,26 +7,32 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/longhorn-1.8.1
+    path: helm/longhorn-1.10.0
     helm:
       valueFiles:
         - values.yaml
       valuesObject:
-        global:
-          tolerations:
-            - key: "node-role.kubernetes.io/control-plane"
-              operator: "Exists"
-              effect: "NoSchedule"
+        # global:
+        #   tolerations:
+        #     - key: "node-role.kubernetes.io/control-plane"
+        #       operator: "Exists"
+        #       effect: "NoSchedule"
         persistence:
           defaultClassReplicaCount: 2
+          defaultDataLocality: best-effort
         preUpgradeChecker:
           jobEnabled: false
         csi:
           kubeletRootDir: /var/snap/microk8s/common/var/lib/kubelet
         defaultSettings:
+          # taintToleration: "node-role.kubernetes.io/control-plane:NoSchedule"
+          autoSalvage: false
           defaultDataPath: longhorn
           guaranteedInstanceManagerCPU: 1
-          taintToleration: "node-role.kubernetes.io/control-plane:NoSchedule"
+          defaultReplicaCount: 2
+          replicaReplenishmentWaitInterval: 600
+          concurrentReplicaRebuildPerNodeLimit: 1
+          concurrentVolumeBackupRestorePerNodeLimit: 1
         longhornUI:
           replicas: 1
   destination:

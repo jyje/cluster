@@ -1,10 +1,11 @@
+{{- if and .Values.preUpgradeChecker.jobEnabled .Values.preUpgradeChecker.upgradeVersionCheck}}
 apiVersion: batch/v1
 kind: Job
 metadata:
   annotations:
-    "helm.sh/hook": pre-delete
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-  name: longhorn-uninstall
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation,hook-failed
+  name: longhorn-pre-upgrade
   namespace: {{ include "release_namespace" . }}
   labels: {{- include "longhorn.labels" . | nindent 4 }}
 spec:
@@ -12,29 +13,46 @@ spec:
   backoffLimit: 1
   template:
     metadata:
-      name: longhorn-uninstall
+      name: longhorn-pre-upgrade
       labels: {{- include "longhorn.labels" . | nindent 8 }}
     spec:
       containers:
-      - name: longhorn-uninstall
-        image: {{ template "registry_url" . }}{{ .Values.image.longhorn.manager.repository }}:{{ .Values.image.longhorn.manager.tag }}
+      - name: longhorn-pre-upgrade
+        image: {{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.manager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.manager.repository }}:{{ .Values.image.longhorn.manager.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          privileged: true
         command:
         - longhorn-manager
-        - uninstall
-        - --force
+        - pre-upgrade
+        volumeMounts:
+        - name: proc
+          mountPath: /host/proc/
         env:
-        - name: LONGHORN_NAMESPACE
+        - name: POD_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-      restartPolicy: Never
-      {{- if .Values.privateRegistry.registrySecret }}
+      volumes:
+      - name: proc
+        hostPath:
+          path: /proc/
+      restartPolicy: OnFailure
+      {{- with (coalesce .Values.global.imagePullSecrets .Values.privateRegistry.registrySecret) }}
       imagePullSecrets:
-      - name: {{ .Values.privateRegistry.registrySecret }}
-      {{- end }}
-      {{- if .Values.longhornManager.priorityClass }}
-      priorityClassName: {{ .Values.longhornManager.priorityClass | quote }}
+        {{- $imagePullSecrets := list }}
+        {{- if kindIs "string" . }}
+          {{- $imagePullSecrets = append $imagePullSecrets (dict "name" .) }}
+        {{- else }}
+          {{- range . }}
+            {{- if kindIs "string" . }}
+                {{- $imagePullSecrets = append $imagePullSecrets (dict "name" .) }}
+            {{- else }}
+                {{- $imagePullSecrets = append $imagePullSecrets . }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- toYaml $imagePullSecrets | nindent 8 }}
       {{- end }}
       serviceAccountName: longhorn-service-account
       {{- if or .Values.global.tolerations .Values.longhornManager.tolerations .Values.global.cattle.windowsCluster.enabled }}
@@ -55,3 +73,4 @@ spec:
 {{ default .Values.global.nodeSelector .Values.longhornManager.nodeSelector | toYaml | indent 8 }}
         {{- end }}
       {{- end }}
+{{- end }}

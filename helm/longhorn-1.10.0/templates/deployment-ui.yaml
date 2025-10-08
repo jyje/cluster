@@ -55,23 +55,13 @@ spec:
     spec:
       serviceAccountName: longhorn-ui-service-account
       affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 1
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - longhorn-ui
-              topologyKey: kubernetes.io/hostname
+      {{- toYaml .Values.longhornUI.affinity | nindent 8 }}
       containers:
       {{- if .Values.openshift.enabled }}
       {{- if .Values.openshift.ui.route }}
       - name: oauth-proxy
         {{- if .Values.image.openshift.oauthProxy.repository }}
-        image: {{ template "registry_url" . }}{{ .Values.image.openshift.oauthProxy.repository }}:{{ .Values.image.openshift.oauthProxy.tag }}
+        image: {{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.openshift.oauthProxy.registry) }}{{ . }}/{{ end }}{{ .Values.image.openshift.oauthProxy.repository }}:{{ .Values.image.openshift.oauthProxy.tag }}
         {{- else }}
         image: ""
         {{- end }}
@@ -94,12 +84,12 @@ spec:
       {{- end }}
       {{- end }}
       - name: longhorn-ui
-        image: {{ template "registry_url" . }}{{ .Values.image.longhorn.ui.repository }}:{{ .Values.image.longhorn.ui.tag }}
+        image: {{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.ui.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.ui.repository }}:{{ .Values.image.longhorn.ui.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         volumeMounts:
-        - name : nginx-cache
+        - name: nginx-cache
           mountPath: /var/cache/nginx/
-        - name : nginx-config
+        - name: nginx-config
           mountPath: /var/config/nginx/
         - name: var-run
           mountPath: /var/run/
@@ -125,9 +115,21 @@ spec:
         name: nginx-config
       - emptyDir: {}
         name: var-run
-      {{- if .Values.privateRegistry.registrySecret }}
+      {{- with (coalesce .Values.global.imagePullSecrets .Values.privateRegistry.registrySecret) }}
       imagePullSecrets:
-      - name: {{ .Values.privateRegistry.registrySecret }}
+        {{- $imagePullSecrets := list }}
+        {{- if kindIs "string" . }}
+          {{- $imagePullSecrets = append $imagePullSecrets (dict "name" .) }}
+        {{- else }}
+          {{- range . }}
+            {{- if kindIs "string" . }}
+                {{- $imagePullSecrets = append $imagePullSecrets (dict "name" .) }}
+            {{- else }}
+                {{- $imagePullSecrets = append $imagePullSecrets . }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- toYaml $imagePullSecrets | nindent 8 }}
       {{- end }}
       {{- if .Values.longhornUI.priorityClass }}
       priorityClassName: {{ .Values.longhornUI.priorityClass | quote }}
@@ -161,6 +163,10 @@ metadata:
     {{- end }}
   name: longhorn-frontend
   namespace: {{ include "release_namespace" . }}
+  {{- with .Values.service.ui.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if eq .Values.service.ui.type "Rancher-Proxy" }}
   type: ClusterIP

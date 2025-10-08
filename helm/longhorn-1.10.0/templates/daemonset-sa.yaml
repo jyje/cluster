@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: longhorn-manager
-        image: {{ template "registry_url" . }}{{ .Values.image.longhorn.manager.repository }}:{{ .Values.image.longhorn.manager.tag }}
+        image: {{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.manager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.manager.repository }}:{{ .Values.image.longhorn.manager.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           privileged: true
@@ -32,17 +32,17 @@ spec:
         {{- end }}
         - daemon
         - --engine-image
-        - "{{ template "registry_url" . }}{{ .Values.image.longhorn.engine.repository }}:{{ .Values.image.longhorn.engine.tag }}"
+        - "{{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.engine.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.engine.repository }}:{{ .Values.image.longhorn.engine.tag }}"
         - --instance-manager-image
-        - "{{ template "registry_url" . }}{{ .Values.image.longhorn.instanceManager.repository }}:{{ .Values.image.longhorn.instanceManager.tag }}"
+        - "{{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.instanceManager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.instanceManager.repository }}:{{ .Values.image.longhorn.instanceManager.tag }}"
         - --share-manager-image
-        - "{{ template "registry_url" . }}{{ .Values.image.longhorn.shareManager.repository }}:{{ .Values.image.longhorn.shareManager.tag }}"
+        - "{{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.shareManager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.shareManager.repository }}:{{ .Values.image.longhorn.shareManager.tag }}"
         - --backing-image-manager-image
-        - "{{ template "registry_url" . }}{{ .Values.image.longhorn.backingImageManager.repository }}:{{ .Values.image.longhorn.backingImageManager.tag }}"
+        - "{{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.backingImageManager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.backingImageManager.repository }}:{{ .Values.image.longhorn.backingImageManager.tag }}"
         - --support-bundle-manager-image
-        - "{{ template "registry_url" . }}{{ .Values.image.longhorn.supportBundleKit.repository }}:{{ .Values.image.longhorn.supportBundleKit.tag }}"
+        - "{{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.supportBundleKit.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.supportBundleKit.repository }}:{{ .Values.image.longhorn.supportBundleKit.tag }}"
         - --manager-image
-        - "{{ template "registry_url" . }}{{ .Values.image.longhorn.manager.repository }}:{{ .Values.image.longhorn.manager.tag }}"
+        - "{{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.manager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.manager.repository }}:{{ .Values.image.longhorn.manager.tag }}"
         - --service-account
         - longhorn-service-account
         {{- if .Values.preUpgradeChecker.upgradeVersionCheck}}
@@ -51,8 +51,6 @@ spec:
         ports:
         - containerPort: 9500
           name: manager
-        - containerPort: 9501
-          name: conversion-wh
         - containerPort: 9502
           name: admission-wh
         - containerPort: 9503
@@ -60,7 +58,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /v1/healthz
-            port: 9501
+            port: 9502
             scheme: HTTPS
         volumeMounts:
         - name: boot
@@ -106,7 +104,7 @@ spec:
         {{- end }}
       - name: pre-pull-share-manager-image
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        image: {{ template "registry_url" . }}{{ .Values.image.longhorn.shareManager.repository }}:{{ .Values.image.longhorn.shareManager.tag }}
+        image: {{ with (coalesce .Values.global.imageRegistry (include "registry_url" .) .Values.image.longhorn.shareManager.registry) }}{{ . }}/{{ end }}{{ .Values.image.longhorn.shareManager.repository }}:{{ .Values.image.longhorn.shareManager.tag }}
         command: ["sh", "-c", "echo share-manager image pulled && sleep infinity"]
       volumes:
       - name: boot
@@ -134,9 +132,21 @@ spec:
         secret:
           secretName: longhorn-grpc-tls
           optional: true
-      {{- if .Values.privateRegistry.registrySecret }}
+      {{- with (coalesce .Values.global.imagePullSecrets .Values.privateRegistry.registrySecret) }}
       imagePullSecrets:
-      - name: {{ .Values.privateRegistry.registrySecret }}
+        {{- $imagePullSecrets := list }}
+        {{- if kindIs "string" . }}
+          {{- $imagePullSecrets = append $imagePullSecrets (dict "name" .) }}
+        {{- else }}
+          {{- range . }}
+            {{- if kindIs "string" . }}
+                {{- $imagePullSecrets = append $imagePullSecrets (dict "name" .) }}
+            {{- else }}
+                {{- $imagePullSecrets = append $imagePullSecrets . }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- toYaml $imagePullSecrets | nindent 8 }}
       {{- end }}
       {{- if .Values.longhornManager.priorityClass }}
       priorityClassName: {{ .Values.longhornManager.priorityClass | quote }}
