@@ -97,6 +97,14 @@ spec:
             value: https://llm.app.jyje.online
           - name: USER_AGENT
             value: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+          - name: REDIS_URL
+            value: redis://open-webui-redis.ollama-system.svc.cluster.local:6379/0
+          - name: ENABLE_WEBSOCKET_SUPPORT
+            value: "True"
+          - name: WEBSOCKET_MANAGER
+            value: redis
+          - name: WEBSOCKET_REDIS_URL
+            value: redis://open-webui-redis.ollama-system.svc.cluster.local:6379/0
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
