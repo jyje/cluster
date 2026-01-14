@@ -95,6 +95,8 @@ spec:
             value: text-embedding-3-small
           - name: CORS_ALLOW_ORIGIN
             value: https://llm.app.jyje.online
+          - name: USER_AGENT
+            value: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
