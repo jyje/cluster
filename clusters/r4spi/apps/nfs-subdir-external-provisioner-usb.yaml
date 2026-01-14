@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nfs-subdir-external-provisioner-usb
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/nfs-subdir-external-provisioner-4.0.18
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        nfs:
+          server: 10.0.4.41
+          path: /mnt/usb
+          mountOptions:
+          volumeName: nfs-subdir-external-provisioner-root
+          reclaimPolicy: Retain
+        storageClass:
+          create: true
+          name: subdir-usb
+          defaultClass: false
+          allowVolumeExpansion: true
+          reclaimPolicy: Retain
+          archiveOnDelete: false
+          accessModes: ReadWriteMany
+          volumeBindingMode: Immediate
+        rbac:
+          create: true
+        serviceAccount:
+          create: true
+  destination:
+    namespace: nfs-provisioner
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
