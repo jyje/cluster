@@ -21,9 +21,6 @@ spec:
           enabled: false
         ollamaUrls:
           - http://ollama:11434
-        openaiBaseApiUrls:
-          - https://api.openai.com/v1
-          - https://guest-api.sktax.chat/v1
         replicaCount: 3
         ingress:
           enabled: true
@@ -70,11 +67,8 @@ spec:
             - ReadWriteMany
           storageClass: subdir-usb
         extraEnvVars:
-          # - name: OPENAI_API_BASE_URL
-          #   valueFrom:
-          #     secretKeyRef:
-          #       name: openwebui-creds
-          #       key: openai.api.base
+          - name: OPENAI_API_BASE_URLS
+            value: https://api.openai.com/v1;https://guest-api.sktax.chat/v1
           - name: OPENAI_API_KEYS
             valueFrom:
               secretKeyRef:
