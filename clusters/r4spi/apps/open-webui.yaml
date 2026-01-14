@@ -95,6 +95,8 @@ spec:
             value: openai
           - name: RAG_EMBEDDING_MODEL
             value: text-embedding-3-small
+          - name: CORS_ALLOW_ORIGIN
+            value: https://llm.app.jyje.online
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
