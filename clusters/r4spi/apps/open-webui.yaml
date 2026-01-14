@@ -65,7 +65,7 @@ spec:
           size: 10Gi
           accessModes:
             - ReadWriteMany
-          storageClass: longhorn
+          storageClass: subdir-usb
         extraEnvVars:
           # - name: OPENAI_API_BASE_URL
           #   valueFrom:

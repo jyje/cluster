@@ -88,15 +88,15 @@ spec:
             enabled: false
           persistence:
             enabled: true
-            storageClass: longhorn
-            accessMode: ReadWriteOnce
+            storageClass: subdir-usb
+            accessMode: ReadWriteMany
             size: 1Gi
         etcd:
           enabled: true
           persistence:
             enabled: true
-            storageClass: longhorn
-            accessMode: ReadWriteOnce
+            storageClass: subdir-usb
+            accessMode: ReadWriteMany
             size: 1Gi
           livenessProbe:
             enabled: true
