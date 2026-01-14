@@ -19,6 +19,7 @@ spec:
           enabled: false
         pipelines:
           enabled: false
+        enableOpenaiApi: false
         ollamaUrls:
           - http://ollama:11434
         replicaCount: 3
