@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: n8n
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/n8n-2.0.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        image:
+          tag: "2.4.3"
+          pullPolicy: IfNotPresent
+        ingress:
+          enabled: true
+          className: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+          hosts:
+            - host: n8n.app.jyje.online
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - secretName: n8n.app.jyje.online
+              hosts:
+                - n8n.app.jyje.online
+        main:
+          persistence:
+            enabled: true
+            type: dynamic
+            storageClass: subdir-usb
+            accessModes:
+              - ReadWriteOnce
+            size: 10Gi
+          replicaCount: 1
+          service:
+            enabled: true
+            type: ClusterIP
+            port: 80
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+        valkey:
+          enabled: true
+  destination:
+    namespace: n8n
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
