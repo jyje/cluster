@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/open-webui-8.10.0
+    path: helm/open-webui-10.2.1
     helm:
       valueFiles:
         - values.yaml
@@ -126,10 +126,6 @@ spec:
         websocket:
           enabled: true
           url: redis://open-webui-redis:6379/0
-        #   redis:
-        #     enabled: false
-        # redis-cluster:
-        #   enabled: true
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
