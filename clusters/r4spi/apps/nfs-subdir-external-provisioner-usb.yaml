@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/nfs-subdir-external-provisioner-4.0.18
+    path: helm/nfs-subdir-external-provisioner-4.0.18-jyje
     helm:
       valueFiles:
         - values.yaml
