@@ -1,0 +1,135 @@
+---
+description: Generates git commit messages following project conventions with gitmoji, domain scope in parentheses, English titles and descriptions, and Co-Authored-By cursor.
+globs: "**/*"
+alwaysApply: false
+---
+
+# Git Commit Policy
+
+When writing or modifying commit messages, AI must intelligently apply the following rules.
+
+## Format
+```
+<gitmoji> <type>(<domain>): <title>
+
+<description>
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+## Gitmoji Usage
+
+Gitmoji mappings follow the gitmodi standard:
+
+- **🔧** `chore`: Routine maintenance tasks, supplementary work, or minor corrections without intentional functional changes
+- **🛠️** `fix`: Intentional functional configuration changes or feature adjustments
+- **✨** `feat`: Introduce new features
+- **✏️** `typo`: Fix a typo
+- **🐛** `bug`: Fix a bug
+- **⬆️** `dep`: Upgrade dependencies
+- **🔐** `security`: Add or update secrets
+- **🗑️** `remove`: Deprecate code that needs to be cleaned up
+- **♻️** `refactor`: Refactor code
+- **📝** `docs`: Add or update documentation
+- **🎨** `style`: Improve structure / format of the code
+- **⚡** `perf`: Improve performance
+- **✅** `test`: Add, update, or pass tests
+- **🔨** `build`: Add or update development scripts
+
+> Reference: [gitmoji.dev](https://gitmoji.dev/) - An emoji guide for your commit messages
+
+## Type and Domain
+- **Type**: `feat`, `fix`, `bug`, `typo`, `refactor`, `dep`, `security`, `remove`, `chore`, `docs`, `style`, `perf`, `test`, `build`
+- **Domain**: Component name in parentheses, lowercase, kebab-case if needed (e.g., `(nfs)`, `(open-webui)`, `(milvus)`, `(argo-cd)`)
+
+## Title & Description
+- **Language**: Always English
+- **Style**: Concise, imperative mood, start with lowercase after type
+- **Description**: Optional, explain "why" or provide context
+
+## Co-Authored-By
+Always include: `Co-Authored-By: Cursor <cursor@cursor.sh>`
+
+## Intelligence Selection
+- This rule is activated only when executing `git commit` commands or when commit message writing is needed.
+- Ignore this rule during simple code modifications and focus on the task at hand.
+
+## Examples
+
+Based on project commit history, here are examples following the current policy:
+
+**Feature addition:**
+```
+✨ feat(n8n): add n8n application
+
+Add n8n workflow automation application to the cluster.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Intentional functional configuration change:**
+```
+🛠️ fix(nfs): rollback health probes and chart rename to fix distroless image compatibility
+
+Revert recent changes including health probes and chart renaming because the
+distroless image lacks 'sh' and other shell utilities required for probes.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Routine maintenance:**
+```
+🔧 chore(helm): remove deprecated Helm chart versions and clean up configuration files
+
+Remove old chart versions and clean up unused configuration files for homer applications.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Bug fix:**
+```
+🐛 bug(open-webui): resolve inconsistencies in git commit policy rule
+
+Fix three bugs in the git commit policy rule:
+1. Translate Korean text to English to match the 'Always English' policy
+2. Clarify gitmoji mapping conflicts
+3. Add missing types to the Type list
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Dependency update:**
+```
+⬆️ dep(open-webui): update chart to 10.2.1 from 8.10.0
+
+Upgrade open-webui Helm chart to latest version.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Refactoring:**
+```
+♻️ refactor(nfs): rename custom Helm chart with -jyje suffix and add health probes
+
+Rename Helm chart directory and add health probe configurations.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Security:**
+```
+🔐 security(open-webui): add CORS_ALLOW_ORIGIN environment variable for enhanced security
+
+Configure CORS settings to restrict allowed origins.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
+
+**Typo fix:**
+```
+✏️ typo(docs): fix typo in gitmoji standard reference
+
+Correct "gitmodi" to "gitmoji" in documentation.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+```
