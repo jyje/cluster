@@ -58,6 +58,8 @@ Always include: `Co-Authored-By: Cursor <cursor@cursor.sh>`
 
 When the user requests a git commit, AI must follow this workflow:
 
+**Note**: While commit messages must always be in English (as per the policy), the interaction with the user (questions, confirmations, explanations) should match the user's language preference.
+
 1. **Propose commit message in markdown format**: 
    - Generate a commit message following the format and conventions above
    - Present it as a markdown-formatted code block for easy review
@@ -75,7 +77,7 @@ When the user requests a git commit, AI must follow this workflow:
 
 Example interaction:
 ```
-AI: "### 제안하는 커밋 메시지:
+AI: "### Proposed commit message:
 
 \`\`\`
 🛠️ fix(nfs): update configuration settings
@@ -85,15 +87,15 @@ Update NFS mount options to improve performance.
 Co-Authored-By: Cursor <cursor@cursor.sh>
 \`\`\`
 
-이 메시지로 커밋할까요?"
+Proceed with this commit message?"
 
-User: "네"
+User: "Yes"
 
 AI: [executes git commit]
 
-AI: "커밋이 완료되었습니다. 원격 저장소에 푸시할까요?"
+AI: "Commit completed. Push to remote repository?"
 
-User: "네"
+User: "Yes"
 
 AI: [executes git push]
 ```
