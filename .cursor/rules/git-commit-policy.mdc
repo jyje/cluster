@@ -19,7 +19,7 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 
 ## Gitmoji Usage
 
-Gitmoji mappings follow the gitmodi standard:
+Gitmoji mappings follow the gitmoji standard:
 
 - **🔧** `chore`: Routine maintenance tasks, supplementary work, or minor corrections without intentional functional changes
 - **🛠️** `fix`: Intentional functional configuration changes or feature adjustments
