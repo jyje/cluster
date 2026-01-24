@@ -54,6 +54,50 @@ Always include: `Co-Authored-By: Cursor <cursor@cursor.sh>`
 - This rule is activated only when executing `git commit` commands or when commit message writing is needed.
 - Ignore this rule during simple code modifications and focus on the task at hand.
 
+## AI Commit Workflow
+
+When the user requests a git commit, AI must follow this workflow:
+
+1. **Propose commit message in markdown format**: 
+   - Generate a commit message following the format and conventions above
+   - Present it as a markdown-formatted code block for easy review
+   - Include the full message with title, description (if needed), and Co-Authored-By tag
+
+2. **Request user confirmation**:
+   - Ask the user if they want to proceed with the commit using the proposed message
+   - Wait for explicit approval before executing `git commit`
+   - If the user requests changes, revise the message accordingly
+
+3. **Push only after confirmation**:
+   - After committing, ask the user if they want to push to the remote repository
+   - Only execute `git push` after receiving explicit user approval
+   - Never push automatically without user confirmation
+
+Example interaction:
+```
+AI: "### 제안하는 커밋 메시지:
+
+\`\`\`
+🛠️ fix(nfs): update configuration settings
+
+Update NFS mount options to improve performance.
+
+Co-Authored-By: Cursor <cursor@cursor.sh>
+\`\`\`
+
+이 메시지로 커밋할까요?"
+
+User: "네"
+
+AI: [executes git commit]
+
+AI: "커밋이 완료되었습니다. 원격 저장소에 푸시할까요?"
+
+User: "네"
+
+AI: [executes git push]
+```
+
 ## Examples
 
 Based on project commit history, here are examples following the current policy:
