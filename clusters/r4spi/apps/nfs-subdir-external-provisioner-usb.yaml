@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/nfs-subdir-external-provisioner-4.0.18-jyje
+    path: helm/nfs-subdir-external-provisioner-4.0.18
     helm:
       valueFiles:
         - values.yaml
@@ -31,27 +31,6 @@ spec:
           create: true
         serviceAccount:
           create: true
-        # Health checks for auto-recovery
-        livenessProbe:
-          exec:
-            command:
-              - sh
-              - -c
-              - test -d /persistentvolumes
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          exec:
-            command:
-              - sh
-              - -c
-              - test -d /persistentvolumes && ls /persistentvolumes
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
   destination:
     namespace: nfs-provisioner
     server: 'https://kubernetes.default.svc'
