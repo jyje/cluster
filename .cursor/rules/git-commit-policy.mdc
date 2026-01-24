@@ -1,5 +1,5 @@
 ---
-description: Generates git commit messages following project conventions with gitmoji, domain scope in parentheses, English titles and descriptions, and Co-Authored-By cursor.
+description: Generates git commit messages following project conventions with gitmoji, domain scope in parentheses, English titles and descriptions, and Co-Authored-By Cursor Agent.
 globs: "**/*"
 alwaysApply: false
 ---
@@ -14,7 +14,7 @@ When writing or modifying commit messages, AI must intelligently apply the follo
 
 <description>
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 ## Gitmoji Usage
@@ -48,7 +48,7 @@ Gitmoji mappings follow the gitmoji standard:
 - **Description**: Optional, explain "why" or provide context
 
 ## Co-Authored-By
-Always include: `Co-Authored-By: Cursor <cursor@cursor.sh>`
+Always include: `Co-Authored-By: Cursor Agent <cursoragent@cursor.com>`
 
 ## Intelligence Selection
 - This rule is activated only when executing `git commit` commands or when commit message writing is needed.
@@ -84,7 +84,7 @@ AI: "### Proposed commit message:
 
 Update NFS mount options to improve performance.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 \`\`\`
 
 Proceed with this commit message?"
@@ -110,7 +110,7 @@ Based on project commit history, here are examples following the current policy:
 
 Add n8n workflow automation application to the cluster.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Intentional functional configuration change:**
@@ -120,7 +120,7 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 Revert recent changes including health probes and chart renaming because the
 distroless image lacks 'sh' and other shell utilities required for probes.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Routine maintenance:**
@@ -129,7 +129,7 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 
 Remove old chart versions and clean up unused configuration files for homer applications.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Bug fix:**
@@ -141,7 +141,7 @@ Fix three bugs in the git commit policy rule:
 2. Clarify gitmoji mapping conflicts
 3. Add missing types to the Type list
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Dependency update:**
@@ -150,7 +150,7 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 
 Upgrade open-webui Helm chart to latest version.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Refactoring:**
@@ -159,7 +159,7 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 
 Rename Helm chart directory and add health probe configurations.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Security:**
@@ -168,7 +168,7 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 
 Configure CORS settings to restrict allowed origins.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
 
 **Typo fix:**
@@ -177,5 +177,5 @@ Co-Authored-By: Cursor <cursor@cursor.sh>
 
 Correct "gitmodi" to "gitmoji" in documentation.
 
-Co-Authored-By: Cursor <cursor@cursor.sh>
+Co-Authored-By: Cursor Agent <cursoragent@cursor.com>
 ```
