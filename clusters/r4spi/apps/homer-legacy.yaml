@@ -84,7 +84,7 @@ spec:
             enabled: true
             className: istio
             annotations:
-              cert-manager.io/cluster-issuer: letsencrypt-prod
+              cert-manager.io/cluster-issuer: istio-letsencrypt-prod
             hosts:
               - host: app.jyje.online
                 paths:
