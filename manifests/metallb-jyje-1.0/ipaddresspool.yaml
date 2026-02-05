@@ -1,0 +1,14 @@
+# MetalLB IPAddressPool: four IPs (10.0.4.40, 41, 50, 51) for router port-forwarding.
+# See: https://metallb.io/configuration/
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-addresspool
+  namespace: metallb-system
+spec:
+  autoAssign: true
+  addresses:
+    - 10.0.4.40/32
+    - 10.0.4.41/32
+    - 10.0.4.50/32
+    - 10.0.4.51/32
