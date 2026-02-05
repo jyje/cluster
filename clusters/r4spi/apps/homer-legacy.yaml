@@ -82,9 +82,9 @@ spec:
         ingress:
           main:
             enabled: true
-            className: istio
+            className: nginx
             annotations:
-              cert-manager.io/cluster-issuer: istio-letsencrypt-prod
+              cert-manager.io/cluster-issuer: letsencrypt-prod
             hosts:
               - host: app.jyje.online
                 paths:
