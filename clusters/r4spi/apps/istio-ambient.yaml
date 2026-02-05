@@ -1,0 +1,83 @@
+# Istio Ambient mode via Helm (https://istio.io/latest/docs/ambient/install/helm/)
+# Using local Helm charts from this repo (helm/istio-*).
+# Gateway API CRDs (if using Gateway API): kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-base
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/istio-base-1.28.3
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/istio-istiod-1.28.3
+    helm:
+      valuesObject:
+        profile: ambient
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated: {}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-cni
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/istio-cni-1.28.3
+    helm:
+      valuesObject:
+        profile: ambient
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated: {}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ztunnel
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/ztunnel
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated: {}
