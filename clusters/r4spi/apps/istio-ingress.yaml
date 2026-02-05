@@ -1,15 +1,20 @@
 # Namespace with injection label so istiod mutating webhook replaces "auto" with the proxy image.
+# Sync wave 0 so it is created before the istio-ingress Application (wave 1).
 apiVersion: v1
 kind: Namespace
 metadata:
   name: istio-ingress
   labels:
     istio-injection: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: istio-ingress
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: base
   source:

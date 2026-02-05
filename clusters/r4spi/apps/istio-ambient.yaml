@@ -2,6 +2,7 @@
 # Using local Helm charts from this repo (helm/istio-*).
 # Gateway API CRDs (if using Gateway API): kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
 ---
+# Ignore drift: istiod patches these webhooks at runtime (e.g. istiod-default-validator: failurePolicy→Fail, caBundle).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -17,12 +18,18 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[].failurePolicy
+        - .webhooks[].clientConfig.caBundle
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
     automated: {}
 ---
-# istiod가 웹훅(failurePolicy, caBundle 등)을 라이브에서 수정하므로, 해당 필드는 drift로 보지 않음.
+# Ignore drift: istiod updates webhooks at runtime (failurePolicy, clientConfig.caBundle).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
