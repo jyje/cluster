@@ -94,7 +94,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/ztunnel
+    path: helm/istio-ztunnel-1.28.3
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
