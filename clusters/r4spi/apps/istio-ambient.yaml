@@ -22,6 +22,7 @@ spec:
       - CreateNamespace=true
     automated: {}
 ---
+# istiod가 웹훅(failurePolicy, caBundle 등)을 라이브에서 수정하므로, 해당 필드는 drift로 보지 않음.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -40,6 +41,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[].failurePolicy
+        - .webhooks[].clientConfig.caBundle
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[].failurePolicy
+        - .webhooks[].clientConfig.caBundle
   syncPolicy:
     automated: {}
 ---
