@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/open-webui-10.2.1
+    path: helm/open-webui-12.5.0
     helm:
       valueFiles:
         - values.yaml
@@ -69,7 +69,7 @@ spec:
           storageClass: subdir-usb
         extraEnvVars:
           - name: OPENAI_API_BASE_URLS
-            value: https://api.openai.com/v1;https://guest-api.sktax.chat/v1
+            value: https://api.openai.com/v1
           - name: OPENAI_API_KEYS
             valueFrom:
               secretKeyRef:
@@ -113,17 +113,14 @@ spec:
               name: openwebui-creds
             spec:
               encryptedData:
-                milvus.token: AgA0w/rTS9BI22QfdvV2erDK9I6dklDwSql1Yns0fmokTqjp4oSD2+2gyrTKTRnQIwKeNqv+Z16WZOjIsgTX4AWes6nDdNiWR1w0nVbUstI9O2Iybzi4QNa4gh4E1jSRG1o2zwhFOlaGqhGmQCrxyM5SQXGwpDzhVCJ1v3Xk0UyxN7nTq3yY0GcSdqvQj2PAnxPd5g+03X648hjItl3eNR6NjCzN5mmxzid5ZiGhQuJzeJZvI4Hx35orwTKgN8N+wiHrtkxT/yPxH8DvyngP52mPwD23HnGh29lZl4EfkEtsV3ZN5JAlnS7xXF/uz5VB5wYSvHIpiL5f3j9dFjF+cqk061UOOR0vyNW9aLg9PvCvCShh++BGwrD4PpmwUabKQWU95UAo9/iQ8ofAKUuhxTzZdLs/0cG1dPWz5u0LbZW3tvrF6nsDS0AjTFmSxX6dGakzGqnA9uGGomnzQI6F/b0b4irxnPrX+FI3QDAxWd3b8qLaG1UE/+fbgqOfpSvJbuXr9aMxgBTbYXZouYsw+2AtA7sdvDIciMg5e8QoSSd5vUuFzS9zejNSjCfael/ewfnvVQmFltTNJNVtfgSGb1KZ3T1gCRSStuzib28PiED8JkfYBIeVc8Yg39uiP02VbLWHObwCa+H614ics1HiDylw9yRchy6bLc+i2a6LYAnS/NQgihK07iMYC4lIIGD659gPb0BG9FssWtExAI0Iqcrb+54=
-                milvus.uri: AgBj2pxm2OzZ7IRMXOiLZSoxSduHunLbyIYDXqx7ElxEVXL70VrnrFwVC3EZQeoVBxul+QVKhUxPDUx1m55muRpgLoaYBLxyvvPDCm5tQtUXTpEnX1huanUiXszeAwUE+4MDpa4FU0KlyhHijBnjwZDXLs8QHaldcr9eTQ3m6+4YKXJ4YBQC4zrJwM/z22hJHRTQxNw4VKg23V6lBypjPdW1gN4jEtO9kBGPp6+6677C7gg5DnEH1SwYF3HjFpcH/q0cdJwXmJGYynX5g9Rcu752+UVZbeOspJxyOEfLhiU1EKUafLbkA6JVnjbrso5pOxUCQyZ9O9QqFNEzr7rxBIZkwMv89829UjxPx9+UUEnqqi+qVMJfjcsxVtGTRNS4GxU9PakU1edTHC4TO6CDkQVZSz5HAZqKCLWwnuJNPAopMckGJHenzrh/B3/c3ei0LB55j0A1vi9x6iwupK7J0UDXdelwfNnHQndPYqKBWmoVxPN5YzdnrFGp2iqGnfRUD90aAt+Z4TvhZE3Y6UFwLMzZkEEjBCXwC7CyZXQWoo24hgPH4o72vyFaDvBWI9HfIZ1BD9MmRAx15tGjFzSpa4fBfkghtiPsB1OP4YQgHlBr8M9fiJ0mvZ+ctGlDP05y4jxqJWXrkAhd4SJQUFnclK01QBb7zEV1VYPNGfrge6rr/QfL8f+F+H6f68yfMyTyMIc8Marzw4EEIv0dFAioP6hyi7UXf3CRJQ3u1dWUp998cZ4tQeMv9CVtGjx6S9Tlbx5bQEI=
-                openai.api.key: AgBqwKwkQgJ3Y+YDsGOzysRxZBlQbYsBC4ZmnJLK7FtG9ZL7IJlwsK425/1T/ZWwe4NQfxbkkH0BNDruIJ4q3pbAhojE1gZLq2/Yxm/0PIuElBj2IQUwrPfNeQLxfmcVJuY57LL8nAbtZMRwBqSLtBNa02gKErWOGELXqm0nEYycmhKUAvSFbR0ImsekSqokXZu54/pRhIuT3G3yhxGABizZ/RaERrq6XKdSU1zIMiaD0hKL7djP67r8TNSdbuGl6iVihhAxb8GcbFYel1ZKZzh6T8PLRRq/X2uVTEAGPDlj1oiDi+nbay8Mm7+UboPhBViMmJOsmTTGXw80OB8J/ARCEflnQOFTlMhH5U4zwUbNfoN02+pafOTzEjH1M8/Jg7DJSfncfpnZYy4sZJBgnAn9ODaqBKfGJ3e8S5WW0+RD1rqgGZwTB4ZvcLHx4gNSuwW75Co8RDkzuTwlZ/wNlCSUew19pKqEKSH/uc2oduzbtodmCnHJBBSASHpqVHzu6rnoTTy8wGM7cTAy7D9dp57BReU0fenVB9fMUPYFd8LS9Ne8G9bHb0Y7NWUujrN/vi23DbS79aVUCTw73o2kSq0/vitPTpgRGO1FHd2in5yygDLnwh4e0yY8VinSzEapj5tVf/nSj8AzC9y2mmnicw6mLCPSpCPgmyoUpVbB4chDvWZyuXp14+RB05UwojyyJUD2cCHDpoUNY4mZ6dFaQUltsa27yhwiVv9VI9+FRELU3EVeSudfk2xP86XgU0aVCRyncQ7UFG70/f4OYKcME/21vmWBC7rQg37RuZih/FjrDbgjoZ9DDYHvpCsHw+zQeues9+lhIHlW3jAni7ka1Ms1LGgTiRqlTURQtN73O7LAr9/eJYy7LJxOZpHO3S8NjRAIS98ooEm3UWcSrxtz8yH08n0R6BK52rnmbBBxJfG1NyEXRkiSg3UucFCJBb+N0kG6OlgZSw==
-                owui.secret-key: AgCyM4gX2SJ8IOeSS8ZxxknVCnxlHvRwkwvFSA+4XeqQL5SPO/bna9f1aRCv4oVeTcwDM4pbpnR/m+RlaxXzYx879QG+V7acdDIS7iiQ+57IyTeVuFAZhH3FCH4k7jWA2+vBknhXDc4YYTm/v7jXgbAHKtZp6RdJS6U+Bi0CzWJHcWbPCRjFbdjC9mKPBmSBVsv0bTWl6ZvSF2AX1XvFrDkDRrsBJfr2mQzR9wNnAkqxPz8QeTt6kJz2mYnho3Yi6zGjO8l2A+zcg2fA9gDjk6KZtyN4YKLmxxIwLJ33jIfQNJ+h8GiR99V7FGqdhC7YWuHCmUlrDmLE0VQsQlMqn9+Ize6VUbs3iPKTkUtLpBEQfzkQFamyJIvCYT6gtaoee8o6D+odizDR8oX+PNMFKpeanbmauP6s6hMxdIAHJJ+yVwlM/9as0khDKbp0IOZxleXvZFEG2xcYJFwNr5IoT8aVN7RkSNILXWtr83CijEjRFP6yWVz3Fnzal7dfYzqQOed/sfFwze2OanvCrEcbRb+wUYTdN4wxZGjd02sSNA9wxHm3aoQQ9/a8CejS6k1lgVgX6ydq9BrNwF2IvQuF4VwLT405f6BHytyeDERXh2ZoC5NwlERbVK4YPSRXXwz+QXbTZutuDfB5rSEWdU1OaWAX5+kaPUm9OGs9WzH72hQpcjgpnPhpz9fTGzxkWnSYVcLwOH6fRwP04CZrPd/Usr3xoXTmOaWqd7zFH0PqajJwG/vq
+                milvus.token: AgCTC4AxiuHacJlHxUFdsK2KnKj+wyBUExvZRioUdK/eGH334jfiOvsRTyFA/QbaWkrsak7Wz0Ok/BIIdTW4/OA3W0134bd208aMqY6KLXlcZd3uUcq9cmwyAmQRmohHwmZtIjq6ax0eyWTpT+n1+IsWoGOoGMWuRrJ9QfQDtt4ta7PlG/6Uhn2bg39DI3BSbrzbkCE/CjrCt0y3W3cPZtHdw8ihzKtivTtkPPqnl+CaN2vfwkihZsfxYwOh4FeqCu7aOTr+wIAV8LEE+iryU1GuDEz0W4Fiz1gh+UU1kIQgV01fNXR+waJ0jxlezTixhcOzgr3qelBRqW59IhWJhTW6eMVtvC9pkyTTkURrwZw++QBWXrJJcx9yJsjFkjzVsdCTpk/CGOng1zpFbkvZjKe1T5zSJxfmlhglQpzV9IAcscZtx2dgToSPWcnBmHILdFpfLoMFCxi8HdhMrQFM4DNKz2t3Mw2hZOm1KK2MYcXK25y1WddihD5bUP6ETw7H0JTEf9FIaW6e8HbXrpxdcBQ7J2mvYGqWG04b29xSE0bYNathH5nXRFCdkMJPDVpiG9gh3h5BSOl5K7MbGK6SwZPCB8HlA7iQyp/OUKEh7+1swfJdEgnBmg1mNp+k3iMg1jHu8HLRv+Z4p2dCNhVeJr7Lh71I7njBlKRyVnzZ0+LcBbFqjkjPW1paKcCNkc0grvjF5WLzgBAcH3DFhqkH94O10uo=
+                milvus.uri: AgBnbs2jOMynf/vVdYuD6ZYz/uD1S0VdsLWp3lSevqZJ6HrROyw0CqvEL/fQuSM8mLb6vqhGi5KxWKGToCKADwBWOMkwsmf10Gvw04KXVs0pWxxP9fQ9Fv5yO+9JxHo5ON9DSKkRE/ghWP6e5qQvRwh4q2hZnz6NnkUW39R4sosHHUUIqPfs+ZhZO5foI98JAmMO90YK3nwN1NR3PlxJu+a57xwPVAMr9S72WLCuP44xOBkUVMotFmlzipxN6cZ3Wou2vutHBL6JE9BYEHwFXm1eJ8tmwqV50DS9g6oRXkjvlI6tCbuwm4KPOu79TdZr2UiT3qtS86kMrPq0RlFI02Tl2/Xh6NeYyc3sXFivH/TbdFrtydQOnHYBpH8k3GXQqSaZbc7aGxfAc0QtzQkPe7Zml0bCF1IquZLx4iRm8GTtF4HJfl+sO8E7D4drKt7DMBFh35umtHccZpEB04zRK32zIDCQ82nwW7vsOWWZG7cCQcOU3Pf37Pcx7+QTvEi1LnIL6ABhkXnkZKL7Rj8VxPNkRmtegwdXHh6i/gwduj7kUdYAE63EODYJGuPstMz+rVdDXNcbEKRflecIrjXzzlRgzYjMpJO2vvNvdRrT9TrL9l1M9RTOvNstvoylZ2QEJumasKF3x3PjN/OMf+a5IIyH/ingbcIdYJNtpe3fZHqUkz3WW37458Of7w7BUquPmlfdGKLnO/bZgUKcs986QS/67XzB15k5AUTI5wsXMltOMVz9NHROgkABZJzaa2AOierOO94=
+                openai.api.key: AgAjY0MXD9Tq3gUDwgaytJ4vLle/lFoCOb0OnbjMtcxzk3Lu91zuHHa5AGHA3t6G7NTGrWclAyAvojjWiaYFwQhHpGsgQpWf/p21p/2PhO+Fj7qamvBtjqism6h126RNtyE/l4B5EjG8QKj6j/HtA9gYuC5w6QalyLHnATdvfsLsqjWCXaIyhhg4IwWfFmFrW7ZgbuTzZ3DkIlyGipyY0kq97nY577PKPxVPi4e7ZpVWcIUQayF+VXDuYRdg4WO1qi6b6iNnpUyclzbMXK05DwsoBjNnmDYHaHoOQ8cr+M9KJR0HhMu7JWmh5fHLmtb/Tg0aRxrycP9wbpNDFsfZw+gPQDE0S+FR64pZErs3UYym5d70/zRimu6g62so4IhYRkXo1G/y+6GIKpqPhRV9IPKlxWa+ycUljpxgrIsClZW6GOsnYhd2J7/OBThHSU3tCxY3e8NJljix6OBlRRhpeOTKVfqgq20QlvOCQWHxGQGfunKONxTXmpseVD19WjBMAtg5a+O5HOx19SWWtOZSaPq8f2qyXPhPMcB8wWwLV0Ci1WfmcXSfNEPpfO5ZOKSGHeaEKoq1TP7iKwom/kRxhloZlqz4aic1/KvcQcm/G3rmx3hpL0wDjRIs+f2P4pyOIN8nQmJFd9RK7inwGLhQjvr7ic/pZS5P3LIBkgz/jAWco112nwzsnR+qkH7EoV9QmvpjxTEvPzrsCcnVgfyX95YHO4ffwmA7ABkrudT+oTKwZYstXr5wS5qiGXgJBM0g/LBukeU1f6yG8xAIWTAGYCz899NerG6mLIKGvLse0nspnfHkFrgENolumQ0Y2EeY4DyiAcyKAsssSqG07P4d/zs34GWgeRpHP0dW98ZdvOq5ItYyALmnxOCSZFs9vruRxr97z++y/i2bwI5gaG66I47vBAf1qA==
+                owui.secret-key: AgCpmZhD9InPmW4bPYqiNFvjaQsowHIwoqgl5dwsSpBfW8rzv4JopoB5oh6CbOSdVstdRT1dzuKGa1ymdNgLAnZOk/1sHOo2NtReXnOMFKZFacdWExNAOuRE6OBtaoqvfzgO5TWXp2YfFhy3Wf9FSrV8CYYz8dlAiUUwb3PgwSLLqGHlZkR0UaKXvxx9kxQol5GmHruQmQ7+84qL0D8H0Umm/PrvFL8tKNUzN5U/BhkF6xPnsSr1uPZpyffhazaJNJvGJOUHTd0pi8QbmpCrtH54flPD+12WvwT7qrQk6ujXv8ckf4os36+rcur9lpW7vtTBsiv6q3Ywb1CUmgdUMasEkWhR1WYmFvQC69OUEKssGGURfgEzEzbFc2M2WXleX81aWh1anmKBy/gY93inR2hWwsjQ3ySOGzxLfTLwgIopejENsuAFsShd23hf86Q6vEz9nveXKkKZMvFahOpfiwHqxpKYWYZS7wI00TOE4qM1F6nxPZx8YyiGdNL9pdurwGCW+G1SbJO6eAyc8sm8fKjp0h/qLAYHAfVhD5Vkfqw7idfflXgCR8xzidMqkt/X4rODLlUWYjt1arzaeNRVqW/vXfVULQdkPgBEhftEt1QmY/solO0zU8IBFjk+0qQ9CXHGHfGPhKur4zFmPRcksojbSo2XNe332Lo50Hp1+4JqlarU8kc67P2wRKCi+bBhswuiPA0fm4Hbgmn4INyLIH9uXObKg77MBcDpdWeQQWvig317
               template:
                 metadata:
                   name: openwebui-creds
                 type: Opaque
-        websocket:
-          enabled: true
-          url: redis://open-webui-redis:6379/0
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
