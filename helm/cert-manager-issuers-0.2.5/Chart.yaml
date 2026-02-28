@@ -3,7 +3,7 @@ appVersion: "1"
 dependencies:
 - name: common
   repository: https://charts.adfinis.com
-  version: 0.0.7
+  version: 0.0.8
 description: Configure cert-manager Issuers and ClusterIssuers via Helm
 home: https://cert-manager.io/docs/configuration/
 icon: https://raw.githubusercontent.com/adfinis/helm-charts/main/charts/cert-manager-issuers/logo.png
