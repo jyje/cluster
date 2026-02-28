@@ -69,6 +69,19 @@ Correct "gitmodi" to "gitmoji" in documentation.
 Add a new blog post discussing kubernetes deployment strategies and best practices.
 ```
 
+## Skill update
+```
+🔧 chore(git-commit-helper): add git log search step when recommending type
+
+Search last 10 commits and last 10 of the chosen type to keep wording and style consistent with recent history. Do not use docs type for skill updates.
+```
+
+```
+🛠️ fix(git-commit-helper): stop adding Co-Authored-By in commit message
+
+Cursor adds co-author automatically; remove from format and examples to avoid duplicate.
+```
+
 
 
 

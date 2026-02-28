@@ -12,7 +12,8 @@ When the user requests a git commit or help with a commit message, follow these 
 1. **Analyze changes**: Review staged and unstaged changes to understand the scope and purpose of the work.
 2. **Determine Domain**: Identify the primary component or domain affected (e.g., `(nfs)`, `(open-webui)`). Use lowercase and kebab-case.
 3. **Select Type & Gitmoji**: Choose the appropriate type and its corresponding gitmoji from the table below.
-4. **Draft Message**: Create the message in English using the required format.
+4. **Search git log**: Once the type is chosen, search git log for (1) the last 10 commits and (2) the last 10 commits of that same type (e.g. `feat`, `fix`). Use the results to keep wording and style consistent with recent history.
+5. **Draft Message**: Create the message in English using the required format.
 
 ### Format
 
@@ -44,6 +45,8 @@ When the user requests a git commit or help with a commit message, follow these 
 | ⚡ | `perf` | Improve performance |
 | ✅ | `test` | Add, update, or pass tests |
 | 🔨 | `build` | Add or update development scripts |
+
+- **Skill updates**: When committing changes to this skill (e.g. under `.cursor/skills/git-commit-helper/`), do **not** use `docs`. Use `chore` for routine updates or `fix` for behavior/instruction corrections.
 
 ## Workflow
 
