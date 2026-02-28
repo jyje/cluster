@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/gha-runner-scale-set-0.10.1
+    path: helm/github-actions-runner-controller/gha-runner-scale-set-0.13.1
     helm:
       valueFiles:
         - values.yaml
@@ -17,7 +17,7 @@ spec:
         githubConfigUrl: https://github.com/jyje/pifanctl
         githubConfigSecret: pre-defined-secret
         controllerServiceAccount:
-          name: gha-runner-scale-set-controller
+          name: github-arc-controller
           namespace: arc-system
         minRunners: 0
         maxRunners: 5
