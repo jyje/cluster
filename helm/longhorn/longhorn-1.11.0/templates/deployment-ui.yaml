@@ -101,6 +101,7 @@ spec:
             value: "http://longhorn-backend:9500"
           - name: LONGHORN_UI_PORT
             value: "8000"
+          {{- include "longhorn.timezoneEnv" . | nindent 10 }}
       volumes:
       {{- if .Values.openshift.enabled }}
       {{- if .Values.openshift.ui.route }}
@@ -161,6 +162,9 @@ metadata:
     {{- if eq .Values.service.ui.type "Rancher-Proxy" }}
     kubernetes.io/cluster-service: "true"
     {{- end }}
+    {{- with .Values.service.ui.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
   name: longhorn-frontend
   namespace: {{ include "release_namespace" . }}
   {{- with .Values.service.ui.annotations }}
@@ -178,6 +182,9 @@ spec:
   {{- end }}
   {{- if and (eq .Values.service.ui.type "LoadBalancer") .Values.service.ui.loadBalancerSourceRanges }}
   loadBalancerSourceRanges: {{- toYaml .Values.service.ui.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if and (eq .Values.service.ui.type "LoadBalancer") .Values.service.ui.loadBalancerClass }}
+  loadBalancerClass: {{ .Values.service.ui.loadBalancerClass }}
   {{- end }}
   selector:
     app: longhorn-ui

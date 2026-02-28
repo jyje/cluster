@@ -64,3 +64,28 @@ app.kubernetes.io/version: {{ .Chart.AppVersion }}
 {{- .Release.Namespace -}}
 {{- end -}}
 {{- end -}}
+
+{{- /*
+multiTypeSetting helper
+Input: any value (string, number, or map)
+Output: properly quoted YAML string
+*/ -}}
+{{- define "longhorn.multiTypeSetting" -}}
+  {{- $v := . -}}
+  {{- if kindIs "map" $v -}}
+    {{- $v | toJson | quote -}}
+  {{- else -}}
+    {{- $v | quote -}}
+  {{- end -}}
+{{- end -}}
+
+{{/*
+Optional timezone injection for all Longhorn workloads.
+When .Values.global.timezone is set, this snippet renders a TZ env var.
+*/}}
+{{- define "longhorn.timezoneEnv" -}}
+{{- if .Values.global.timezone }}
+- name: TZ
+  value: {{ .Values.global.timezone | quote }}
+{{- end }}
+{{- end -}}
