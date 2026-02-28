@@ -83,3 +83,28 @@ mv gha-runner-scale-set-controller-0.13.1 github-actions-runner-controller/
 App path: `helm/github-actions-runner-controller/gha-runner-scale-set-controller-0.13.1`
 
 Argo CD or Helm apps reference `helm/<group>/<chart-name>-<version>` as the chart path.
+
+## Chart (group) name and repo URL
+
+Top-level charts/groups vendored in this repo (dependency charts excluded). Check the `helm/` directory for versions.
+
+| Chart (group) name | URL |
+|-----------------|------|
+| actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller |
+| argo | https://argoproj.github.io/argo-helm |
+| bananaops | https://bananaops.github.io/homer-k8s |
+| cnpg | https://cloudnative-pg.github.io/charts |
+| infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
+| ingress-nginx | https://kubernetes.github.io/ingress-nginx |
+| istio | https://istio-release.storage.googleapis.com/charts |
+| jetstack | https://charts.jetstack.io |
+| jyje | https://jyje.github.io/helm-charts/charts |
+| longhorn | https://charts.longhorn.io |
+| metrics-server | https://kubernetes-sigs.github.io/metrics-server |
+| milvus | https://zilliztech.github.io/milvus-helm/ |
+| nfs-subdir-external-provisioner | https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/ |
+| nvidia | https://helm.ngc.nvidia.com/nvidia |
+| ollama-helm | https://otwld.github.io/ollama-helm/ |
+| open-webui | https://helm.openwebui.com/ |
+| portainer | https://portainer.github.io/k8s/ |
+| sealed-secrets | https://bitnami-labs.github.io/sealed-secrets |
