@@ -33,7 +33,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: istiod
+  name: istio-istiod
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
@@ -86,7 +86,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ztunnel
+  name: istio-ztunnel
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
