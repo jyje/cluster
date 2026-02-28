@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "*/30 * * * *"
 
+permissions:
+  contents: read
+
 env:
   TARGET_URL: https://app.jyje.online
 
