@@ -1,5 +1,5 @@
 # Istio Ambient mode via Helm (https://istio.io/latest/docs/ambient/install/helm/)
-# Using local Helm charts from this repo (helm/istio-*).
+# Using local Helm charts from this repo (helm/istio/).
 # Gateway API CRDs (if using Gateway API): kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
 ---
 # Ignore drift: istiod patches these webhooks at runtime (e.g. istiod-default-validator: failurePolicy→Fail, caBundle).
@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio-base-1.28.3
+    path: helm/istio/base-1.29.0
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
@@ -41,7 +41,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio-istiod-1.28.3
+    path: helm/istio/istiod-1.29.0
     helm:
       valuesObject:
         profile: ambient
@@ -73,7 +73,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio-cni-1.28.3
+    path: helm/istio/cni-1.29.0
     helm:
       valuesObject:
         profile: ambient
@@ -94,7 +94,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio-ztunnel-1.28.3
+    path: helm/istio/ztunnel-1.29.0
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system

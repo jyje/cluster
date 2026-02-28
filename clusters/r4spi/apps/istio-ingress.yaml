@@ -20,7 +20,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio-gateway-1.28.3
+    path: helm/istio/gateway-1.29.0
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-ingress
