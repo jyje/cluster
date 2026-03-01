@@ -39,11 +39,6 @@ spec:
               initialDelaySeconds: 60
             startupProbe:
               initialDelaySeconds: 60
-            initdb:
-              scripts:
-                # Ensure infisical role exists (idempotent). Do not CREATE DATABASE here - it fails when using persisted data and causes postgres to stop.
-                create-infisical.sql: |
-                  DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'infisical') THEN CREATE USER infisical WITH PASSWORD 'root'; END IF; END $$;
         ingress:
           enabled: true
           ingressClassName: nginx
