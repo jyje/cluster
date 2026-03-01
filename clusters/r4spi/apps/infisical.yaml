@@ -1,0 +1,26 @@
+# Infisical 0.4.2 (full stack) - https://infisical.com/docs/self-hosting/deployments/kubernetes
+# Create a Secret "infisical-secrets" in namespace infisical with required backend env vars
+# (ENCRYPTION_KEY, JWT_*_SECRET, SMTP_*, SITE_URL, etc.) before sync.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infisical
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/infisical/infisical-0.4.2
+    helm:
+      valuesObject:
+        backend:
+          kubeSecretRef: infisical-secrets
+        # backendEnvironmentVariables.SITE_URL: set via Secret or override here
+        # mongodb.enabled: true (default) - chart deploys MongoDB; set false to use external MONGO_URL in Secret
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infisical
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
