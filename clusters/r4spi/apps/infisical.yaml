@@ -17,6 +17,11 @@ spec:
           kubeSecretRef: infisical-secrets
           # 1 replica to avoid pg-boss queue init deadlock when multiple pods start (DDL contention)
           replicaCount: 1
+          # Higher CPU so pg-queue init finishes within Fastify plugin timeout (~10s)
+          resources:
+            requests:
+              cpu: 800m
+              memory: 300Mi
         # Use Valkey (Redis-compatible); password from secret mounted as file
         redis:
           auth:
