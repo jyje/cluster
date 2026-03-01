@@ -1,6 +1,6 @@
 # lgtm-collection
 
-Umbrella chart for LGTM stack (Loki, Grafana, Tempo, Mimir) and supporting storage/DB (SeaweedFS, optional Garnet cache, optional PostgreSQL). Official Grafana, SeaweedFS, Microsoft Garnet (Redis-compatible, MIT), CloudNative-PG only; no Bitnami or commercial licenses.
+Umbrella chart for LGTM stack (Loki, Grafana, Tempo, Mimir) and supporting storage/DB (SeaweedFS, optional PostgreSQL). Official Grafana, SeaweedFS, CloudNative-PG only; no Bitnami or commercial licenses.
 
 ## Operator and instance split
 
@@ -74,10 +74,16 @@ PostgreSQL instance requires the CNPG operator: either set `postgresql-operator.
 			<td>Enable SeaweedFS (master, filer, volume, S3 gateway).</td>
 		</tr>
 		<tr>
+			<td>seaweedfs-instance.fullnameOverride</td>
+			<td>string</td>
+			<td><code>`"seaweedfs-instance"`</code></td>
+			<td>Fix the service name so S3 endpoint is always `seaweedfs-instance-s3:8333` regardless of Helm release name. Mimir/Tempo/Loki storage configs are plain strings (not tpl-processed), so they cannot use .Release.Name.</td>
+		</tr>
+		<tr>
 			<td>seaweedfs-instance.endpoint</td>
 			<td>string</td>
 			<td><code>`"seaweedfs-instance-s3:8333"`</code></td>
-			<td>S3 API endpoint. In-cluster use <release>-seaweedfs-instance-s3:8333.</td>
+			<td>S3 API endpoint. Matches the fixed service name set by fullnameOverride above.</td>
 		</tr>
 		<tr>
 			<td>seaweedfs-instance.pathStyle</td>
@@ -288,7 +294,6 @@ Kubernetes: `>=1.25.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../garnet-0.2.2 | garnet-instance(garnet) | 0.2.2 |
 | https://cloudnative-pg.github.io/charts | postgresql-operator(cloudnative-pg) | ^0.27.0 |
 | https://cloudnative-pg.github.io/charts | postgresql-instance(cluster) | ^0.5.0 |
 | https://grafana.github.io/helm-charts | grafana(grafana) | ^10.0.0 |
@@ -296,6 +301,7 @@ Kubernetes: `>=1.25.0-0`
 | https://grafana.github.io/helm-charts | mimir(mimir-distributed) | ^5.8.0 |
 | https://grafana.github.io/helm-charts | tempo(tempo) | ^1.20.0 |
 | https://seaweedfs.github.io/seaweedfs/helm | seaweedfs-instance(seaweedfs) | ^4.0.0 |
+| oci://ghcr.io/microsoft/helm-charts | garnet-instance(garnet) | 0.2.2 |
 
 ## License
 

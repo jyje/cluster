@@ -185,7 +185,10 @@ loki:
 seaweedfs-instance:
   # -- Enable SeaweedFS (master, filer, volume, S3 gateway).
   enabled: true
-  # -- S3 API endpoint. In-cluster use <release>-seaweedfs-instance-s3:8333.
+  # -- Fix the service name so S3 endpoint is always `seaweedfs-instance-s3:8333` regardless of Helm release name.
+  # Mimir/Tempo/Loki storage configs are plain strings (not tpl-processed), so they cannot use .Release.Name.
+  fullnameOverride: seaweedfs-instance
+  # -- S3 API endpoint. Matches the fixed service name set by fullnameOverride above.
   endpoint: seaweedfs-instance-s3:8333
   # -- Use path-style bucket URLs.
   pathStyle: true
