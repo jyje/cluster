@@ -11,6 +11,7 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
 
 - **Path:** `helm/<group>/`
 - **Group name:** 1st priority = name used in this repo (e.g. app/family name); 2nd = official Helm repo name.
+- A group can contain charts from **multiple providers** (e.g. `cert-manager`: controller from jetstack, issuers from adfinis). Group and provider are tracked separately; they may be the same (one provider per group) or different (one group, multiple providers).
 - Example: ARC charts from `actions-runner-controller` repo are grouped as `github-actions-runner-controller` (repo app name).
 
 ## Chart directory name
@@ -25,8 +26,8 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
    helm repo update
    ```
 
-2. **Determine group**  
-   Use repo app name (1st) or Helm repo name (2nd). Create `helm/<group>/` if it does not exist.
+2. **Determine group and provider**  
+   **Group** = folder under `helm/` (e.g. app/family name; can aggregate multiple providers). **Provider** = Helm repo name for `helm pull`. **See `helm/README.md`** in this repo for the canonical list of groups and providers (Group | Provider | URL). Create `helm/<group>/` if it does not exist.
 
 3. **List available versions**
    - **Helm repo:** `helm search repo <repo-name>/<chart-name> --versions`
@@ -53,7 +54,8 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
 ## Convention summary
 
 - **Storage path:** `helm/<group>/<chart-name>-<version>/`
-- **Group:** 1st = this repo’s name for the family, 2nd = Helm repo name.
+- **Group:** folder name (app/family); can be shared by multiple providers (see `helm/README.md`).
+- **Provider:** Helm repo used for `helm pull`; same as group when one repo per family, or distinct (e.g. cert-manager: jetstack + adfinis).
 - **Chart dir:** original chart name + `-<version>` only.
 
 ## Example (Helm repo)
@@ -84,27 +86,6 @@ App path: `helm/github-actions-runner-controller/gha-runner-scale-set-controller
 
 Argo CD or Helm apps reference `helm/<group>/<chart-name>-<version>` as the chart path.
 
-## Chart (group) name and repo URL
+## Group and provider
 
-Top-level charts/groups vendored in this repo (dependency charts excluded). Check the `helm/` directory for versions.
-
-| Chart (group) name | URL |
-|-----------------|------|
-| actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller |
-| argo | https://argoproj.github.io/argo-helm |
-| bananaops | https://bananaops.github.io/homer-k8s |
-| cnpg | https://cloudnative-pg.github.io/charts |
-| infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
-| ingress-nginx | https://kubernetes.github.io/ingress-nginx |
-| istio | https://istio-release.storage.googleapis.com/charts |
-| jetstack | https://charts.jetstack.io |
-| jyje | https://jyje.github.io/helm-charts/charts |
-| longhorn | https://charts.longhorn.io |
-| metrics-server | https://kubernetes-sigs.github.io/metrics-server |
-| milvus | https://zilliztech.github.io/milvus-helm/ |
-| nfs-subdir-external-provisioner | https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/ |
-| nvidia | https://helm.ngc.nvidia.com/nvidia |
-| ollama-helm | https://otwld.github.io/ollama-helm/ |
-| open-webui | https://helm.openwebui.com/ |
-| portainer | https://portainer.github.io/k8s/ |
-| sealed-secrets | https://bitnami-labs.github.io/sealed-secrets |
+The canonical list of **Group | Provider | URL** is maintained in **`helm/README.md`** in this repo. When determining group/provider or adding a new chart, refer to that file.
