@@ -25,8 +25,11 @@ spec:
             command: ["sh", "-c"]
             args:
               - "valkey-server --requirepass \"$(cat /opt/bitnami/redis/secrets/redis-password)\""
-        # Give PostgreSQL time to finish first init on slow storage (avoid liveness kill)
+        # PostgreSQL: credentials from Secret (SealedSecret infisical-postgresql), mounted as files
         postgresql:
+          auth:
+            existingSecret: infisical-postgresql
+            usePasswordFiles: true
           primary:
             livenessProbe:
               initialDelaySeconds: 120
@@ -34,6 +37,12 @@ spec:
               initialDelaySeconds: 60
             startupProbe:
               initialDelaySeconds: 60
+            initdb:
+              scripts:
+                # Create infisical role first so it exists even if entrypoint is killed before creating it
+                create-infisical.sql: |
+                  DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'infisical') THEN CREATE USER infisical WITH PASSWORD 'root'; END IF; END $$;
+                  CREATE DATABASE infisicalDB OWNER infisical;
         ingress:
           enabled: true
           ingressClassName: nginx
@@ -67,5 +76,23 @@ spec:
   template:
     metadata:
       name: infisical-secrets
+      namespace: infisical
+    type: Opaque
+---
+# PostgreSQL credentials (see secrets/infisical/README.md). Chart mounts this secret under /opt/bitnami/postgresql/secrets/.
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: infisical-postgresql
+  namespace: infisical
+spec:
+  encryptedData:
+    # Run once and paste output here (see secrets/infisical/README.md):
+    # kubectl create secret generic infisical-postgresql -n infisical --from-literal=postgres-password=CHANGE_ME --from-literal=password=root --dry-run=client -o yaml | kubeseal --controller-name sealed-secrets -o yaml
+    postgres-password: AgAharmYkB5dBNfKLYxIk/GGfZjqyGbHRk2CIZcbXhNsOJkHDR+FYxwlcgW1nm0PDEkoHzzaCIdCmolcdoo7lYt6YrbgcWUz5+T8WbfjKgv5YQH6nDA3zNB/KNAnZnKFpJ2SW5GWeq7aJr8tTdBRaZ7TusuA86I8HWPNVyWxnwXDTAYGIhjLiGmFXY86zK7VpgtpI59UXeHMZMUXqrJiQ0CoP96G5JavE7kW+lRNoylne21CgII9zGsob1gokONh0oN6jU5XAR/nxtHkpZ/UFOkl55cnx3ZypBCEbHwIXTwf9Y0UmQ/4srj47XF1RaeGIRQG5UInv82VmNEZ5JH9LUefY3qbSwJ/CLwDbJfgAvOxjMsACEFsXW+Gvj3wsBlr09l80kv+VoO1DfRGjLR6e5ZyKJHYB6GfUs4iYob0P8yTKZwjTArYmCTHqaQzCIcnnTja1FQEZO2QPRnWZjjOeUJTbE7lyaGLLV1SzvMx86hqnPrzDAPMEB36ulaQufGK1Bf0vZrz/nnWHVe0PnkaOSwu9jwl7QLukWmEvGYFJlsi64qIOibR4WZszrWqtRSoZhqcafrGmWGU87718YmataH2v1IbdbzU3V0uwaksxFHZX0ibIwLVQLEwg3MhZUOBlZr3JT1YZqCdo2CzNjIBGZ4HhTTErhFtc7QeO6QWm6U0r6IEkncSSbt4TedNPeZuXP0BeI1TizYmq93EhiEh5o8H1o+EUo449B/owXqHQ0pLdA==
+    password: AgAahARHn4g9f/EaWsIYDSwO7vTNrJYKuc6JW9e7dy5K1+xDhpVEs/XpoMUdRh5xmamqUTd7USaPTW54bz7Va7BxaXDd8/56A+VCWfRr0aTfHm+FGF5kmdDQ/s1fajFDIzbOxZuVqYvcGX6f1yZ1qK+IgifQscudZdSUC5sRjy/u4CfGgViEK54OQ1ab+/hXIICNioqa8zVeRWznZOrfpw2z1Fk2+p5Cfpdx5P4TNZc1xLTgMfedKuDqOHLUkuGe9Rgiyt0af6Z6IwKNHs2zu3msAV28mAEIBRwmrhMH011AdGZjKeEKKzYNFofrDmRglgu/0SvsRF7wSlODcqt1qr41KGQdXZoVDPKX7wgdWqVG7H97I3yV50oa2gVuaK2tH1EkTppUdupPLw2dyeYUi8Al4REmlmMpyB2jQGV4KAXzFWBsZG/p4wb3/+WxZKeVnR5P1KBoWNG5ZAsQC7uv408MsQYi8U4yRV8bHAEiP9z+Q25s+MJhQOSJe36apVL95TubXy8knrfEPAQPtnnG4dhvL5sGZxRF9QKx1QmcIV9Q1U61EYrgwRrCsVj19o3VIFxP4DIuDTqYjbAu8Rlqymr5roX0tlGif5xIs+AjLOUA2XL6ccaHAeJ7IZg4PIH7kVDsETgDibEebr6nEh//3GnQk2QYo3qN2YsFm4RilbwnKe/naTrSJdLS30wkvSYyIw6deJyF
+  template:
+    metadata:
+      name: infisical-postgresql
       namespace: infisical
     type: Opaque
