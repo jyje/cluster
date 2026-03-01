@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/cloudnative-pg-0.22.0
+    path: helm/cnpg/cloudnative-pg-0.27.1
     helm:
       valueFiles:
         - values.yaml
