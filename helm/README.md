@@ -26,7 +26,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
 | ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
-| jyje | jyje | (this repo) |
+| jyje | — | (this repo; no external Helm repo) |
 | longhorn | longhorn | https://charts.longhorn.io |
 | metrics-server | metrics-server | https://kubernetes-sigs.github.io/metrics-server |
 | milvus | milvus | https://zilliztech.github.io/milvus-helm/ |
