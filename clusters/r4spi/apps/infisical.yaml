@@ -25,6 +25,15 @@ spec:
             command: ["sh", "-c"]
             args:
               - "valkey-server --requirepass \"$(cat /opt/bitnami/redis/secrets/redis-password)\""
+        # Give PostgreSQL time to finish first init on slow storage (avoid liveness kill)
+        postgresql:
+          primary:
+            livenessProbe:
+              initialDelaySeconds: 120
+            readinessProbe:
+              initialDelaySeconds: 60
+            startupProbe:
+              initialDelaySeconds: 60
         ingress:
           enabled: true
           ingressClassName: nginx
