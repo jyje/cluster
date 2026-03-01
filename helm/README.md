@@ -24,7 +24,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | cert-manager | adfinis | https://charts.adfinis.com |
 | cnpg | cnpg | https://cloudnative-pg.github.io/charts |
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
-| ingress-nginx | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
+| ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
 | jyje | jyje | (this repo) |
 | longhorn | longhorn | https://charts.longhorn.io |
