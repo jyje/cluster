@@ -1,0 +1,27 @@
+dependencies:
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 10.5.15
+- name: loki
+  repository: https://grafana.github.io/helm-charts
+  version: 6.53.0
+- name: tempo
+  repository: https://grafana.github.io/helm-charts
+  version: 1.24.4
+- name: mimir-distributed
+  repository: https://grafana.github.io/helm-charts
+  version: 5.8.0
+- name: seaweedfs
+  repository: https://seaweedfs.github.io/seaweedfs/helm
+  version: 4.0.413
+- name: garnet
+  repository: oci://ghcr.io/microsoft/helm-charts
+  version: 0.2.2
+- name: cloudnative-pg
+  repository: https://cloudnative-pg.github.io/charts
+  version: 0.27.1
+- name: cluster
+  repository: https://cloudnative-pg.github.io/charts
+  version: 0.5.0
+digest: sha256:31bc6a369d07395df37f6916ff644188cf0ba62f2eafadb2978a0792b4d5bdaf
+generated: "2026-03-01T19:35:30.23567+09:00"

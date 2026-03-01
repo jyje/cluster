@@ -1,0 +1,81 @@
+apiVersion: v2
+name: lgtm-collection
+description: Umbrella chart for LGTM stack (Loki, Grafana, Tempo, Mimir) and supporting storage/DB (SeaweedFS, optional PostgreSQL). Official Grafana, SeaweedFS, CloudNative-PG only; no Bitnami or commercial licenses.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/jyje/cluster
+sources:
+  - https://grafana.github.io/helm-charts
+  - https://github.com/grafana/grafana
+  - https://github.com/grafana/loki
+  - https://github.com/grafana/tempo
+  - https://github.com/grafana/mimir
+  - https://seaweedfs.github.io/seaweedfs/helm
+  - https://github.com/seaweedfs/seaweedfs
+  - https://cloudnative-pg.github.io/charts
+  - https://github.com/cloudnative-pg/charts
+maintainers:
+  - name: jyje
+    email: jyjeon@outlook.com
+keywords:
+  - observability
+  - lgtm
+  - grafana
+  - loki
+  - tempo
+  - mimir
+  - metrics
+  - logs
+  - traces
+  - seaweedfs
+  - storage
+  - garnet
+  - postgresql
+  - database
+  - cache
+
+dependencies:
+  - name: grafana
+    alias: grafana
+    condition: grafana.enabled
+    repository: https://grafana.github.io/helm-charts
+    version: "^10.0.0"
+  - name: loki
+    alias: loki
+    condition: loki.enabled
+    repository: https://grafana.github.io/helm-charts
+    version: "^6.0.0"
+  - name: tempo
+    alias: tempo
+    condition: tempo.enabled
+    repository: https://grafana.github.io/helm-charts
+    version: "^1.20.0"
+  - name: mimir-distributed
+    alias: mimir
+    condition: mimir.enabled
+    repository: https://grafana.github.io/helm-charts
+    version: "^5.8.0"
+  # Storage: instance only (no operator)
+  - name: seaweedfs
+    alias: seaweedfs-instance
+    condition: seaweedfs-instance.enabled
+    repository: https://seaweedfs.github.io/seaweedfs/helm
+    version: "^4.0.0"
+  - name: garnet
+    alias: garnet-instance
+    condition: garnet-instance.enabled
+    repository: oci://ghcr.io/microsoft/helm-charts
+    version: "0.2.2"
+  # PostgreSQL: operator and instance (cluster) separate so operator can be managed elsewhere
+  - name: cloudnative-pg
+    alias: postgresql-operator
+    condition: postgresql-operator.enabled
+    repository: https://cloudnative-pg.github.io/charts
+    version: "^0.27.0"
+  - name: cluster
+    alias: postgresql-instance
+    condition: postgresql-instance.enabled
+    repository: https://cloudnative-pg.github.io/charts
+    version: "^0.5.0"

@@ -1,0 +1,271 @@
+# lgtm-collection: LGTM stack (Grafana, Mimir/Prom, Tempo, Loki) and production-ready storage/DB.
+# Storage/DB are split into operator and instance where applicable so operators can be managed separately.
+# Order: grafana, mimir, tempo, loki, seaweedfs-instance, postgresql-operator, postgresql-instance, garnet-instance.
+
+# -- Grafana: UI and dashboards. When postgresql-instance.enabled, set database type=postgres, host=<release>-postgresql-instance-rw.
+grafana:
+  enabled: true
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Loki
+          uid: loki
+          type: loki
+          url: http://{{ .Release.Name }}-loki-gateway:80
+          isDefault: false
+        - name: Mimir
+          uid: prom
+          type: prometheus
+          url: http://{{ .Release.Name }}-mimir-nginx/prometheus
+          isDefault: true
+        - name: Tempo
+          uid: tempo
+          type: tempo
+          url: http://{{ .Release.Name }}-tempo:3200
+          isDefault: false
+          jsonData:
+            tracesToLogsV2:
+              datasourceUid: loki
+            tracesToMetrics:
+              datasourceUid: prom
+            serviceMap:
+              datasourceUid: prom
+            lokiSearch:
+              datasourceUid: loki
+
+# -- Mimir (Prometheus): metrics. Object storage via SeaweedFS S3.
+mimir:
+  enabled: true
+  minio:
+    enabled: false
+  structuredConfig:
+    blocks_storage:
+      s3:
+        endpoint: seaweedfs-instance-s3:8333
+        bucket_name: mimir-tsdb
+        access_key_id: ""
+        secret_access_key: ""
+        insecure: true
+        http:
+          idle_conn_timeout: 90s
+    alertmanager_storage:
+      backend: s3
+      s3:
+        endpoint: seaweedfs-instance-s3:8333
+        bucket_name: mimir-ruler
+        access_key_id: ""
+        secret_access_key: ""
+        insecure: true
+    ruler_storage:
+      backend: s3
+      s3:
+        endpoint: seaweedfs-instance-s3:8333
+        bucket_name: mimir-ruler
+        access_key_id: ""
+        secret_access_key: ""
+        insecure: true
+  alertmanager:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  compactor:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  distributor:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  ingester:
+    replicas: 2
+    zoneAwareReplication:
+      enabled: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  querier:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  query_frontend:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  query_scheduler:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  ruler:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  store_gateway:
+    zoneAwareReplication:
+      enabled: false
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+# -- Tempo: traces. Object storage via SeaweedFS S3.
+tempo:
+  enabled: true
+  tempo:
+    storage:
+      trace:
+        backend: s3
+        s3:
+          bucket: tempo-traces
+          endpoint: seaweedfs-instance-s3:8333
+          access_key: ""
+          secret_key: ""
+          insecure: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# -- Loki: logs. Single binary or scalable; object storage via SeaweedFS S3.
+loki:
+  enabled: true
+  deploymentMode: SingleBinary
+  singleBinary:
+    replicas: 1
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+  backend:
+    replicas: 0
+  loki:
+    commonConfig:
+      replication_factor: 1
+    useTestSchema: false
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    storage:
+      bucketNames:
+        chunks: loki-chunks
+        ruler: loki-ruler
+        admin: loki-admin
+      type: s3
+      s3:
+        endpoint: seaweedfs-instance-s3:8333
+        s3ForcePathStyle: true
+        insecure: true
+        accessKeyId: ""
+        secretAccessKey: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# ---------- SeaweedFS (S3): instance only (no operator). ----------
+# Production object storage for Loki, Tempo, Mimir. Single chart deploys master, filer, volume, S3 gateway.
+seaweedfs-instance:
+  # -- Enable SeaweedFS (master, filer, volume, S3 gateway).
+  enabled: true
+  # -- S3 API endpoint. In-cluster use <release>-seaweedfs-instance-s3:8333.
+  endpoint: seaweedfs-instance-s3:8333
+  # -- Use path-style bucket URLs.
+  pathStyle: true
+  # -- Skip TLS verification for S3.
+  insecure: true
+  accessKeyId: ""
+  secretAccessKey: ""
+  master:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  filer:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  volume:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  s3:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+# ---------- PostgreSQL (CNPG): operator and instance separate. ----------
+# Operator: deploy with this chart (postgresql-operator.enabled) or install separately (e.g. helm/cnpg/cloudnative-pg).
+postgresql-operator:
+  # -- Deploy CloudNative-PG operator with this chart. If false, install operator elsewhere (e.g. helm/cnpg/cloudnative-pg).
+  enabled: false
+  # CloudNative-PG operator chart values (low-resource defaults when deployed here)
+  # See https://cloudnative-pg.github.io/charts
+
+# Instance: PostgreSQL cluster (Cluster CR). Requires operator running (from this chart or elsewhere).
+postgresql-instance:
+  # -- Deploy PostgreSQL cluster (Cluster CR). Requires CNPG operator.
+  enabled: true
+  cluster:
+    # -- Number of PostgreSQL instances in the cluster.
+    instances: 2
+    storage:
+      # -- PVC size per instance.
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+  bootstrap:
+    initdb:
+      database: grafana
+  # -- Databases to create (CNPG cluster bootstrap).
+  databases:
+    - name: grafana
+      owner: grafana
+
+# ---------- Garnet: instance only (no operator). ----------
+# Redis-compatible cache (Mimir query frontend, Grafana session). Microsoft Garnet (MIT).
+garnet-instance:
+  # -- Enable Garnet (Redis-compatible cache).
+  enabled: true
+  statefulSet:
+    replicas: 1
+  persistence:
+    # -- Enable PVC for Garnet data.
+    enabled: true
+  volumeClaimTemplates:
+    # -- Use default StorageClass if unset (official chart default is local-storage).
+    storageClassName: ""
+    requestsStorage: 1Gi
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi

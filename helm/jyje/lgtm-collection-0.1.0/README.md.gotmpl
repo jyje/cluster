@@ -1,0 +1,51 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.description" . }}
+
+## Operator and instance split
+
+Storage and database components are split into **operator** and **instance** so operators can be managed separately (e.g. cluster-wide CNPG operator).
+
+| Component    | Type     | Values key              | Role |
+|--------------|----------|--------------------------|------|
+| Grafana      | —        | `grafana`                | UI and dashboards |
+| Loki         | —        | `loki`                   | Logs |
+| Tempo        | —        | `tempo`                  | Traces |
+| Mimir        | —        | `mimir`                  | Metrics (Prometheus) |
+| SeaweedFS    | instance | `seaweedfs-instance`     | S3 object storage (no operator) |
+| PostgreSQL   | operator | `postgresql-operator`    | CNPG operator (optional; deploy here or elsewhere) |
+| PostgreSQL   | instance | `postgresql-instance`    | PostgreSQL cluster (Cluster CR) |
+| Garnet       | instance | `garnet-instance`       | Redis-compatible cache (no operator); [official chart](https://github.com/microsoft/garnet/tree/main/charts/garnet) vendored |
+
+Grafana is pre-wired to Loki, Tempo, and Mimir (trace-to-logs, trace-to-metrics). S3 endpoint: when using a release name, override to `<release>-seaweedfs-instance-s3:8333`. PostgreSQL primary: `<release>-postgresql-instance-rw`. Garnet: `<release>-garnet-instance:6379`.
+
+## Install
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo add seaweedfs https://seaweedfs.github.io/seaweedfs/helm
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm dependency update
+helm install lgtm-collection . -n observability --create-namespace
+```
+
+PostgreSQL instance requires the CNPG operator: either set `postgresql-operator.enabled: true` or install it separately (e.g. `helm/cnpg/cloudnative-pg`).
+
+## Configuration
+
+{{- define "chart.valueDefaultColumnRender" -}}
+{{- if or (eq .Type "object") (eq .Type "array") (eq .Type "list") -}}
+<code>see values.yaml</code>
+{{- else -}}
+<code>{{ .Default }}</code>
+{{- end -}}
+{{- end -}}
+{{ template "chart.valuesSectionHtml" . }}
+
+## Dependencies
+
+{{ template "chart.requirementsSection" . }}
+
+## License
+
+Apache-2.0 (umbrella; subcharts retain their own licenses).
