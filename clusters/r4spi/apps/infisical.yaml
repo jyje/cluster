@@ -33,12 +33,30 @@ spec:
             existingSecret: infisical-postgresql
             usePasswordFiles: true
           primary:
+            # Ensure infisical role and DB exist (idempotent). Password must match secret key "password".
+            initdb:
+              scripts:
+                create-infisical.sql: |
+                  DO $$ BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'infisical') THEN
+                      CREATE USER infisical WITH PASSWORD 'root';
+                    END IF;
+                  END $$;
+                  DO $do$ BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'infisicalDB') THEN
+                      CREATE DATABASE infisicalDB OWNER infisical;
+                    END IF;
+                  END $do$;
             livenessProbe:
               initialDelaySeconds: 120
             readinessProbe:
               initialDelaySeconds: 60
+            # Give initdb time on first run (slow storage); avoid liveness killing during init
             startupProbe:
+              enabled: true
               initialDelaySeconds: 60
+              periodSeconds: 10
+              failureThreshold: 36   # 60 + 36*10 = 420s (7 min) before startup fails
         ingress:
           enabled: true
           ingressClassName: nginx
