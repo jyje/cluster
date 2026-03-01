@@ -1,6 +1,6 @@
 # infisical-standalone
 
-![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
+![Version: 1.4.0](https://img.shields.io/badge/Version-1.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
 
 A helm chart to deploy Infisical
 
@@ -18,7 +18,6 @@ A helm chart to deploy Infisical
 |-----|------|---------|-------------|
 | fullnameOverride | string | `""` | Overrides the full name of the release, affecting resource names |
 | infisical.affinity | object | `{}` | Node affinity settings for pod placement |
-| infisical.autoDatabaseSchemaMigration | bool | `true` | Automatically migrates new database schema when deploying |
 | infisical.databaseSchemaMigrationJob.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not present on the node |
 | infisical.databaseSchemaMigrationJob.image.repository | string | `"ghcr.io/groundnuty/k8s-wait-for"` | Image repository for migration wait job |
 | infisical.databaseSchemaMigrationJob.image.tag | string | `"no-root-v2.0"` | Image tag version |
@@ -39,7 +38,7 @@ A helm chart to deploy Infisical
 | infisical.service.nodePort | string | `""` | Optional node port for service when using NodePort type |
 | infisical.service.type | string | `"ClusterIP"` | Service type, can be changed based on exposure needs (e.g., LoadBalancer) |
 | infisical.serviceAccount.annotations | object | `{}` | Custom annotations for the auto-created service account |
-| infisical.serviceAccount.create | bool | `true` | Creates a new service account if true, with necessary permissions for this chart |
+| infisical.serviceAccount.create | bool | `true` | Creates a new service account if true, with necessary permissions for this chart. If false and `serviceAccount.name` is not defined, the chart will attempt to use the Default service account |
 | infisical.serviceAccount.name | string | `nil` | Optional custom service account name, if existing service account is used |
 | ingress.annotations | object | `{}` | Custom annotations for ingress resource |
 | ingress.enabled | bool | `true` | Enable or disable ingress configuration |

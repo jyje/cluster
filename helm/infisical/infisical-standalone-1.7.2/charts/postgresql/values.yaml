@@ -94,9 +94,9 @@ diagnosticMode:
 ## @param image.debug Specify if debug values should be set
 ##
 image:
-  registry: docker.io
+  registry: registry-1.docker.io
   repository: bitnami/postgresql
-  tag: 16.2.0-debian-11-r17
+  tag: 16.2.0-debian-11-r16
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -1346,7 +1346,7 @@ volumePermissions:
   ## @param volumePermissions.image.pullSecrets Init container volume-permissions image pull secrets
   ##
   image:
-    registry: docker.io
+    registry: registry-1.docker.io
     repository: bitnami/os-shell
     tag: 11-debian-11-r112
     digest: ""
@@ -1455,7 +1455,7 @@ metrics:
   ## @param metrics.image.pullSecrets Specify image pull secrets
   ##
   image:
-    registry: docker.io
+    registry: registry-1.docker.io
     repository: bitnami/postgres-exporter
     tag: 0.15.0-debian-11-r26
     digest: ""

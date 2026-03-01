@@ -1,4 +1,4 @@
-# Infisical 0.4.2 (full stack) - https://infisical.com/docs/self-hosting/deployments/kubernetes
+# Infisical standalone 1.7.2 (PostgreSQL + Redis) - https://infisical.com/docs/self-hosting/deployments/kubernetes
 # Create a Secret "infisical-secrets" in namespace infisical with required backend env vars
 # (ENCRYPTION_KEY, JWT_*_SECRET, SMTP_*, SITE_URL, etc.) before sync.
 apiVersion: argoproj.io/v1alpha1
@@ -10,13 +10,23 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/infisical/infisical-0.4.2
+    path: helm/infisical/infisical-standalone-1.7.2
     helm:
       valuesObject:
-        backend:
+        infisical:
           kubeSecretRef: infisical-secrets
-        # backendEnvironmentVariables.SITE_URL: set via Secret or override here
-        # mongodb.enabled: true (default) - chart deploys MongoDB; set false to use external MONGO_URL in Secret
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          nginx:
+            enabled: false  # use cluster's existing nginx ingress; do not deploy subchart
+          hostName: infisical.app.jyje.online
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+          tls:
+            - secretName: infisical-letsencrypt-tls
+              hosts:
+                - infisical.app.jyje.online
   destination:
     server: https://kubernetes.default.svc
     namespace: infisical
