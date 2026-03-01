@@ -15,6 +15,16 @@ spec:
       valuesObject:
         infisical:
           kubeSecretRef: infisical-secrets
+        # Use Valkey (Redis-compatible) instead of chart default Redis image
+        redis:
+          image:
+            registry: registry-1.docker.io
+            repository: valkey/valkey
+            tag: "7.2.11"
+          master:
+            command: ["sh", "-c"]
+            args:
+              - "valkey-server --requirepass \"$(cat /opt/bitnami/redis/secrets/redis-password)\""
         ingress:
           enabled: true
           ingressClassName: nginx
