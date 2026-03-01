@@ -35,11 +35,16 @@ spec:
             existingSecret: infisical-postgresql
             usePasswordFiles: true
           primary:
-            # Ensure infisical role and DB exist (idempotent). Run init scripts as postgres (default runs as custom user which doesn't exist yet).
+            # Ensure infisical role and DB exist (idempotent). Run as postgres via .sh (Bitnami runs .sql as custom user which doesn't exist yet).
             initdb:
               user: postgres
               scripts:
-                create-infisical.sql: |
+                00-create-infisical.sh: |
+                  #!/bin/bash
+                  set -e
+                  PWFILE="${POSTGRES_POSTGRES_PASSWORD_FILE:-/opt/bitnami/postgresql/secrets/postgres-password}"
+                  export PGPASSWORD=$(cat "$PWFILE")
+                  psql -U postgres -v ON_ERROR_STOP=1 <<'EOSQL'
                   DO $$
                   BEGIN
                     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'infisical') THEN
@@ -49,6 +54,8 @@ spec:
                       CREATE DATABASE infisicalDB OWNER infisical;
                     END IF;
                   END $$;
+                  EOSQL
+                  unset PGPASSWORD
             livenessProbe:
               initialDelaySeconds: 120
             readinessProbe:
