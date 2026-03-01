@@ -15,8 +15,10 @@ spec:
       valuesObject:
         infisical:
           kubeSecretRef: infisical-secrets
-        # Use Valkey (Redis-compatible) instead of chart default Redis image
+        # Use Valkey (Redis-compatible); password from secret mounted as file
         redis:
+          auth:
+            usePasswordFiles: true
           image:
             registry: registry-1.docker.io
             repository: valkey/valkey
