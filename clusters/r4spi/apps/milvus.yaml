@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/milvus-4.2.48
+    path: helm/milvus/milvus-5.0.14
     helm:
       valueFiles:
         - values.yaml
@@ -17,7 +17,7 @@ spec:
         image:
           all:
             repository: milvusdb/milvus
-            tag: v2.6.2
+            tag: v2.6.11
         nodeSelector:
           app.jyje.online/node.family: raspberry-pi
           app.jyje.online/raspi.type: 5b
@@ -57,7 +57,7 @@ spec:
           enabled: true
           image:
             repository: zilliz/attu
-            tag: v2.5.12
+            tag: v2.6.3
             pullPolicy: IfNotPresent
           env: # not valid yet
             - name: MILVUS_URL
