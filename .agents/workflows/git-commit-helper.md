@@ -1,6 +1,5 @@
 ---
-trigger: model_decision
-description: Generate descriptive commit messages by analyzing git diffs following the project's specific policy. Use when the user asks for help writing commit messages or reviewing staged changes.
+description: generate a descriptive git commit message following the project policy and commit/push changes
 ---
 
 # Git Commit Helper
