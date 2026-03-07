@@ -872,7 +872,7 @@ pulsarv3:
     component: pulsar-init
     image:
       repository: apachepulsar/pulsar
-      tag: 3.0.7
+      tag: 4.1.3
       pullPolicy: IfNotPresent
 
   broker:
@@ -1168,7 +1168,7 @@ pulsar:
     image:
       # the image used for running `pulsar-cluster-initialize` job
       repository: apachepulsar/pulsar
-      tag: 2.9.5
+      tag: 4.1.3
 
 
 ## Configuration values for the kafka dependency
