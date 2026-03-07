@@ -1,4 +1,5 @@
 ---
+trigger: model_decision
 description: Pull a Helm chart from a repo (or OCI) at a specific version and save it under helm/<group>/ with a versioned directory name. Use when adding or upgrading a vendored Helm chart, when the user asks to vendor a chart, or when following the repo's "add chart to helm/" workflow.
 ---
 
