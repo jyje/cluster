@@ -1338,7 +1338,7 @@ tei:
   name: text-embeddings-inference
   image:
     repository: ghcr.io/huggingface/text-embeddings-inference
-    tag: cpu-1.6
+    tag: 1.9
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
