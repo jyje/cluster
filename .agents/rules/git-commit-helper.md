@@ -1,5 +1,5 @@
 ---
-name: git-commit-helper
+trigger: model_decision
 description: Generate descriptive commit messages by analyzing git diffs following the project's specific policy. Use when the user asks for help writing commit messages or reviewing staged changes.
 ---
 
@@ -79,7 +79,7 @@ Add n8n workflow automation application to the cluster.
 ```
 🛠️ fix(nfs): rollback health probes and chart rename to fix distroless image compatibility
 
-Revert recent changes including health উজ্জchanges including health probes and chart renaming because the
+Revert recent changes including health probes and chart renaming because the
 distroless image lacks 'sh' and other shell utilities required for probes.
 ```
 
