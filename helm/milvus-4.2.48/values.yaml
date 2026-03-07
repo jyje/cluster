@@ -569,7 +569,7 @@ attu:
   name: attu
   image:
     repository: zilliz/attu
-    tag: v2.5.3
+    tag: 2.6.5
     pullPolicy: IfNotPresent
   service:
     annotations: {}
