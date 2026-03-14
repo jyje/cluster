@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/portainer-1.0.59
+    path: helm/portainer/portainer-239.0.2
     helm:
       valueFiles:
         - values.yaml
