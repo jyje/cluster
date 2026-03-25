@@ -78,7 +78,7 @@ spec:
             {{- if .Values.skipRecreate }}
             - --skip-recreate
             {{- end }}
-            {{- if .Values.keyrenewperiod }}
+            {{- if ne (.Values.keyrenewperiod | toString) "" }}
             - --key-renew-period
             - {{ .Values.keyrenewperiod | quote }}
             {{- end }}
@@ -149,6 +149,17 @@ spec:
             - --max-unseal-retries
             - {{ .Values.maxRetries | quote }}
             {{- end }}
+            {{- if .Values.watchForSecrets }}
+            - --watch-for-secrets
+            {{- end }}
+            {{- if .Values.kubeClientQPS }}
+            - --kubeclient-qps
+            - {{ .Values.kubeClientQPS | quote }}
+            {{- end }}
+            {{- if .Values.kubeClientBurst }}
+            - --kubeclient-burst
+            - {{ .Values.kubeClientBurst | quote }}
+            {{- end }}
           {{- end }}
           image: {{ printf "%s/%s:%s" .Values.image.registry .Values.image.repository .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -158,16 +169,19 @@ spec:
               valueFrom:
                 resourceFieldRef:
                   resource: limits.cpu
+                  divisor: "1"
             {{- end }}
             {{- if (.Values.resources.limits).memory }}
             - name: GOMEMLIMIT
               valueFrom:
                 resourceFieldRef:
                   resource: limits.memory
+                  divisor: "1"
             {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.containerPorts.http | default "8080" }}
+              protocol: TCP
               {{- if .Values.hostNetwork }}
               hostPort: {{ .Values.containerPorts.http }}
               {{- else if .Values.hostPorts.http }}
@@ -175,6 +189,7 @@ spec:
               {{- end }}
             - name: metrics
               containerPort: {{ .Values.containerPorts.metrics | default "8081" }}
+              protocol: TCP
               {{- if .Values.hostNetwork }}
               hostPort: {{ .Values.containerPorts.metrics }}
               {{- else if .Values.hostPorts.metrics }}
