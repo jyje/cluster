@@ -35,4 +35,5 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | ollama-helm | ollama-helm | https://otwld.github.io/ollama-helm/ |
 | open-webui | open-webui | https://helm.openwebui.com/ |
 | portainer | portainer | https://portainer.github.io/k8s/ |
+| qdrant | qdrant | https://qdrant.github.io/qdrant-helm |
 | sealed-secrets | sealed-secrets | https://bitnami-labs.github.io/sealed-secrets |
