@@ -48,12 +48,14 @@ spec:
             port: http
           failureThreshold: 3
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /health/db
             port: http
           failureThreshold: 3
           periodSeconds: 10
+          timeoutSeconds: 5
         startupProbe:
           httpGet:
             path: /health
@@ -61,6 +63,7 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 5
           failureThreshold: 20
+          timeoutSeconds: 5
         persistence:
           enabled: true
           size: 10Gi
