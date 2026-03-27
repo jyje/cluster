@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: qdrant
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/qdrant/qdrant-1.17.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        replicaCount: 1
+        apiKey: "adminqdrant123"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            memory: "1Gi"
+        persistence:
+          storageClassName: "subdir-usb"
+          size: "2Gi"
+        snapshotPersistence:
+          storageClassName: "subdir-usb"
+          size: "1Gi"
+  destination:
+    namespace: qdrant-system
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}

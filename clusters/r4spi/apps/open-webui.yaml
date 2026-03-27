@@ -82,19 +82,11 @@ spec:
                 name: openwebui-creds
                 key: openai.api.keys
           - name: VECTOR_DB
-            value: milvus
-          - name: MILVUS_URI
-            valueFrom:
-              secretKeyRef:
-                name: openwebui-creds
-                key: milvus.uri
-          - name: MILVUS_DB
-            value: owui
-          - name: MILVUS_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: openwebui-creds
-                key: milvus.token
+            value: qdrant
+          - name: QDRANT_URI
+            value: "http://qdrant.qdrant-system.svc.cluster.local:6333"
+          - name: QDRANT_API_KEY
+            value: "adminqdrant123"
           - name: RAG_EMBEDDING_ENGINE
             value: openai
           - name: RAG_EMBEDDING_MODEL
