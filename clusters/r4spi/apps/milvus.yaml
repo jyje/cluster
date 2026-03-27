@@ -19,8 +19,9 @@ spec:
             repository: milvusdb/milvus
             tag: v2.6.11
         nodeSelector:
-          app.jyje.online/node.family: raspberry-pi
-          app.jyje.online/raspi.type: 5b
+          # Use Raspberry Pi 4 (4KB page size) to avoid jemalloc crashes on RPi 5 (16KB page size)
+          app.jyje.live/node.family: raspberry-pi
+          app.jyje.live/raspi.type: 4b
         extraConfigFiles:
           user.yaml: |+
             common:
