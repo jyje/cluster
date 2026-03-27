@@ -13,6 +13,10 @@ spec:
         - values.yaml
       valuesObject:
         replicaCount: 1
+        nodeSelector:
+          # Qdrant mmap/allocators fail on 16KB pages, force RPi 4 (4KB page size)
+          app.jyje.live/node.family: raspberry-pi
+          app.jyje.live/raspi.type: 4b
         apiKey: "adminqdrant123"
         resources:
           requests:
