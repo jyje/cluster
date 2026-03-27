@@ -22,7 +22,7 @@ spec:
         enableOpenaiApi: false
         ollamaUrls:
           - http://ollama:11434
-        replicaCount: 3
+        replicaCount: 1
         ingress:
           enabled: true
           class: nginx
