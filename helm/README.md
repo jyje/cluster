@@ -27,6 +27,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
 | jyje | — | (this repo; no external Helm repo) |
+| litellm | berriai | oci://docker.litellm.ai/berriai/litellm-helm |
 | longhorn | longhorn | https://charts.longhorn.io |
 | metrics-server | metrics-server | https://kubernetes-sigs.github.io/metrics-server |
 | milvus | milvus | https://zilliztech.github.io/milvus-helm/ |
