@@ -29,18 +29,17 @@ spec:
                 api_key: "os.environ/NIM_API_KEY"
             - model_name: "nvidia/llama-nemotron-embed-vl-1b-v2"
               litellm_params:
-                model: "nvidia_nim/nvidia/llama-nemotron-embed-vl-1b-v2"
+                model: "openai/nvidia/llama-nemotron-embed-vl-1b-v2"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
                 extra_body:
                   input_type: "passage"
-                  modality: "text"
                   encoding_format: "float"
               model_info:
                 type: "embedding"
             - model_name: "nvidia/llama-nemotron-embed-1b-v2"
               litellm_params:
-                model: "nvidia_nim/nvidia/llama-nemotron-embed-1b-v2"
+                model: "openai/nvidia/llama-nemotron-embed-1b-v2"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
                 extra_body:
