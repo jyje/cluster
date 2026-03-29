@@ -56,6 +56,8 @@ spec:
         extraEnvVars:
           - name: DATABASE_URL
             value: "postgresql://litellm:$(DATABASE_PASSWORD)@$(DATABASE_HOST)/litellm"
+          - name: DATABASE_HOST
+            value: "litellm-postgresql"
           - name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
