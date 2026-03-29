@@ -35,6 +35,9 @@ spec:
                 extra_body:
                   input_type: "passage"
                   modality: "text"
+                  encoding_format: "float"
+              model_info:
+                type: "embedding"
             - model_name: "nvidia/llama-nemotron-embed-1b-v2"
               litellm_params:
                 model: "nvidia_nim/nvidia/llama-nemotron-embed-1b-v2"
@@ -42,6 +45,9 @@ spec:
                 api_key: "os.environ/NIM_API_KEY"
                 extra_body:
                   input_type: "passage"
+                  encoding_format: "float"
+              model_info:
+                type: "embedding"
           litellm_settings:
             telemetry: false
             turn_off_message_logging: true
