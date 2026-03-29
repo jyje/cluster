@@ -91,6 +91,7 @@ spec:
           - name: TELEMETRY
             value: "False"
         extraResources:
+          # SealedSecret for Litellm
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:
@@ -107,6 +108,24 @@ spec:
                 metadata:
                   name: litellm-creds
                 type: Opaque
+
+          # CloudNativePG PostgreSQL cluster for Litellm
+          - apiVersion: postgresql.cnpg.io/v1
+            kind: Cluster
+            metadata:
+              name: litellm-pg
+            spec:
+              instances: 3
+              storage:
+                size: 1Gi
+              # optional: enable superuser access for migrations
+              bootstrap:
+                initdb:
+                  database: litellm
+                  owner: litellm
+                  secret:
+                    name: litellm-creds
+                    key: password
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
