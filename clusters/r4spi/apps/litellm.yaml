@@ -130,7 +130,6 @@ spec:
                   owner: litellm
                   secret:
                     name: litellm-creds
-                    key: password
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
