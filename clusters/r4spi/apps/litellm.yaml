@@ -59,7 +59,7 @@ spec:
           enabled: false
         extraEnvVars:
           - name: DATABASE_HOST
-            value: "litellm-postgresql"
+            value: "litellm-pg-rw"
           - name: DATABASE_USERNAME
             value: "litellm"
           - name: DATABASE_PASSWORD
