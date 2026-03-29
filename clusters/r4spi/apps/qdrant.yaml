@@ -31,7 +31,7 @@ spec:
           storageClassName: "subdir-usb"
           size: "1Gi"
   destination:
-    namespace: qdrant-system
+    namespace: ollama-system
     server: 'https://kubernetes.default.svc'
   syncPolicy:
     syncOptions:
