@@ -47,9 +47,8 @@ spec:
             turn_off_message_logging: true
         postgresql:
           auth:
+            # Bitnami PostgreSQL container hardcodes these key names for existingSecret volume projection
             existingSecret: "litellm-creds"
-            userPasswordKey: "psql.user-password"
-            adminPasswordKey: "psql.admin-password"
         masterkeySecretName: "litellm-creds"
         masterkeySecretKey: "litellm.masterkey"
         migrationJob:
@@ -61,7 +60,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: litellm-creds
-                key: psql.user-password
+                key: password # Must match hardcoded 'password' key for DB alignment
           - name: NIM_API_KEY
             valueFrom:
               secretKeyRef:
@@ -86,14 +85,15 @@ spec:
                 litellm.masterkey: AgCbLVLvw8IJM82e7P61m64aZfCOWu+Eoi6R04esjaFficXmbqNtI3UlY3tq8apDWEReDnWpC5QMPvIUHp1AWLZPwtWd68kthRC8ekJ4KFgE7+se5FU8vsiKKx8rmFr7kM+OVPixNX9rwEyGf8rpQqfgLHIq13nmJhhQmXTY3ZITwhUzQduPMy+C/kaStT+OU3R/w1R4bKMgppzEAV7wiQS680xe2+AZuTMq03zhHec2hR3rXQalcZ0RGmrBYsQSjnDjpm46Q9e3gcGguPUU9jKBxx0IvLsqE6cj1oG9rH6jKA+W+VjjJzIMbh1DMOXhUzL1uhkePRFXmdg627EVs/za1lft6bTS7Xhw2RS88DRHkz6rHtdEH3OpBQDg6VwUdoAMwV4sCbDCQf+NN6zwlvY+Y7tzc/Xnx1nu+lotZbpvOv2L7s3qIhou8ernKiOs7g0lU9rQOLCzCVVYgr007aS330zwjYrGO0jWbNDddbpRSHRQKbPqIBY6/vJDG4wfJ9PtQYuHTQW0H54ALdCS7c7DxBZOdkeuViYzkwnO83++OrfUgbtx9sXbnmbNNIxo+RQX3uxSsqUF8qDeUG4BDf/WbIlL0EpyS1EfM4aEz57C8KZna5N3+w9h/xF3uqoU2a8wWLMNbt7icUwjTqYqQB842aHT7I/I7djJmo49jUh8yL9LB+zpFpDIIIYpp6/H1kNR8lJRaZx98fjNUuSQV+mnNf5Eox3a0TSUuUlmKDxblO/fafAL8eSmj/k=
                 nim.api.key: AgBLGPdORJ75sCmddlPxcI/5jMnA4QFuK5IzVBW6WyOPod1/f4R3i5KLONjkIgXCEOQjZiRAmKe+5AGsQbTrHHMUFXKyWUceWf5c1YU/k69MgakyhdeZ90R9HWXzqFSM6BTDyDM5ozw+L+qhu/XzvTWMlxcq8rs3rM18x/COPX/tudw1ragkUTdUwwBZjWCxHOJSaoe/1yqMxWKuscSIShK6XleU9dQNsperMl+wGvv7Ebzk6MaKYwu+Y0HUpANTQozxRCk56cl5oIJuk8eVDBq7MXFOPhfMahil9kX37LRUwQ2im/g49z3T9I3kN3IjdBT6zBk2YZ1GMV6F9aeuEbVL2Q7Y44/lFqxG0SUmxbiDOpOu5BoQud3y4l3Q1yLZnCXKSQy+HxZW2xhw8CuAIWOOy2PS+36gF30R2rNlFS8cjOJDlyBB/XE0B8JDA8IRxkkBEYv14RbMLcyDp0/l9Pvlbk1Yqg9+h9qjOMWTVTMP/43CvBwCzbSdznsHO7KeZYBqP5fUTxFo0LB6MTFk8LtgsQJ/OVulzZxhv/HR6AbhyD75IfDD6bRmFUyFcAiYtbAuwhkhnWURxZJlgr5BLifJjQA+SeysC5Vi2CpcHYgJFhnT+bOlhGXmUyIi2I7mCwiF1FvoaMMc5K0waSK/Ar6RtbmMpI/T2kuiO/QImy8csVX/kEga5SXJ8bcc4bI7muZwozMwPfflVrObwGclB1INup2Mwszdx9VHKnPFP0+PH2bujUWJjjArdTckWC2T+cH1gj6AsuOqTJK9rqCM0F1HrdWsFYJN
                 openai.api.key: AgBDLfZF7iIZa9GrV6QO53WLNoV0X4sJqi9IXOm37DqLOmRW3BqcqWV3qLpMdk/I9t+XGdM5T1uu6U7BTjxoWYMjzSD60+IsW9ebYL1AbXgIbT2csOi9659E0PYb3RjrpxKubrMf3DK8RnyuBtpIKMenMaoW4W5h8DrXDMWUuW9mlLugk3w2Zhp4ZaQBFAWQjuwM+bLb4CjYnJ9CeVHu+K3iwwPmc2/Rcp1ygP5rDjCsmZ7f0aWDx6BnQl5VaXPz0o98TaBxvbwWgNnIvPidtE1DwQwCMvPjMxRBs9YWTiEKm0M3pfYxK6K2eXkjVbKYw5WlnOl0Prwdi/xQuEHmu5HcS1Ij5V4OK1XJ9zfZhdOBKwBQejapq162fwyz/dA2aQg1KuFBovq7VzXcknciIMZ/0+CU80J+FEDWdnBpfQ8fu9cdiSHeyKsBD3Gpp9gR3pMFyXRmunqrSzSmrxEEfxSRuJHqAAKqpEfPpGrLDlDRcLiU09og2Tv1VsQ5vU8+RBRwmMQmNtoTwzj/lCK7uOw5vxmf4tyJe8B+D4hIb7QEDnjUg3EImcRiYRJZha9mE9cQWTICrAfMzJ4E+z82PPSMy/+bcBxkkRT3V6056/gwieanRkAeeY0L5GV3KEQvjrhL/fG6mqatjsfwtA3ojYgwr3m6FyVcAPSqM9qrkUmshxQ8YyVpi63tY0dsaD3yaHHLk70Mm3BPiX0QolTa4wwrEb4/mAMkv+CcysoqYpItwOCoCmwvXCcv+c5OID9fwIbQ1xMZB6BCe+2k9du3xWG76fZAigo9tFlEDBZwRqWfkYy7BCIUBol7JDMJMhR3fopmMEbd3EFo8kjPcmCjC69dBa5JyvHTOWKx4K1gf1y0jMo+oMv6nJSXgPMhzAMT+lAa6KfoI1qoCGUSfmxGzDRDIBjbHg==
-                psql.admin-password: AgCCvyGTOGOhBX/b9DZqaom8TqlMe8RYamPavhNrC4W3Ohf9xOghQei7upT1WKtyQWhPoHvygTu/uIFDp3QzThSnHmtUteL0DDUksrIG2RgpQ/O+QXZ3LrS+UNGIIgEnGkGzDGoKRsI6/SBa+peob0oXxgT+crU1dFdOL8zBSiWFxRd8kb1qZ5xlUfgGB52lvlef7SQrtaYpgmIoagKSwngRgrD+W+9I79cBRfhsbed84lRldfFAeR4WeIUlmCOClKT8EzYaAeqsl3QGYo8vzlYIHmvTVgj1r9sSjYMf67/qw58FoCvtdvh5IC8h+99+BVozBibhGq4hQyxl8EJfe/dOrH/sZB2BVNBWoN1Et/8Kf30iZ68P/nol/XEmDzV1FjBOoBbIdKbIcYJ4pR4r/ZDxbvGjORFCL+q8vpQfjjlFJj+R4yAY38F1buVw3JO+dbYQHPJTIlOGpP4Qqt0xj8HqiQP1Wme07OVey+WJHys/cDIJk6eZ0jVpmKq2Lj66YZMBeF3VZbFt04Bcpz3RT0zJXhDVtQZ9milvAgghFwFIUQl6E/ah8YB/VllX9qR/9MO/IXPpyDA/kIGc4si4dGR6Z4o4tNMQlurwqrX6kvhnE7V9XTpbKWDW8Ju4ymMf3Ziyz2knXCp3f40SeJfnOUZk6XSESR4niuJ4xMEnrlTxIM8I4ZQBHBraBpR0PPQdaAm0n4KReOEzjYFpFa6uMBiX5pSj2xZpy6ILyGhsF3CvTA==
-                psql.user-password: AgBKUW0mIAVXZbdoI+DuvdOeKxlmPXZMM+0YxaOnqsvd5pnA7KLnh5j+Dj/Yq0IuJAVwExXcItMVa7cCzAR5+R86/qyqdHw4GACYwAECsVD8OKtQxxd2coy0mH+NcEGzwQ37kUMv6yeO8BKart29I22ApNDAaLX8eMyaOp0x0x1MNeSA/0ZDh/x8eE+whCdeVEJwMeSfPhn3Ccn3QQRbtXLEZppkp8k5tjx/59JyvEdHYFOLGGJPDb+zk8uGmDgRTRO2L3oU+eIQVMd5gGJ237lFt0xpn6fUs5x5cNLaZXKlo7yxbyWiuWG6SdYkLFW0hFNg9aoWsxws/lSTmVz1QBs8axJGDPp8DkHNeh7BRgxwip6yYHbdXOGAEctWAunJWWiliImPGH7u3Cf9JH5W6gGq9VTLDmpgQ/TJ0NcEydVsZojr+8xXvX85u+GxL/CPwcf/PFvA11URrqRQCKCi5cOCoHd/4bDYac9/pVtLnLzgt1BbfZbcRN9v4Ngow+BeSn6w+Dxf+BKzGX1KlqViJ4VHO16M2LndoblhqjJZmCIKcftbzI3SASD3dVd7PeKS3aZ7iwSoTSXhy5ejuSfLMfyREQpHLDSz2c196b0Qpn7JAeenZUkCtIWAzjpKoOnQtwe1+FMf1TzD/IVXwqWPvgY9eQjSV71CHYwkkR/sMwSon3sCG9A2xfxlUnPm+OhJSUFm5D1gSnslf1aNAmLpGZU9ehRMag==
+                # These keys (password, postgres-password) are hardcoded requirements for Bitnami PostgreSQL initialization
+                postgres-password: AgCCvyGTOGOhBX/b9DZqaom8TqlMe8RYamPavhNrC4W3Ohf9xOghQei7upT1WKtyQWhPoHvygTu/uIFDp3QzThSnHmtUteL0DDUksrIG2RgpQ/O+QXZ3LrS+UNGIIgEnGkGzDGoKRsI6/SBa+peob0oXxgT+crU1dFdOL8zBSiWFxRd8kb1qZ5xlUfgGB52lvlef7SQrtaYpgmIoagKSwngRgrD+W+9I79cBRfhsbed84lRldfFAeR4WeIUlmCOClKT8EzYaAeqsl3QGYo8vzlYIHmvTVgj1r9sSjYMf67/qw58FoCvtdvh5IC8h+99+BVozBibhGq4hQyxl8EJfe/dOrH/sZB2BVNBWoN1Et/8Kf30iZ68P/nol/XEmDzV1FjBOoBbIdKbIcYJ4pR4r/ZDxbvGjORFCL+q8vpQfjjlFJj+R4yAY38F1buVw3JO+dbYQHPJTIlOGPp4Qqt0xj8HqiQP1Wme07OVey+WJHys/cDIJk6eZ0jVpmKq2Lj66YZMBeF3VZbFt04Bcpz3RT0zJXhDVtQZ9milvAgghFwFIUQl6E/ah8YB/VllX9qR/9MO/IXPpyDA/kIGc4si4dGR6Z4o4tNMQlurwqrX6kvhnE7V9XTpbKWDW8Ju4ymMf3Ziyz2knXCp3f40SeJfnOUZk6XSESR4niuJ4xMEnrlTxIM8I4ZQBHBraBpR0PPQdaAm0n4KReOEzjYFpFa6uMBiX5pSj2xZpy6ILyGhsF3CvTA==
+                password: AgBKUW0mIAVXZbdoI+DuvdOeKxlmPXZMM+0YxaOnqsvd5pnA7KLnh5j+Dj/Yq0IuJAVwExXcItMVa7cCzAR5+R86/qyqdHw4GACYwAECsVD8OKtQxxd2coy0mH+NcEGzwQ37kUMv6yeO8BKart29I22ApNDAaLX8eMyaOp0x0x1MNeSA/0ZDh/x8eE+whCdeVEJwMeSfPhn3Ccn3QQRbtXLEZppkp8k5tjx/59JyvEdHYFOLGGJPDb+zk8uGmDgRTRO2L3oU+eIQVMd5gGJ237lFt0xpn6fUs5x5cNLaZXKlo7yxbyWiuWG6SdYkLFW0hFNg9aoWsxws/lSTmVz1QBs8axJGDPp4DkHNeh7BRgxwip6yYHbdXOGAEctWAunJWWiliImPGH7u3Cf9JH5W6gGq9VTLDmpgQ/TJ0NcEydVsZojr+8xXvX85u+GxL/CPwcf/PFvA11URrqRQCKCi5cOCoHd/4bDYac9/pVtLnLzgt1BbfZbcRN9v4Ngow+BeSn6w+Dxf+BKzGX1KlqViJ4VHO16M2LndoblhqjJZmCIKcftbzI3SASD3dVd7PeKS3aZ7iwSoTSXhy5ejuSfLMfyREQpHLDSz2c196b0Qpn7JAeenZUkCtIWAzjpKoOnQtwe1+FMf1TzD/IVXwqWPvgY9eQjSV71CHYwkkR/sMwSon3sCG9A2xfxlUnPm+OhJSUFm5D1gSnslf1aNAmLpGZU9ehRMag==
               template:
                 metadata:
                   name: litellm-creds
                 type: Opaque
   destination:
-    namespace: ollama-system   # Moved to the same namespace as requested
+    namespace: ollama-system
     server: 'https://kubernetes.default.svc'
   syncPolicy:
     syncOptions:
