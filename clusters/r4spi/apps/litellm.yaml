@@ -105,7 +105,7 @@ spec:
                 postgres-password: AgBZmC+jzCbre7jeb0zUsAMIQLpwBb+RV8SOp3S3qGCgUutRpsRVmZNi2Hd4seSg91F5BU7GK916OINGQAMAKd8DFf/lWHGfOh9ZpfqP8i97fSmTHvU/CQOWBWjnxztnijFrPkxjcTX5EgnXIhXVerFHy2EP2O5RTTsU0dDuwHzdRXtSODC8RCR3aYfNK2xKu8mJwj+ZMirKT9o9IxtKIONK5G1cT5W5M54lyijmGqVpuxqMFXSwY/CBfu71q7VH4ufrYsME9Cr1/WD2yDUf8cOGh292CRFHMWMj1PzbMtRF4fD1DPehAsrXrmttHeQ04ZX75DmrvX5wgQ24LzQmrZqWL5TiPXVFupiQ69Lt+eq/LdlP94zOg7UYnzgXfs1AXKiV9jvfNQ5adHVulMe2UDbvrMGnaym75LFci8rMSXE4lJcYdGrVYYC9DNuMiveCjymjSa6rdpATLz1u0JzcW8EYqPcHNLIZ32CuiDGnvMXkcX7wibAtz7nctswXcnZID852YBwkGHe4SlRFzdkid6NPgsOLRsbiBlOytLSrWSan0PL/TX+V6igMDUi3mdnVBeGBVxX2uTK0Kf/V+gvKzvQNES0PGwb8tyt79iZUrsWCbqKPdUkNxkA7YjSl7mAYeAz4v1LBR5MdvRMQIZEDy2lgDB+OTFMpCXBvBTP/cvIzui8lohNbVIwCxRHgqFyKL/4bk7KxQJLdU2UReI3791+So788KQ==
               template:
                 metadata:
-                  name: litellm-dbcredentials
+                  name: litellm-creds
                 type: Opaque
   destination:
     namespace: ollama-system
