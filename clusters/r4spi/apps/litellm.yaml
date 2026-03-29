@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: litellm
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/litellm/litellm-1.82.3
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        image:
+          repository: ghcr.io/berriai/litellm
+          tag: v1.82.5
+        litellm:
+          config:
+            model_list:
+              - model_name: "nvidia/nemotron-3-super-120b-a12b"
+                litellm_params:
+                  model: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
+                  api_base: "https://integrate.api.nvidia.com/v1"
+                  api_key: "os.environ/NIM_API_KEY"
+              - model_name: "openai/gpt-oss-120b"
+                litellm_params:
+                  model: "nvidia_nim/openai/gpt-oss-120b"
+                  api_base: "https://integrate.api.nvidia.com/v1"
+                  api_key: "os.environ/NIM_API_KEY"
+              - model_name: "nvidia/llama-nemotron-embed-vl-1b-v2"
+                litellm_params:
+                  model: "nvidia_nim/nvidia/llama-nemotron-embed-vl-1b-v2"
+                  api_base: "https://integrate.api.nvidia.com/v1"
+                  api_key: "os.environ/NIM_API_KEY"
+                  extra_body:
+                    input_type: "passage"
+                    modality: "text"
+              - model_name: "nvidia/llama-nemotron-embed-1b-v2"
+                litellm_params:
+                  model: "nvidia_nim/nvidia/llama-nemotron-embed-1b-v2"
+                  api_base: "https://integrate.api.nvidia.com/v1"
+                  api_key: "os.environ/NIM_API_KEY"
+                  extra_body:
+                    input_type: "passage"
+            litellm_settings:
+              telemetry: false
+              turn_off_message_logging: true
+        env:
+          - name: LITELLM_MASTER_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: litellm.masterkey
+          - name: NIM_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: nim.api.key
+          - name: OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: openai.api.key
+          - name: DISABLE_METRICS
+            value: "True"
+          - name: TELEMETRY
+            value: "False"
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: litellm-creds
+            spec:
+              encryptedData:
+                litellm.masterkey: AgBHsJ2Hirgc8kyho0RpAhL0P2V32Um935DF0qfFghYDPbIZ8Ow2TcZ4srrOvSzWbLZhBuaLRD6ksKbdKGt/YnAHZO1ep2WNi9ZjOp0CwzkK1dQkmc3aorgm+WEIBpNbGC5qa2/m7hiS6qHcGz0LvAFy8vnnSJVjXu+US8NxTgDYErdGIl6qtFXGXTRYYi+yl9ALtIEF1IV2IxKEGz1dRy5IsakH6bzkCJwiqLOVTKUuKY2qG6a/HW/h+9rCOF3gLO4l7BD47N2IL6nqvPrGJZ9IOQGSLBXisPARwAwTFLtIy3fcTNWjryM9puY24ai7QWnNGflSA/roui5rP/CG9U9cu8U/SUfOpdE0BzFL+FxtJLsM0lMdNhzFAeJnVEUG4ycUhW2H3c+tco9iTfhG0wSifcJ6O6XYQ6yvbT4PZWz99mNzHD+zBbRRx4GxOEhzt7qDveLMdtFNPreiFMovCCO/qBDKvXIz4GW935k6nJy8zpFT+b0EzJ2GTI/deb0YQ/WCLXaiWMw09dYNfngMuWPQ7DAMTnw/I+AsfS+/8yfXxO6p3Lkp/9Qgk0v5LeuIwEGd28d7qZIs0oA9/FWcSHP0e0I213ijidOmQaaMPCKOSHybqs7dXhi1Mg+UKZfHhkKaTUBMnqvk7fXBpKxBL6C89xyJZUElEfyutimfmwpYxzcq75DOWBSZuWqAQsZGIOcTUPWJrq0DMvQrC/8TV+nfwYwHWlv/oOVNd/kNaIRmGLKe4PKyArBLi6Q=
+                nim.api.key: AgBlTaeuGyDX72YD0BWHnqg3ZYRlzBtWqGt0PWFWAhrEGdRBaED8tOkESI7KMXJqEvR9lUMSIp4ACb1SrTOII/ZEOxQsao+LVvG1qEhQ0BtMNCsN+Pt8H6BN18qv+ioTWSJiImffG16/hplnrJIi9vBbDGT5B1kSEyx2zGHJI4/u0aQC6gYlmGo60vmor/wxWFuHjayg7bL17Oa6BvXGTkS9XMBPBzjbmlhwPJb5cSiJgVbEPoOiDz5iccxPN27VwCk5rrU772QXk20J47aH64n9+IlHKv+Gb2nRO7owMUlfyuDctIUXDCxHiPWxTc8zCdrlhKfAEa3lFCJAEH7PxPvNgXT2GAvrSL7inusSYx8s1myEfrMc/IapqDT2ZuOUDNSxT4G5hbLqeTGqvOQJUCbU6IkeGc7S1kU+l9vaSFsVck8g0RfIV7R8L0D3niH1L52VmeeRhH1Q91IHPclVQzgVIBn6dwpi/AnREoM+MAv92QE0++hKR0P5wOEjDubl7vyZNKHwo/NVe2JXShsVgMEhnpg82C6s3TKAvUFawevIW11HBrPKcc58X0vWMXja6Y2mjm1pndq+ClI/QvCE+YgA2XBnY86X/N8WvBfNwCXEB8nBgMXCg3pT0C+grZFuMAPl6Gq0eNH+bAndIBjQ5lDYg/FHzZjiDAz8VYQ7UIcikdPpoJGbbTROpDyHEwFDf3fnxEJRO+k6GJBI91sznNt69RivO5zURpLdaYUrFTiB4O+h0hoouyY87FQqJjsCaVc0VQwW3bKaB3hbTgKAADUY58prr0pn
+                openai.api.key: AgCRjSTYyx4lBNicLK4fUEMfUlS3KSKJe3NFMuZa9OEV73c5qKgRptXSm4MS8t1FDBDc9zIDEzqbvxxJK6hH0p4HaJvYSmTH20VrHAEydwqzcExf5bJoOmogkTfupaBKLhtMQdZC3rloXRtD2TH4KCzg+JHCmiao0ZVmlWxKX0J/G9AmeGiv6ZSLC1vAgPZSUwOxZqBoVpFN2DuN82zYl6GzgNuOBw1tc1gYbkyVaWtCBh4ESQ/fSSXAGZD2uKu5yo1aJ7VC1sdTOepvC+wYvszT9nddm2UHmCSf5uHiCNQa1rUX5D53CjUPctsfhMt4SoMBpEc7eMl0RMZ1q2eX0SxOSYpYQUfDqExUYG6TmAcM7hk04A8/rF1k34DzjsI33D7xe19GD6CjeT3XE7+g5WQXceqKJIQJb7vVzUwPrK2eaw5xRCntmjldiucByb/NQXT9FzN1mwXUTtMP7yDOd9f4Y53DQjZLlq10p5wlmV2iOoglgFGHUnJpCY0twWgsoYpi++cIARjns958BJMbQIF/IASZ1yXyk+ZTekcyXl7eLx9Nb0i6TSxRWNOaDpTSykDGgHyRqLPdnBvdJPH28291vNt4KAu1lj9v36TCeH9wAF8HRM1Z60u5VDwvpwvdpyk/x+IGr4l+cAPh9FYvMlSMcen1YyRLoJGTjc92rViZgRaDoF20dqWud9WrH2z8Gaa68ZzS3KhdEM+Yn91mr+vm5pIuX6CnxlQzYqQp0504tYFU/zvLT3i+HJyLuOm2UILDq5su0MABhPlPcdHtE2ccOM74Ov6U6mWEG13jc+HV5gMT1eF6yBD6bYA8OjF1ir6cCfpp/DiCX5OGC9iWiLnCQCmysO03B3WTgIUzeKInq7SYbQOaq2DwIA/OcW0AX5K5pBUCe7zdzOwDBYYyd1Vhn68jew==
+              template:
+                metadata:
+                  name: litellm-creds
+                type: Opaque
+  destination:
+    namespace: ollama-system   # Moved to the same namespace as requested
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
