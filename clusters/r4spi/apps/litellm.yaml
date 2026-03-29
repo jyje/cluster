@@ -48,30 +48,23 @@ spec:
         postgresql:
           auth:
             # Bitnami PostgreSQL container hardcodes these key names for existingSecret volume projection
-            existingSecret: "litellm-creds"
-        masterkeySecretName: "litellm-creds"
+            existingSecret: "litellm-dbcredentials"
+        masterkeySecretName: "litellm-dbcredentials"
         masterkeySecretKey: "litellm.masterkey"
         migrationJob:
           enabled: false
         extraEnvVars:
           - name: DATABASE_URL
             value: "postgresql://litellm:$(DATABASE_PASSWORD)@$(DATABASE_HOST)/litellm"
-          - name: DATABASE_HOST
-            value: "litellm-postgresql"
-          - name: DATABASE_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: litellm-creds
-                key: password # Must match hardcoded 'password' key for DB alignment
           - name: NIM_API_KEY
             valueFrom:
               secretKeyRef:
-                name: litellm-creds
+                name: litellm-dbcredentials
                 key: nim.api.key
           - name: OPENAI_API_KEY
             valueFrom:
               secretKeyRef:
-                name: litellm-creds
+                name: litellm-dbcredentials
                 key: openai.api.key
           - name: DISABLE_METRICS
             value: "True"
@@ -81,9 +74,10 @@ spec:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:
-              name: litellm-creds
+              name: litellm-dbcredentials
             spec:
               encryptedData:
+                username: AgBeXfI3GZHe52b61m64aZfCOWu+Eoi6R04esjaFficXmbqNtI3UlY3tq8apDWEReDnWpC5QMPvIUHp1AWLZPwtWd68kthRC8ekJ4KFgE7+se5FU8vsiKKx8rmFr7kM+OVPixNX9rwEyGf8rpQqfgLHIq13nmJhhQmXTY3ZITwhUzQduPMy+C/kaStT+OU3R/w1R4bKMgppzEAV7wiQS680xe2+AZuTMq03zhHec2hR3rXQalcZ0RGmrBYsQSjnDjpm46Q9e3gcGguPUU9jKBxx0IvLsqE6cj1oG9rH6jKA+W+VjjJzIMbh1DMOXhUzL1uhkePRFXmdg627EVs/za1lft6bTS7Xhw2RS88DRHkz6rHtdEH3OpBQDg6VwUdoAMwV4sCbDCQf+NN6zwlvY+Y7tzc/Xnx1nu+lotZbpvOv2L7s3qIhou8ernKiOs7g0lU9rQOLCzCVVYgr007aS330zwjYrGO0jWbNDddbpRSHRQKbPqIBY6/vJDG4wfJ9PtQYuHTQW0H54ALdCS7c7DxBZOdkeuViYzkwnO83++OrfUgbtx9sXbnmbNNIxo+RQX3uxSsqUF8qDeUG4BDf/WbIlL0EpyS1EfM4aEz57C8KZna5N3+w9h/xF3uqoU2a8wWLMNbt7icUwjTqYqQB842aHT7I/I7djJmo49jUh8yL9LB+zpFpDIIIYpp6/H1kNR8lJRaZx98fjNUuSQV+mnNf5Eox3a0TSUuUlmKDxblO/fafAL8eSmj/k=
                 litellm.masterkey: AgBFN+UuMnurJTmedS9jQYYIjyKwtfdI45M6Avv0X+NTDGQTjjIeDXeYAxMvCNqsg4hbbCE+NGEIR8oXw/uCqAZK43XF8AOac57g7V3b5xLzQgmI4K04aSulLudGwv2Zyplx3MKy1hHB69jFZlCHONZZgNfXxMLnJdIWNKkAYohfSlrBdhrV4QDlNiHpE22/YiNx26ag4z4XN6MaZBtVdFNyAF85ZvE5ZBFSh4JWGA4OlF+OYChVyRiChEqiG21YajSAY/QEXNaHmCtHtLdebs5Z7YkY6OVe/9z7CQbVTYtq3mVjvw2rYZpGDaorjJw6nzzoX0449G5ytn8tdMRziDa40ezv8qm8lLcVamvV+HKY166IJeJb/cL4L4NY8/MtmEslhEzDUNvKCMnwhkxJPnF5ZvH56lc9vJZzQjsuwc1VB0DTSfSREEuM9FFZPYkFmJ5NnIQTwRO1Id45znXFRDDzVG84qowOxTL57owrSJnPq3hrCsLM18O+VBZECTnjIOC9a/dI6VKcA6vMcoe0HFnfTgh6y4K+e8+m+GhmGR5nyiDWEEg+gFbfVJi5nwDPo6KxHEz9PTsOVDrSDoGuJp/tP4P5H9b14ngiTYe0pjuGEuMCYKuxvyL6mXuZljLFrFV0k6rY48Xl9GQZ+bW82nIY2LjZWELJq0hzYVWXflpGjCJ8FzD/7bql9NOWEVSW6AxAs+AaQLVl8t40IGZYP0J7gtGi1SY+EJbUiBX3MfH2zs8ISFZq2YvUR+0=
                 nim.api.key: AgBHKn1Zmbwnv/tqOtpWexKeZpgR1gweUhEk80xW4VqfLb+gam8Iw9yZcjfiH88GXWEC0jSEahb6DlFkOvsxLsubhSkijH+TnlpYGjqpmpb09Hl/ZqOrdcpvzTiCjdjCOVOFPkVIKvbPr9vCc2fR2xgcKOVQS36pIhgvh1cHKcnxmNPUZSpYWnkhMfG4kyLmc/w1z2aWEhC8MVdJHZnN/jTp9ytqz/utHnq+e79VNjGRV3U7gvTmEf/0Sfmgmxt7/QW9gWIuvWLrUfH/h7+Mfk3Q7fROxsx0fCR4ZrwhDhswyjrwoi0nwwOOIOUp8s1ZMFGUopwDemnL9ZwCUAVFiy3iLJZ3ZNo1oX1cwiKYo7++5Jms6ljPYEsF7dQfVK4HG3RzRf1Tg+ltS5OoZ+ccEgQOq8PneDtce0/w6mPE444vlLykIiwvnRcWVJ27N0yfPqi2AbMW4EMVT+97J/2MxbNjyRznoOo5lVAAluzTtN/Y/fUtdAo0ig3rBRuLVj5Imlw2teFoBGn/3KLsfHX+VOxfEr8JwEHCAWZX3I+UggsSlzWOynKrUcxikOKuY8KDBLg92Gm4nIjJN1zYaXBYHordgsuZ6EwxL6AMN8kPrEuUDgl6rNCd++TnJlblU0sVAjjNFgsDmWgryZOZlHYv1Bg9HIobonKHSh8Hyahn1UPQC1j+fRFr4ckJXC6z92RhwV8tFAC/h0HJrPLVmy8qPd9fb37iwJ2cBPZ2aOpNtTDh+NJxjuxGYDfOeTePafmXNxGutmL3eCgnwUzOtr/MxyWNV6ZVCJg7
                 openai.api.key: AgBKyx+HWlyEvhHr14D2QRGVaZGQsSXIIU52eCJkRGjbnaCMXBkxpve+BCBPJ/XawASZjKC7LxrDaf/qb+LYn+p5A24cbxc2HeuJ4xqq7fUxUPmnVBoDIeH02WjTG4Y/zkL839vYJ73EPn2xRNpeK5laciKPAHiuvSsoRskK5AtpShW6UIcbNxA3Czjd0zIiQRppgtqdlhonDDbl9siq2+UtQi57Ksq0ISlWpLmqSs8oLi/TikkSCH3PbqUiX5+ACx2uoRI4Rsmn2MkYvHQyY8gfXewRBOB0ziZC0oWwGM5vKut0zPqwhAdsENf7T3zua1YhoJp8mFyz2w6yGUjnxxUh/FSgf9OUY2M5zDuj2M0UUjNeuDGeR5f3oA/zwTI8aq6CH1SUfpf9+x6v+mTvK+HBnCw+OFhOry3bDpWZzb9+WiZGvKz2eWUiWbncgUbvnmRWU9GT/WGN7KUAzpVRzzoTFKKqoC+7TYAt1ownd8jRptM3bJIUEXHjb772nvulOIV5L7AdyzCNwRGkFm3lI4HSne/yrPB1CeSlcbnb8sBQLgmE5B9Ro6iteT3wfAkKS6okq/QfZbH6YEv65NC9upjVy1qKhLgSjGqnDw7Ot36xrCIrr3MJ7zhBKAPiZedVe9Rs/z9Gmn36rdylEoZ3efa1Ag67JoVbLsn4FWzlogSflfSf3gvBrX1g9u4/yq0WWwZ7WckUyUjl3Bbr2acW/9gzFZOMYsFriPPDARWbdYU6QeIapnQ90vliokm/bCAb8HvoOFSvOsgsHrmIRink264HLQW/3AcuTEhNPKfDx95mcz3KaTq1hgWJ2nnVWU1y0OANA3jTXl7SLDJq6t3GXtDkwEZexTomkT93JIhd5Lzgv2/zKM4m4CfpxQQhj5E/D6hiHzBR9TRuy6N7dK6wi5WsOr04nQ==
