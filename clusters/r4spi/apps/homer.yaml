@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/homer-k8s-0.3.5-jyje
+    path: helm/homer-k8s/homer-k8s-0.5.1
     helm:
       valueFiles:
         - values.yaml
@@ -34,7 +34,7 @@ spec:
         homer:
           image:
             repository: b4bz/homer
-            tag: v25.03.1              
+            tag: v25.11.1              
   destination:
     namespace: homer-system
     server: 'https://kubernetes.default.svc'
