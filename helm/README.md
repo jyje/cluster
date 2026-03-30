@@ -19,7 +19,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 |-------|----------|-----|
 | actions-runner-controller | actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller |
 | argo | argo | https://argoproj.github.io/argo-helm |
-| bananaops | bananaops | https://bananaops.github.io/homer-k8s |
+| homer-k8s | bananaops | https://bananaops.github.io/homer-k8s |
 | cert-manager | jetstack | https://charts.jetstack.io |
 | cert-manager | adfinis | https://charts.adfinis.com |
 | cnpg | cnpg | https://cloudnative-pg.github.io/charts |

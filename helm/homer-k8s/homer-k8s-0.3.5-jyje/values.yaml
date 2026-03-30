@@ -251,3 +251,11 @@ homer:
             target: "_blank" # optional html a tag target attribute
             # class: "green" # optional custom CSS class for card, useful with custom stylesheet
             # background: red # optional color for card to set color directly without custom stylesheet
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
