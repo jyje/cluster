@@ -308,6 +308,10 @@
                     }
                 }
             }
+        },
+        "extraResources": {
+            "type": "array",
+            "items": { "type": "object" }
         }
     }
 }

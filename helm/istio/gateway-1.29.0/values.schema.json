@@ -352,6 +352,10 @@
               "type": "object"
             }
           }
+        },
+        "extraResources": {
+          "type": "array",
+          "items": { "type": "object" }
         }
       }
     }

@@ -270,6 +270,10 @@
         },
         "tolerations": {
             "type": "array"
+        },
+        "extraResources": {
+            "type": "array",
+            "items": { "type": "object" }
         }
     },
     "type": "object"

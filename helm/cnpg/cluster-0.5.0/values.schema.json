@@ -915,6 +915,10 @@
                     "type": "string"
                 }
             }
+        },
+        "extraResources": {
+            "type": "array",
+            "items": { "type": "object" }
         }
     }
 }
