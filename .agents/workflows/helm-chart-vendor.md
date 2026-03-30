@@ -50,6 +50,9 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
    ```
    Run from project root. If already in `helm/`, use `mv <chart-name>-<version>/ ../<group>/` or equivalent.
 
+6. **Patch for extraResources**
+   Immediately after placing the chart, execute the `helm-extraresources-patcher` workflow on the new chart directory to ensure it supports custom resource injection.
+
 ## Convention summary
 
 - **Storage path:** `helm/<group>/<chart-name>-<version>/`
