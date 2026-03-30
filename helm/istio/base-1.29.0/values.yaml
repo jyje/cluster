@@ -43,3 +43,13 @@ _internal_defaults_do_not_set:
   defaultRevision: "default"
   experimental:
     stableValidationPolicy: false
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

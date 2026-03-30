@@ -9,3 +9,13 @@ awspcaIssuers: []
 
 # -- Array of cert-manager AWSPCAClusterIssuer [configurations](https://github.com/cert-manager/aws-privateca-issuer/tree/main/config/) (see [examples](./examples/))
 awspcaClusterIssuers: []
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

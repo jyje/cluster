@@ -76,3 +76,13 @@ telemetry:
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
     interval: 30s
     scrapeTimeout: 10s
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

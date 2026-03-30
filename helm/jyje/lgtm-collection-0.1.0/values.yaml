@@ -272,3 +272,13 @@ garnet-instance:
     requests:
       cpu: 20m
       memory: 64Mi
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

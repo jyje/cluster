@@ -290,3 +290,13 @@ chartTests:
       limits:
         cpu: 100m
         memory: 200Mi
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

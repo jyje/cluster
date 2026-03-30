@@ -112,3 +112,13 @@ labels: {}
 podDisruptionBudget:
   enabled: false
   maxUnavailable: 1
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

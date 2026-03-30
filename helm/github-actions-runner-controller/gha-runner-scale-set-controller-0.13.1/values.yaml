@@ -142,3 +142,13 @@ namespaceOverride: ""
 ## Defines the K8s client rate limiter parameters.
   # k8sClientRateLimiterQPS: 20
   # k8sClientRateLimiterBurst: 30
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

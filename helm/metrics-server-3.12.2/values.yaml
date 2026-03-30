@@ -198,3 +198,13 @@ schedulerName: ""
 
 tmpVolume:
   emptyDir: {}
+
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value
