@@ -15,7 +15,7 @@ spec:
       valuesObject:
         image:
           repository: bananaops/homer-k8s
-          tag: 0.4.0
+          tag: 0.3.4
         fullnameOverride: homer
         ingress:
           enabled: true
