@@ -44,13 +44,19 @@ Append the `extraResources: []` definition at the end of `<chart-dir>/values.yam
 
 # -- Extra resources to deploy with the chart
 extraResources: []
-  # - apiVersion: v1
-  #   kind: ConfigMap
-  #   metadata:
-  #     name: example-configmap
   #   data:
   #     example-key: example-value
 ```
+
+### C. Update values.schema.json (Optional)
+If `<chart-dir>/values.schema.json` exists, you MUST add `extraResources` to the `properties` block:
+```json
+        "extraResources": {
+            "type": "array",
+            "items": { "type": "object" }
+        }
+```
+If `additionalProperties` is set to `false` at the root, ensure this field is included to avoid validation errors.
 
 ## 3. Verification
 

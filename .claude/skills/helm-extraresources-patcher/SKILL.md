@@ -53,6 +53,16 @@ extraResources: []
   #     example-key: example-value
 ```
 
+### C. Update values.schema.json (Optional)
+If `<chart-dir>/values.schema.json` exists, MUST add `extraResources` to the `properties` block:
+```json
+        "extraResources": {
+            "type": "array",
+            "items": { "type": "object" }
+        }
+```
+Failure to update the schema will cause `helm template` to fail if `additionalProperties: false` is set.
+
 ## 3. Verification
 
 1. **Verify template rendering**:
