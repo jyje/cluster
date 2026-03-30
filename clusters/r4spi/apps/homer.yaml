@@ -13,6 +13,9 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        image:
+          repository: bananaops/homer-k8s
+          tag: 0.4.0
         fullnameOverride: homer
         ingress:
           enabled: true
