@@ -17,6 +17,11 @@ spec:
           tag: v1.82.3
         proxy_config:
           model_list:
+            - model_name: "google/gemma-4-31b-it"
+              litellm_params:
+                model: "nvidia_nim/google/gemma-4-31b-it"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
             - model_name: "nvidia/nemotron-3-super-120b-a12b"
               litellm_params:
                 model: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
