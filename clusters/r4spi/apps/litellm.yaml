@@ -17,22 +17,63 @@ spec:
           tag: v1.82.3
         proxy_config:
           model_list:
-            - model_name: "google/gemma-4-31b-it"
+            # Text Models
+            -
+              model_name: "qwen/qwen3.5-122b-a10b"
+              litellm_params:
+                model: "nvidia_nim/qwen/qwen3.5-122b-a10b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "minimaxai/minimax-m2.5"
+              litellm_params:
+                model: "nvidia_nim/minimaxai/minimax-m2.5"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "moonshotai/kimi-k2.5"
+              litellm_params:
+                model: "nvidia_nim/moonshotai/kimi-k2.5"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "z-ai/glm5"
+              litellm_params:
+                model: "nvidia_nim/z-ai/glm5"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "google/gemma-4-31b-it"
               litellm_params:
                 model: "nvidia_nim/google/gemma-4-31b-it"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-            - model_name: "nvidia/nemotron-3-super-120b-a12b"
+            -
+              model_name: "nvidia/nemotron-3-super-120b-a12b"
               litellm_params:
                 model: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-            - model_name: "openai/gpt-oss-120b"
+            -
+              model_name: "openai/gpt-oss-120b"
               litellm_params:
                 model: "nvidia_nim/openai/gpt-oss-120b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-            - model_name: "nvidia/llama-nemotron-embed-vl-1b-v2"
+
+            # Image Models
+            -
+              model_name: "black-forest-labs/flux.2-klein-4b"
+              litellm_params:
+                model: "openai/black-forest-labs/flux.2-klein-4b"
+                api_base: "https://ai.api.nvidia.com/v1/genai"
+                api_key: "os.environ/NIM_API_KEY"
+              model_info:
+                type: "image_generation"
+
+            # Embedding Models
+            -
+              model_name: "nvidia/llama-nemotron-embed-vl-1b-v2"
               litellm_params:
                 model: "openai/nvidia/llama-nemotron-embed-vl-1b-v2"
                 api_base: "https://integrate.api.nvidia.com/v1"
@@ -42,7 +83,8 @@ spec:
                   encoding_format: "float"
               model_info:
                 type: "embedding"
-            - model_name: "nvidia/llama-nemotron-embed-1b-v2"
+            -
+              model_name: "nvidia/llama-nemotron-embed-1b-v2"
               litellm_params:
                 model: "openai/nvidia/llama-nemotron-embed-1b-v2"
                 api_base: "https://integrate.api.nvidia.com/v1"
