@@ -7,9 +7,10 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/metrics-server-3.12.2
+    path: helm/metrics-server/metrics-server-3.13.0
     helm:
-      valuesObject: {}
+      valuesObject:
+        replicas: 2
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
