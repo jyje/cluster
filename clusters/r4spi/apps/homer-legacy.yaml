@@ -41,7 +41,7 @@ spec:
               main:
                 image:
                   repository: b4bz/homer
-                  tag: v25.11.1
+                  tag: v26.4.1
                   pullPolicy: Always
                 env:
                   - name: TZ
