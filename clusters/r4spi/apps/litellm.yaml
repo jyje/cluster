@@ -77,6 +77,12 @@ spec:
                 model: "nvidia_nim/openai/gpt-oss-120b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "openai/gpt-oss-20b"
+              litellm_params:
+                model: "nvidia_nim/openai/gpt-oss-20b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
 
             # Image Models
             -
