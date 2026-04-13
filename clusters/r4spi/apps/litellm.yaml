@@ -25,9 +25,9 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
-              model_name: "minimaxai/minimax-m2.5"
+              model_name: "minimaxai/minimax-m2.7"
               litellm_params:
-                model: "nvidia_nim/minimaxai/minimax-m2.5"
+                model: "nvidia_nim/minimaxai/minimax-m2.7"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
