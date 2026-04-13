@@ -13,7 +13,7 @@ spec:
         - values.yaml
       valuesObject:
         image:
-          tag: "0.9"
+          tag: "0.8"
           pullPolicy: "Always"
         ollama:
           enabled: false
