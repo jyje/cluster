@@ -43,15 +43,9 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
-              model_name: "moonshotai/kimi-k2.5"
+              model_name: "z-ai/glm-5.1"
               litellm_params:
-                model: "nvidia_nim/moonshotai/kimi-k2.5"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "z-ai/glm5"
-              litellm_params:
-                model: "nvidia_nim/z-ai/glm5"
+                model: "nvidia_nim/z-ai/glm-5.1"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
