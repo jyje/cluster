@@ -7,17 +7,29 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/litellm/litellm-1.82.3
+    path: helm/litellm/litellm-1.83.7-stable.patch.1
     helm:
       valueFiles:
         - values.yaml
       valuesObject:
         image:
           repository: ghcr.io/berriai/litellm
-          tag: v1.82.3
+          tag: v1.83.7-stable.patch.1
         proxy_config:
           model_list:
             # Text Models
+            -
+              model_name: "deepseek-ai/deepseek-v4-pro"
+              litellm_params:
+                model: "nvidia_nim/deepseek-ai/deepseek-v4-pro"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "deepseek-ai/deepseek-v4-flash"
+              litellm_params:
+                model: "nvidia_nim/deepseek-ai/deepseek-v4-flash"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
             -
               model_name: "qwen/qwen3.5-122b-a10b"
               litellm_params:
