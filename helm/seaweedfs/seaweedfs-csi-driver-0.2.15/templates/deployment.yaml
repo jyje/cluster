@@ -1,0 +1,246 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ template "seaweedfs-csi-driver.name" . }}-controller
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "seaweedfs-csi-driver.name" . }}-controller
+  replicas: {{ .Values.controller.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "seaweedfs-csi-driver.name" . }}-controller
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccountName: {{ template "seaweedfs-csi-driver.name" . }}-controller-sa
+      affinity:
+        {{- if and .Values.controller.affinity .Values.controller.affinity.nodeAffinity }}
+        nodeAffinity: {{ toYaml .Values.controller.affinity.nodeAffinity | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.controller.affinity .Values.controller.affinity.podAffinity }}
+        podAffinity: {{ toYaml .Values.controller.affinity.podAffinity | nindent 10 }}
+        {{- end }}
+        {{- if and .Values.controller.affinity .Values.controller.affinity.podAntiAffinity }}
+        podAntiAffinity: {{ toYaml .Values.controller.affinity.podAntiAffinity | nindent 10 }}
+        {{- else }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ template "seaweedfs-csi-driver.name" . }}-controller
+              topologyKey: kubernetes.io/hostname
+        {{- end }}
+      {{- with .Values.controller.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        # SeaweedFs Plugin (controller)
+        - name: seaweedfs-csi-plugin
+          image: {{ .Values.seaweedfsCsiPlugin.image }}:{{ .Values.seaweedfsCsiPlugin.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args :
+            - --endpoint=$(CSI_ENDPOINT)
+            - --filer=$(SEAWEEDFS_FILER)
+
+            - --driverName=$(DRIVER_NAME)
+            - --components=controller
+            - --attacher={{ .Values.csiAttacher.enabled }}
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: SEAWEEDFS_FILER
+              value: {{ .Values.seaweedfsFiler | quote }}
+
+            - name: DRIVER_NAME
+              value: {{ .Values.driverName | quote }}
+            {{- if .Values.tlsSecret }}
+            - name: WEED_GRPC_CLIENT_KEY
+              value: /var/run/secrets/app/tls/tls.key
+            - name: WEED_GRPC_CLIENT_CERT
+              value: /var/run/secrets/app/tls/tls.crt
+            - name: WEED_GRPC_CA
+              value: /var/run/secrets/app/tls/ca.crt
+            {{- end }}
+            {{- with .Values.logVerbosity }}
+            - name: WEED_V
+              value: {{ . | quote }}
+            {{- end }}
+          ports:
+
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+           {{- if .Values.tlsSecret }}
+            - name: tls
+              mountPath: /var/run/secrets/app/tls
+              readOnly: true
+           {{- end }}
+           {{- include "seaweedfs-csi-driver.security-volumemount" . | nindent 12 }}
+          resources: {{ toYaml .Values.controller.resources | nindent 12 }}
+
+        # provisioner
+        - name: csi-provisioner
+          image: {{ .Values.csiProvisioner.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --leader-election
+            - --leader-election-namespace={{ .Release.Namespace }}
+            - --http-endpoint=:9809
+            #- --v=9
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          ports:
+            - containerPort: 9809
+          {{- with .Values.csiProvisioner.livenessProbe }}
+          livenessProbe:
+            httpGet:
+              path: /healthz/leader-election
+              port: 9809
+            {{- with .failureThreshold }}
+            failureThreshold: {{ . }}
+            {{- end }}
+            {{- with .initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+            {{- with .timeoutSeconds }}
+            timeoutSeconds: {{ . }}
+            {{- end }}
+            {{- with .periodSeconds }}
+            periodSeconds: {{ . }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources: {{ toYaml .Values.csiProvisioner.resources | nindent 12 }}
+
+        # resizer
+        - name: csi-resizer
+          image: {{ .Values.csiResizer.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --leader-election
+            - --leader-election-namespace={{ .Release.Namespace }}
+            - --http-endpoint=:9810
+            #- --v=5
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          ports:
+            - containerPort: 9810
+          {{- with .Values.csiResizer.livenessProbe }}
+          livenessProbe:
+            httpGet:
+              path: /healthz/leader-election
+              port: 9810
+            {{- with .failureThreshold }}
+            failureThreshold: {{ . }}
+            {{- end }}
+            {{- with .initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+            {{- with .timeoutSeconds }}
+            timeoutSeconds: {{ . }}
+            {{- end }}
+            {{- with .periodSeconds }}
+            periodSeconds: {{ . }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources: {{ toYaml .Values.csiResizer.resources | nindent 12 }}
+
+        {{- if .Values.csiAttacher.enabled }}
+        # attacher
+        - name: csi-attacher
+          image: {{ .Values.csiAttacher.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --leader-election
+            - --leader-election-namespace={{ .Release.Namespace }}
+            - --http-endpoint=:9811
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          ports:
+            - containerPort: 9811
+          {{- with .Values.csiAttacher.livenessProbe }}
+          livenessProbe:
+            httpGet:
+              path: /healthz/leader-election
+              port: 9811
+            {{- with .failureThreshold }}
+            failureThreshold: {{ . }}
+            {{- end }}
+            {{- with .initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+            {{- with .timeoutSeconds }}
+            timeoutSeconds: {{ . }}
+            {{- end }}
+            {{- with .periodSeconds }}
+            periodSeconds: {{ . }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources: {{ toYaml .Values.csiAttacher.resources | nindent 12 }}
+        {{- end }}
+
+        # liveness probe
+        {{- if .Values.controller.livenessProbe }}
+        - name: csi-liveness-probe
+          image: {{ .Values.csiLivenessProbe.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - --csi-address=$(ADDRESS)
+            - --http-endpoint=:9808
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          ports:
+            - containerPort: 9808
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources: {{ toYaml .Values.csiLivenessProbe.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9808
+            {{- with .Values.controller.livenessProbe }}
+            {{- with .failureThreshold }}
+            failureThreshold: {{ . }}
+            {{- end }}
+            {{- with .initialDelaySeconds }}
+            initialDelaySeconds: {{ . }}
+            {{- end }}
+            {{- with .timeoutSeconds }}
+            timeoutSeconds: {{ . }}
+            {{- end }}
+            {{- with .periodSeconds }}
+            periodSeconds: {{ . }}
+            {{- end }}
+            {{- end }}
+        {{- end }}
+
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        {{- if .Values.tlsSecret }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.tlsSecret }}
+        {{- end }}
+        {{- include "seaweedfs-csi-driver.security-volume" . | nindent 8 }}

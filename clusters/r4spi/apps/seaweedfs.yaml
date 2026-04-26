@@ -1,0 +1,81 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: seaweedfs
+  namespace: argocd
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/seaweedfs/seaweedfs-4.21.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        global:
+          seaweedfs:
+            image:
+              name: chrislusf/seaweedfs
+              tag: "4.21"
+        master:
+          enabled: true
+          replicas: 3
+          data:
+            type: "persistentVolumeClaim"
+            size: "1Gi"
+          logs:
+            type: "emptyDir"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+        volume:
+          enabled: true
+          replicas: 3
+          dataDirs:
+            - name: data1
+              type: "persistentVolumeClaim"
+              size: "20Gi"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+        filer:
+          enabled: true
+          replicas: 2
+          data:
+            type: "persistentVolumeClaim"
+            size: "2Gi"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+        s3:
+          enabled: true
+          replicas: 2
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+  destination:
+    namespace: seaweedfs
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

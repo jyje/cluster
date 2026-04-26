@@ -1,0 +1,196 @@
+# host and port of your SeaweedFs filer
+seaweedfsFiler: "SEAWEEDFS_FILER:8888"
+storageClassName: seaweedfs-storage
+storageClassVolumeBindingMode: Immediate
+isDefaultStorageClass: false
+tlsSecret: ""
+#logVerbosity: 4
+#cacheCapacityMB: 0
+#cacheMetaTtlSec: 60
+
+#concurrentWriters: 128
+#concurrentReaders: 128
+
+# Security configuration for SeaweedFS security.toml
+# Mounts security.toml to /etc/seaweedfs/security.toml in seaweedfs-mount
+# and csi-seaweedfs-plugin containers, enabling JWT / gRPC / HTTP security.
+security:
+  enabled: false
+  # Reference an existing Secret containing security.toml (key must be "security.toml")
+  existingSecret: ""
+  # Reference an existing ConfigMap containing security.toml (key must be "security.toml")
+  existingConfigMap: ""
+  # If neither existingSecret nor existingConfigMap is set, the chart can create one for you.
+  # Set create: true and provide the content below.
+  create: false
+  # "secret" or "configmap" — type of resource to create when create=true
+  type: secret
+  # Inline security.toml content used when create=true. Example:
+  #   content: |
+  #     [jwt.signing.read]
+  #     key = "your-jwt-read-key"
+  #     [grpc]
+  #     ca = "/usr/local/share/ca-certificates/ca.crt"
+  #     [grpc.client]
+  #     cert = "/usr/local/share/ca-certificates/tls.crt"
+  #     key  = "/usr/local/share/ca-certificates/tls.key"
+  content: ""
+
+imagePullPolicy: "IfNotPresent"
+
+#imagePullSecrets:
+#- name: mycredentials
+
+csiProvisioner:
+  image: registry.k8s.io/sig-storage/csi-provisioner:v3.5.0
+  resources: {}
+  livenessProbe:
+    failureThreshold:
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 60
+
+csiResizer:
+  image: registry.k8s.io/sig-storage/csi-resizer:v1.8.0
+  resources: {}
+  livenessProbe:
+    failureThreshold:
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 60
+
+csiAttacher:
+  # generally we don't need attacher, cause we do nothing to attach volume to node
+  # we will keep this for a historical reason
+  # you need to delete seaweedfs CSIDriver crd manually before upgrading with attacher disabled
+  # also you need to delete all seaweedfs VolumeAttachment crd manually after upgrade
+  enabled: true
+  image: registry.k8s.io/sig-storage/csi-attacher:v4.3.0
+  resources: {}
+  livenessProbe:
+    failureThreshold:
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 60
+
+csiSnapshotter:
+  # we do not support snapshots yet
+  enabled: false
+
+csiNodeDriverRegistrar:
+  image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.8.0
+  resources: {}
+  livenessProbe:
+    failureThreshold:
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 60
+
+csiLivenessProbe:
+  image: registry.k8s.io/sig-storage/livenessprobe:v2.10.0
+  resources: {}
+
+seaweedfsCsiPlugin:
+  image: chrislusf/seaweedfs-csi-driver
+  # tag defaults to Chart.appVersion when not set
+  securityContext:
+    privileged: true
+    capabilities:
+      add: ["SYS_ADMIN"]
+    allowPrivilegeEscalation: true
+
+# Mount Service Configuration
+# The mount service runs as a separate DaemonSet that manages FUSE mounts.
+# This is required for the CSI driver node component to function properly.
+# The node.mountEndpoint, node.mountSocketDir, and node.mountHostPath values
+# default to the corresponding mountService.* values when left empty.
+# NOTE: This deploys an additional DaemonSet with privileged containers.
+mountService:
+  # Must be enabled for the CSI driver node component to mount volumes
+  enabled: true
+  image: chrislusf/seaweedfs-mount
+  # tag defaults to Chart.appVersion when not set
+  # Endpoint for communication between CSI driver and mount service
+  endpoint: unix:///var/lib/seaweedfs-mount/seaweedfs-mount.sock
+  # Host directory for mount service socket files
+  hostPath: /var/lib/seaweedfs-mount
+  # Container path where socket directory is mounted
+  socketDir: /var/lib/seaweedfs-mount
+  securityContext:
+    privileged: true
+    capabilities:
+      add: ["SYS_ADMIN"]
+    allowPrivilegeEscalation: true
+  # Use OnDelete strategy since mount service is not yet resilient to its own restarts.
+  # This allows manual, controlled updates to prevent automated disruption of active mounts.
+  updateStrategy:
+    type: OnDelete
+  affinity: {}
+  tolerations:
+  resources: {}
+  priorityClassName: system-node-critical
+  serviceAccountName: ""
+
+driverName: seaweedfs-csi-driver
+
+controller:
+  replicas: 1
+  affinity: {}
+  tolerations:
+  resources: {}
+  livenessProbe:
+    failureThreshold:
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 60
+
+# DataLocality (inspired by Longhorn) allows instructing the storage-driver which volume-locations will be used or preferred in Pods to read & write.
+#  e.g. Allows Pods to write preferrably to its local dataCenter volume-servers
+# Requires Volume-Servers to be correctly labelled and matching Topology-Info to be passed into seaweedfs-csi-driver node
+# Example-Value: "write_preferlocaldc"
+dataLocality: "none"
+
+node:
+  # Deploy node daemonset
+  enabled: true
+  # Enable hostPID to allow the CSI driver to enter container mount
+  # namespaces and fix stale FUSE mounts after recovery. Without this,
+  # pods require mountPropagation: HostToContainer on their volume
+  # mounts for automatic recovery to reach inside containers.
+  hostPID: true
+  # Mount service connection settings for the CSI node driver.
+  # When empty (default), these inherit from mountService.* values above.
+  # Only set these to override the mountService defaults.
+  mountEndpoint: ""    # defaults to mountService.endpoint
+  mountSocketDir: ""   # defaults to mountService.socketDir
+  mountHostPath: ""    # defaults to mountService.hostPath
+  # When seaweedfs-csi-driver-node pod on node is recreated, all pods on same node using seaweed-csi PV will stop working.
+  # For safe update set updateStrategy.type: OnDelete and manually move pods who use seaweed-csi PV, then delete  seaweedfs-csi-driver-node damonset pod
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+  affinity: {}
+  tolerations:
+  livenessProbe:
+    failureThreshold:
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 60
+
+  # Auto-Inject Topology-Info from Kubernetes node-labels using KubeMod (https://github.com/kubemod/kubemod)
+  #  Necessary because DownwardAPI doesnt support passing node-labels (see: https://github.com/kubernetes/kubernetes/issues/40610)
+  # Requires KubeMod to be installed
+  injectTopologyInfoFromNodeLabel:
+    enabled: false
+    labels:
+      dataCenter: "topology.kubernetes.io/zone"
+
+  ## Change if not using standard kubernetes deployments, like k0s
+  volumes:
+    registration_dir: /var/lib/kubelet/plugins_registry
+    plugins_dir: /var/lib/kubelet/plugins
+    pods_mount_dir: /var/lib/kubelet/pods
+
+# -- Extra resources to deploy with the chart
+extraResources: []

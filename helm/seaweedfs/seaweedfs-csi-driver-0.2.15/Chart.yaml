@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: v1.4.9
+description: A Helm chart for Kubernetes CSI backed by a SeaweedFS cluster
+name: seaweedfs-csi-driver
+type: application
+version: 0.2.15
