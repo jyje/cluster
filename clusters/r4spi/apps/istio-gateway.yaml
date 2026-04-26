@@ -13,6 +13,9 @@ spec:
     path: helm/istio/gateway-1.29.0
     helm:
       valuesObject:
+        resources:
+          limits:
+            memory: 2048Mi
         extraResources:
           - apiVersion: v1
             kind: Namespace
