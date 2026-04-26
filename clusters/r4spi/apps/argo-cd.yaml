@@ -11,6 +11,7 @@ spec:
     path: helm/argo/argo-cd-9.5.4
     helm:
       valuesObject:
+        fullnameOverride: argo-cd
         global:
           domain: cd.app.jyje.online
           image:
@@ -44,6 +45,49 @@ spec:
             tls: true
         repoServer:
           replicas: 1
+        extraObjects:
+          - apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: base
+              namespace: argocd
+            spec:
+              clusterResourceWhitelist:
+                - group: '*'
+                  kind: '*'
+              destinations:
+                - namespace: '*'
+                  server: https://kubernetes.default.svc
+              sourceRepos:
+                - '*'
+          - apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: ai
+              namespace: argocd
+            spec:
+              clusterResourceWhitelist:
+                - group: '*'
+                  kind: '*'
+              destinations:
+                - namespace: '*'
+                  server: https://kubernetes.default.svc
+              sourceRepos:
+                - '*'
+          - apiVersion: argoproj.io/v1alpha1
+            kind: AppProject
+            metadata:
+              name: default
+              namespace: argocd
+            spec:
+              clusterResourceWhitelist:
+                - group: '*'
+                  kind: '*'
+              destinations:
+                - namespace: '*'
+                  server: https://kubernetes.default.svc
+              sourceRepos:
+                - '*'
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
