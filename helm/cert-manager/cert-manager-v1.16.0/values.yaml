@@ -1439,3 +1439,8 @@ extraObjects: []
 # the static YAML manifests.
 # +docs:hidden
 creator: "helm"
+
+# -- Extra resources to deploy with the chart
+extraResources: []
+  #   data:
+  #     example-key: example-value

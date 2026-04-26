@@ -167,6 +167,12 @@
         },
         "webhook": {
           "$ref": "#/$defs/helm-values.webhook"
+        },
+        "extraResources": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "type": "object"
