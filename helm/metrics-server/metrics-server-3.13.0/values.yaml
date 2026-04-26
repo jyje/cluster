@@ -246,5 +246,10 @@ tls:
 
 # -- Extra resources to deploy with the chart
 extraResources: []
-  # - apiVersion: bitnami.com/v1alpha1
-  #   kind: SealedSecret
+# - apiVersion: v1
+#   kind: ConfigMap
+#   metadata:
+#     name: example-configmap
+#   data:
+#     example-key: example-value
+

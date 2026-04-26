@@ -657,6 +657,11 @@ poolers: []
 
 # -- Extra resources to deploy with the chart
 extraResources: []
-  #   data:
-  #     example-key: example-value
+# - apiVersion: v1
+#   kind: ConfigMap
+#   metadata:
+#     name: example-configmap
+#   data:
+#     example-key: example-value
+
 
