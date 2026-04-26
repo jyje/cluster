@@ -14,40 +14,7 @@ spec:
         - values.yaml
       valuesObject:
         argo-cd:
-          enabled: true
-          global:
-            domain: cd.app.jyje.online
-            image:
-              repository: quay.io/argoproj/argocd
-              tag: "v3.1.8"
-          configs:
-            params:
-              server.insecure: true
-            secret:
-              argocdServerAdminPassword: "$2a$10$Fxz3iaT9JpTioBr8vPRvYONv5kRrdxfX1KHck46ueCPMl.Qmr.Rhq"
-              argocdServerAdminPasswordMtime: "2025-10-07T07:31:00Z"
-          controller:
-            replicas: 1
-            metrics:
-              enabled: true
-          dex:
-            enabled: false
-          server:
-            replicas: 2  
-            ingress:
-              enabled: true
-              annotations:
-                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
-                nginx.ingress.kubernetes.io/configuration-snippet: |
-                  more_set_headers "Access-Control-Allow-Origin: $http_origin";
-                nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
-                nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
-                nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
-                nginx.ingress.kubernetes.io/enable-cors: "true"
-              ingressClassName: nginx
-              tls: true
-          repoServer:
-            replicas: 1
+          enabled: false
         argocd-apps:
           enabled: true
           projects:
