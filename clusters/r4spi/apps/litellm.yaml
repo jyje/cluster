@@ -69,15 +69,6 @@ spec:
                 extra_body:
                   reasoning_effort: "high"
             -
-              model_name: "deepseek-ai/deepseek-v3.2"
-              litellm_params:
-                model: "nvidia_nim/deepseek-ai/deepseek-v3.2"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-                extra_body:
-                  chat_template_kwargs:
-                    thinking: true
-            -
               model_name: "openai/gpt-oss-120b"
               litellm_params:
                 model: "nvidia_nim/openai/gpt-oss-120b"
