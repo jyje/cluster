@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argo-cd
+  name: argocd
 spec:
   project: base
   source:
@@ -11,7 +11,7 @@ spec:
     path: helm/argo/argo-cd-9.5.4
     helm:
       valuesObject:
-        fullnameOverride: argo-cd
+        fullnameOverride: argocd
         global:
           domain: cd.app.jyje.online
           image:
@@ -50,7 +50,6 @@ spec:
             kind: AppProject
             metadata:
               name: base
-              namespace: argocd
             spec:
               clusterResourceWhitelist:
                 - group: '*'
@@ -64,7 +63,6 @@ spec:
             kind: AppProject
             metadata:
               name: ai
-              namespace: argocd
             spec:
               clusterResourceWhitelist:
                 - group: '*'
@@ -78,7 +76,6 @@ spec:
             kind: AppProject
             metadata:
               name: default
-              namespace: argocd
             spec:
               clusterResourceWhitelist:
                 - group: '*'
