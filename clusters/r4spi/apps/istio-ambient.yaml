@@ -45,6 +45,10 @@ spec:
     helm:
       valuesObject:
         profile: ambient
+        meshConfig:
+          ingressClass: istio
+          ingressControllerMode: STRICT
+          ingressSelector: gateway
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
