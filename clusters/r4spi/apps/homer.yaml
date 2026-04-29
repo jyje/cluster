@@ -42,6 +42,9 @@ spec:
     namespace: homer-system
     server: 'https://kubernetes.default.svc'
   syncPolicy:
+    managedNamespaceMetadata:
+      labels:
+        istio.io/dataplane-mode: ambient
     syncOptions:
       - CreateNamespace=true
     automated: {}
