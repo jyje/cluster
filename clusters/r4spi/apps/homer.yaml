@@ -18,22 +18,7 @@ spec:
           tag: 0.3.4
         fullnameOverride: homer
         ingress:
-          enabled: true
-          className: istio
-          annotations:
-            cert-manager.io/cluster-issuer: istio-letsencrypt-prod
-          hosts:
-            - host: homer.app.jyje.online
-              paths:
-                - service:
-                    name: homer
-                    port: 8080
-                  path: /
-                  pathType: ImplementationSpecific
-          tls:
-            - secretName: homer-letsencrypt-tls
-              hosts:
-                - homer.app.jyje.online
+          enabled: false
         homer:
           image:
             repository: b4bz/homer
@@ -45,6 +30,22 @@ spec:
               name: homer-system
               labels:
                 istio.io/dataplane-mode: ambient
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: homer
+              namespace: homer-system
+            spec:
+              parentRefs:
+                - name: istio-gateway
+                  namespace: istio-gateway
+                  sectionName: https-homer
+              hostnames:
+                - homer.app.jyje.online
+              rules:
+                - backendRefs:
+                    - name: homer
+                      port: 8080
   destination:
     namespace: homer-system
     server: 'https://kubernetes.default.svc'

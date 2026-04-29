@@ -29,6 +29,44 @@ spec:
               name: istio
             spec:
               controller: istio.io/ingress-controller
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: homer-gateway-tls
+              namespace: istio-gateway
+            spec:
+              secretName: homer-gateway-tls
+              issuerRef:
+                name: istio-letsencrypt-prod
+                kind: ClusterIssuer
+              dnsNames:
+                - homer.app.jyje.online
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: istio-gateway
+              namespace: istio-gateway
+            spec:
+              gatewayClassName: istio
+              listeners:
+                - name: http
+                  port: 80
+                  protocol: HTTP
+                  allowedRoutes:
+                    namespaces:
+                      from: All
+                - name: https-homer
+                  port: 443
+                  protocol: HTTPS
+                  hostname: homer.app.jyje.online
+                  tls:
+                    mode: Terminate
+                    certificateRefs:
+                      - kind: Secret
+                        name: homer-gateway-tls
+                  allowedRoutes:
+                    namespaces:
+                      from: All
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-gateway
