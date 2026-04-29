@@ -1,0 +1,12 @@
+apiVersion: v2
+name: gateway-api
+description: "Custom Helm wrapper for Kubernetes Gateway API CRDs (standard channel). No official Helm chart exists; CRDs are vendored directly from kubernetes-sigs/gateway-api release manifests."
+type: application
+version: 1.2.1
+appVersion: "1.2.1"
+keywords:
+  - gateway-api
+  - kubernetes
+  - crds
+sources:
+  - https://github.com/kubernetes-sigs/gateway-api
