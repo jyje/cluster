@@ -19,6 +19,16 @@ spec:
           model_list:
             # Text Models
             -
+              model_name: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+              litellm_params:
+                model: "nvidia_nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  chat_template_kwargs:
+                    enable_thinking: true
+                  reasoning_budget: 16384
+            -
               model_name: "deepseek-ai/deepseek-v4-pro"
               litellm_params:
                 model: "nvidia_nim/deepseek-ai/deepseek-v4-pro"
