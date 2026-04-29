@@ -1,10 +1,10 @@
 ---
-description: enroll a namespace into Istio Ambient Mesh by adding managedNamespaceMetadata to the representative ArgoCD Application
+description: enroll a namespace into Istio Ambient Mesh by adding an explicit Namespace resource with istio.io/dataplane-mode=ambient via extraResources in the representative ArgoCD Application
 ---
 
 # Ambient Namespace Enroll
 
-Enroll a Kubernetes namespace into Istio Ambient Mesh via GitOps by patching the **representative ArgoCD Application** for that namespace.
+Enroll a Kubernetes namespace into Istio Ambient Mesh via GitOps by declaring an explicit `Namespace` resource with the ambient label in the **representative ArgoCD Application**'s `extraResources`.
 
 ## Rule: Representative Application
 
@@ -17,17 +17,21 @@ If multiple apps deploy to the same namespace, choose the one that owns the name
 
 ## What to add
 
-Add `managedNamespaceMetadata` to the app's `syncPolicy`. The `CreateNamespace=true` syncOption **must already be present** for this to take effect.
+Add a `Namespace` resource under `valuesObject.extraResources` in the ArgoCD Application. This is fully GitOps-reproducible on any cluster state — no imperative steps required.
 
 ```yaml
-syncPolicy:
-  managedNamespaceMetadata:
-    labels:
-      istio.io/dataplane-mode: ambient
-  syncOptions:
-    - CreateNamespace=true   # must be present
-  automated: {}
+helm:
+  valuesObject:
+    extraResources:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: <target-namespace>
+          labels:
+            istio.io/dataplane-mode: ambient
 ```
+
+> **Prerequisite**: the chart must support `extraResources`. All vendored charts in this repo are patched by the `helm-extraresources-patcher` skill. Verify with `grep -n "extraResources" helm/<group>/<chart>/values.yaml`.
 
 ## Workflow
 
@@ -41,7 +45,7 @@ syncPolicy:
 
 3. **Read the file** before editing.
 
-4. **Patch `syncPolicy`**: add `managedNamespaceMetadata.labels` block directly above `syncOptions`.
+4. **Add `extraResources`** under `spec.source.helm.valuesObject` with the Namespace manifest.
 
 5. **Verify**: confirm `CreateNamespace=true` is present in the same `syncPolicy`.
 
@@ -51,6 +55,11 @@ Target namespace: `homer-system` → representative app: `clusters/r4spi/apps/ho
 
 Before:
 ```yaml
+helm:
+  valuesObject:
+    homer:
+      image:
+        tag: v25.11.1
 syncPolicy:
   syncOptions:
     - CreateNamespace=true
@@ -59,10 +68,19 @@ syncPolicy:
 
 After:
 ```yaml
+helm:
+  valuesObject:
+    homer:
+      image:
+        tag: v25.11.1
+    extraResources:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: homer-system
+          labels:
+            istio.io/dataplane-mode: ambient
 syncPolicy:
-  managedNamespaceMetadata:
-    labels:
-      istio.io/dataplane-mode: ambient
   syncOptions:
     - CreateNamespace=true
   automated: {}
@@ -70,6 +88,7 @@ syncPolicy:
 
 ## Notes
 
-- Do **not** create a separate `Namespace` resource for the label — `managedNamespaceMetadata` is the GitOps-native approach.
+- This approach works regardless of whether the namespace pre-exists or is newly created — no `kubectl annotate` required.
 - Do **not** apply this to supporting apps (databases, secrets managers) that share a namespace — only the representative app.
-- After committing, ArgoCD will apply the label on the next sync. No manual `kubectl label` needed.
+- If `automated.prune: true` is set on the app, deleting the app will also delete the Namespace and all its workloads. Keep `prune` unset or `false` if this is undesirable.
+- After committing, ArgoCD will reconcile the Namespace resource on the next sync and apply the label.

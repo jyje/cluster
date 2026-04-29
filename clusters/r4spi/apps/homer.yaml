@@ -37,14 +37,18 @@ spec:
         homer:
           image:
             repository: b4bz/homer
-            tag: v25.11.1              
+            tag: v25.11.1
+        extraResources:
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: homer-system
+              labels:
+                istio.io/dataplane-mode: ambient
   destination:
     namespace: homer-system
     server: 'https://kubernetes.default.svc'
   syncPolicy:
-    managedNamespaceMetadata:
-      labels:
-        istio.io/dataplane-mode: ambient
     syncOptions:
       - CreateNamespace=true
     automated: {}
