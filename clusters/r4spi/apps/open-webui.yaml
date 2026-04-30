@@ -23,6 +23,11 @@ spec:
         ollamaUrls:
           - http://ollama:11434
         replicaCount: 1
+        resources:
+          requests:
+            memory: 512Mi
+          limits:
+            memory: 1536Mi
         ingress:
           enabled: true
           class: nginx
