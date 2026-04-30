@@ -44,7 +44,7 @@ spec:
             ingressClassName: nginx
             tls: true
         repoServer:
-          replicas: 1
+          replicas: 2
         extraObjects:
           - apiVersion: argoproj.io/v1alpha1
             kind: AppProject
