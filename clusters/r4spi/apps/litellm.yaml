@@ -200,13 +200,21 @@ spec:
               instances: 3
               storage:
                 size: 1Gi
-              # optional: enable superuser access for migrations
               bootstrap:
                 initdb:
                   database: litellm
                   owner: litellm
                   secret:
                     name: litellm-creds
+              # Prevent repeated timeline divergence caused by CNPG's aggressive defaults:
+              # - wal_sender/receiver_timeout: 5s causes false failovers on K8s network blips
+              # - wal_keep_size: 512MB is too small for pg_rewind after multiple failovers
+              failoverDelay: 30
+              postgresql:
+                parameters:
+                  wal_sender_timeout: 60s
+                  wal_receiver_timeout: 60s
+                  wal_keep_size: 2048MB
   destination:
     namespace: ollama-system
     server: 'https://kubernetes.default.svc'
