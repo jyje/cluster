@@ -24,7 +24,7 @@ spec:
             argocdServerAdminPassword: "$2a$10$Fxz3iaT9JpTioBr8vPRvYONv5kRrdxfX1KHck46ueCPMl.Qmr.Rhq"
             argocdServerAdminPasswordMtime: "2025-10-07T07:31:00Z"
         controller:
-          replicas: 1
+          replicas: 2
           metrics:
             enabled: true
         dex:
