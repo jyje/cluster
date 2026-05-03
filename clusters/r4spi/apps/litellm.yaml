@@ -115,6 +115,7 @@ spec:
                 model: "openai/qwen/qwen-image"
                 api_base: "https://ai.api.nvidia.com/v1/genai"
                 api_key: "os.environ/NIM_API_KEY"
+                drop_params: true
                 extra_body:
                   steps: 30
                   cfg_scale: 4.0
