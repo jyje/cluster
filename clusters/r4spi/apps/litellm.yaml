@@ -302,10 +302,10 @@ spec:
                         cfg_scale = float(body.get("cfg_scale", 1.0))
                         seed = int(body.get("seed", 0))
                         w, h = parse_size(size)
-                        nim_payload = {"prompt": prompt, "width": w, "height": h,
+                        nim_payload = {"prompt": prompt[:800], "width": w, "height": h,
                                        "steps": steps, "cfg_scale": cfg_scale, "seed": seed}
                         if body.get("negative_prompt"):
-                            nim_payload["negative_prompt"] = body["negative_prompt"]
+                            nim_payload["negative_prompt"] = str(body["negative_prompt"])[:500]
                         resp = call_nim(model, nim_payload, auth)
                         if not resp.ok:
                             return JSONResponse(status_code=resp.status_code,
@@ -331,12 +331,12 @@ spec:
                         cfg_scale = float(body.get("cfg_scale", 1.0))
                         seed = int(body.get("seed", 0))
                         w, h = parse_size(size)
-                        nim_payload = {"prompt": prompt, "width": w, "height": h,
+                        nim_payload = {"prompt": prompt[:800], "width": w, "height": h,
                                        "steps": steps, "cfg_scale": cfg_scale, "seed": seed}
                         if image:
                             nim_payload["image"] = image if isinstance(image, list) else [image]
                         if body.get("negative_prompt"):
-                            nim_payload["negative_prompt"] = body["negative_prompt"]
+                            nim_payload["negative_prompt"] = str(body["negative_prompt"])[:500]
                         resp = call_nim(model, nim_payload, auth)
                         if not resp.ok:
                             return JSONResponse(status_code=resp.status_code,
