@@ -114,7 +114,7 @@ spec:
               litellm_params:
                 model: "openai/qwen/qwen-image"
                 api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
+                api_key: "os.environ/NIM_API_IMAGE_KEY"
                 drop_params: true
                 extra_body:
                   steps: 30
@@ -126,7 +126,7 @@ spec:
               litellm_params:
                 model: "openai/black-forest-labs/flux.2-klein-4b"
                 api_base: "https://ai.api.nvidia.com/v1/genai"
-                api_key: "os.environ/NIM_API_KEY"
+                api_key: "os.environ/NIM_API_IMAGE_KEY"
               model_info:
                 type: "image_generation"
 
@@ -192,6 +192,11 @@ spec:
               secretKeyRef:
                 name: litellm-creds
                 key: nim.api.key
+          - name: NIM_API_IMAGE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: nim.api.image-key
           - name: OPENAI_API_KEY
             valueFrom:
               secretKeyRef:
