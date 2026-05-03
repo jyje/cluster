@@ -113,7 +113,7 @@ spec:
               model_name: "qwen/qwen-image"
               litellm_params:
                 model: "openai/qwen/qwen-image"
-                api_base: "https://ai.api.nvidia.com/v1/genai"
+                api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
                 drop_params: true
                 extra_body:
