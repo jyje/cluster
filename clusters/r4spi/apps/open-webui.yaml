@@ -111,6 +111,19 @@ spec:
               secretKeyRef:
                 name: openwebui-creds
                 key: owui.secret-key
+          - name: ENABLE_IMAGE_GENERATION
+            value: "true"
+          - name: IMAGE_GENERATION_ENGINE
+            value: "openai"
+          - name: IMAGES_OPENAI_API_BASE_URL
+            value: "http://litellm:4000/v1"
+          - name: IMAGES_OPENAI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: litellm.masterkey
+          - name: IMAGE_GENERATION_MODEL
+            value: "qwen/qwen-image"
           - name: SCARF_NO_ANALYTICS
             value: "true"
           - name: DO_NOT_TRACK
