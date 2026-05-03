@@ -19,43 +19,15 @@ spec:
           model_list:
             # Text Models
             -
-              model_name: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
-              litellm_params:
-                model: "nvidia_nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-                extra_body:
-                  chat_template_kwargs:
-                    enable_thinking: true
-                  reasoning_budget: 16384
-            -
-              model_name: "deepseek-ai/deepseek-v4-pro"
-              litellm_params:
-                model: "nvidia_nim/deepseek-ai/deepseek-v4-pro"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
               model_name: "deepseek-ai/deepseek-v4-flash"
               litellm_params:
                 model: "nvidia_nim/deepseek-ai/deepseek-v4-flash"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
-              model_name: "qwen/qwen3.5-122b-a10b"
+              model_name: "deepseek-ai/deepseek-v4-pro"
               litellm_params:
-                model: "nvidia_nim/qwen/qwen3.5-122b-a10b"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "minimaxai/minimax-m2.7"
-              litellm_params:
-                model: "nvidia_nim/minimaxai/minimax-m2.7"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "z-ai/glm-5.1"
-              litellm_params:
-                model: "nvidia_nim/z-ai/glm-5.1"
+                model: "nvidia_nim/deepseek-ai/deepseek-v4-pro"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
@@ -65,9 +37,9 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
-              model_name: "nvidia/nemotron-3-super-120b-a12b"
+              model_name: "minimaxai/minimax-m2.7"
               litellm_params:
-                model: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
+                model: "nvidia_nim/minimaxai/minimax-m2.7"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
@@ -79,6 +51,22 @@ spec:
                 extra_body:
                   reasoning_effort: "high"
             -
+              model_name: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+              litellm_params:
+                model: "nvidia_nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  chat_template_kwargs:
+                    enable_thinking: true
+                  reasoning_budget: 16384
+            -
+              model_name: "nvidia/nemotron-3-super-120b-a12b"
+              litellm_params:
+                model: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
               model_name: "openai/gpt-oss-120b"
               litellm_params:
                 model: "nvidia_nim/openai/gpt-oss-120b"
@@ -88,6 +76,18 @@ spec:
               model_name: "openai/gpt-oss-20b"
               litellm_params:
                 model: "nvidia_nim/openai/gpt-oss-20b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "qwen/qwen3.5-122b-a10b"
+              litellm_params:
+                model: "nvidia_nim/qwen/qwen3.5-122b-a10b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "z-ai/glm-5.1"
+              litellm_params:
+                model: "nvidia_nim/z-ai/glm-5.1"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
 
