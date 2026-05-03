@@ -119,6 +119,7 @@ spec:
                 extra_body:
                   steps: 30
                   cfg_scale: 4.0
+                  size: "1024x1024"
               model_info:
                 type: "image_generation"
             -
@@ -131,6 +132,7 @@ spec:
                 extra_body:
                   steps: 30
                   cfg_scale: 4.0
+                  size: "1024x1024"
               model_info:
                 type: "image_generation"
             -
