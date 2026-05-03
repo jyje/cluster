@@ -139,8 +139,13 @@ spec:
               model_name: "black-forest-labs/flux.2-klein-4b"
               litellm_params:
                 model: "openai/black-forest-labs/flux.2-klein-4b"
-                api_base: "https://ai.api.nvidia.com/v1/genai"
+                api_base: "http://nvidia-genai-adapter.ollama-system:8080/v1"
                 api_key: "os.environ/NIM_API_IMAGE_KEY"
+                drop_params: true
+                extra_body:
+                  steps: 30
+                  cfg_scale: 4.0
+                  size: "1024x1024"
               model_info:
                 type: "image_generation"
 
@@ -239,6 +244,153 @@ spec:
                 metadata:
                   name: litellm-creds
                 type: Opaque
+
+          # NVIDIA GenAI → OpenAI adapter for non-OpenAI-compatible image models (e.g. flux.2-klein-4b)
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: nvidia-genai-adapter
+              namespace: ollama-system
+            data:
+              adapter.py: |
+                import time
+                import requests
+                from fastapi import FastAPI, Request
+                from fastapi.responses import JSONResponse
+
+                app = FastAPI()
+                GENAI_BASE = "https://ai.api.nvidia.com/v1/genai"
+
+                def parse_size(size: str):
+                    try:
+                        w, h = size.split("x")
+                        return int(w), int(h)
+                    except Exception:
+                        return 1024, 1024
+
+                @app.post("/v1/images/generations")
+                async def image_generation(request: Request):
+                    auth = request.headers.get("Authorization", "")
+                    body = await request.json()
+                    model = body.get("model", "black-forest-labs/flux.2-klein-4b")
+                    prompt = body.get("prompt", "")
+                    size = body.get("size", "1024x1024")
+                    steps = body.get("steps", 30)
+                    cfg_scale = body.get("cfg_scale", 4.0)
+                    negative_prompt = body.get("negative_prompt")
+                    seed = body.get("seed", 0)
+                    w, h = parse_size(size)
+                    nim_payload = {
+                        "prompt": prompt, "width": w, "height": h,
+                        "steps": steps, "cfg_scale": cfg_scale, "seed": seed,
+                    }
+                    if negative_prompt:
+                        nim_payload["negative_prompt"] = negative_prompt
+                    resp = requests.post(
+                        f"{GENAI_BASE}/{model}",
+                        headers={"Authorization": auth, "Content-Type": "application/json",
+                                 "Accept": "application/json"},
+                        json=nim_payload, timeout=120,
+                    )
+                    if not resp.ok:
+                        return JSONResponse(status_code=resp.status_code,
+                            content={"error": {"message": resp.text[:500], "type": "upstream_error"}})
+                    artifacts = resp.json().get("artifacts", [])
+                    return {"created": int(time.time()),
+                            "data": [{"b64_json": a["base64"]} for a in artifacts]}
+
+                @app.post("/v1/images/edits")
+                async def image_edit(request: Request):
+                    auth = request.headers.get("Authorization", "")
+                    body = await request.json()
+                    model = body.get("model", "black-forest-labs/flux.2-klein-4b")
+                    prompt = body.get("prompt", "")
+                    image = body.get("image")
+                    size = body.get("size", "1024x1024")
+                    steps = body.get("steps", 30)
+                    cfg_scale = body.get("cfg_scale", 4.0)
+                    negative_prompt = body.get("negative_prompt")
+                    seed = body.get("seed", 0)
+                    w, h = parse_size(size)
+                    nim_payload = {
+                        "prompt": prompt, "width": w, "height": h,
+                        "steps": steps, "cfg_scale": cfg_scale, "seed": seed,
+                    }
+                    if image:
+                        nim_payload["image"] = image if isinstance(image, list) else [image]
+                    if negative_prompt:
+                        nim_payload["negative_prompt"] = negative_prompt
+                    resp = requests.post(
+                        f"{GENAI_BASE}/{model}",
+                        headers={"Authorization": auth, "Content-Type": "application/json",
+                                 "Accept": "application/json"},
+                        json=nim_payload, timeout=120,
+                    )
+                    if not resp.ok:
+                        return JSONResponse(status_code=resp.status_code,
+                            content={"error": {"message": resp.text[:500], "type": "upstream_error"}})
+                    artifacts = resp.json().get("artifacts", [])
+                    return {"created": int(time.time()),
+                            "data": [{"b64_json": a["base64"]} for a in artifacts]}
+
+                @app.get("/health")
+                async def health():
+                    return {"status": "ok"}
+
+          - apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: nvidia-genai-adapter
+              namespace: ollama-system
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: nvidia-genai-adapter
+              template:
+                metadata:
+                  labels:
+                    app: nvidia-genai-adapter
+                spec:
+                  volumes:
+                    - name: script
+                      configMap:
+                        name: nvidia-genai-adapter
+                  containers:
+                    - name: adapter
+                      image: python:3.11-slim
+                      command: ["/bin/sh", "-c"]
+                      args:
+                        - pip install fastapi uvicorn requests -q && uvicorn adapter:app --host 0.0.0.0 --port 8080
+                      workingDir: /app
+                      volumeMounts:
+                        - name: script
+                          mountPath: /app
+                      ports:
+                        - containerPort: 8080
+                      resources:
+                        requests:
+                          memory: 64Mi
+                        limits:
+                          memory: 256Mi
+                      readinessProbe:
+                        httpGet:
+                          path: /health
+                          port: 8080
+                        initialDelaySeconds: 15
+                        periodSeconds: 10
+
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: nvidia-genai-adapter
+              namespace: ollama-system
+            spec:
+              selector:
+                app: nvidia-genai-adapter
+              ports:
+                - port: 8080
+                  targetPort: 8080
 
           # CloudNativePG PostgreSQL cluster for Litellm
           - apiVersion: postgresql.cnpg.io/v1
