@@ -43,6 +43,14 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
+              model_name: "mistralai/mistral-medium-3.5-128b"
+              litellm_params:
+                model: "nvidia_nim/mistralai/mistral-medium-3.5-128b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  reasoning_effort: "high"
+            -
               model_name: "mistralai/mistral-small-4-119b-2603"
               litellm_params:
                 model: "nvidia_nim/mistralai/mistral-small-4-119b-2603"
@@ -50,6 +58,15 @@ spec:
                 api_key: "os.environ/NIM_API_KEY"
                 extra_body:
                   reasoning_effort: "high"
+            -
+              model_name: "moonshotai/kimi-k2.6"
+              litellm_params:
+                model: "nvidia_nim/moonshotai/kimi-k2.6"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  chat_template_kwargs:
+                    thinking: true
             -
               model_name: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
               litellm_params:
