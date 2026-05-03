@@ -110,6 +110,18 @@ spec:
 
             # Image Models
             -
+              model_name: "qwen/qwen-image-edit"
+              litellm_params:
+                model: "openai/qwen/qwen-image-edit"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_IMAGE_KEY"
+                drop_params: true
+                extra_body:
+                  steps: 30
+                  cfg_scale: 4.0
+              model_info:
+                type: "image_generation"
+            -
               model_name: "qwen/qwen-image"
               litellm_params:
                 model: "openai/qwen/qwen-image"
