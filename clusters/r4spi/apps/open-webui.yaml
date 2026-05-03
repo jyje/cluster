@@ -22,7 +22,7 @@ spec:
         enableOpenaiApi: true
         ollamaUrls:
           - http://ollama:11434
-        replicaCount: 0
+        replicaCount: 1
         resources:
           requests:
             memory: 512Mi
