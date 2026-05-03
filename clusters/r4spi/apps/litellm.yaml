@@ -143,8 +143,8 @@ spec:
                 api_key: "os.environ/NIM_API_IMAGE_KEY"
                 drop_params: true
                 extra_body:
-                  steps: 30
-                  cfg_scale: 4.0
+                  steps: 4
+                  cfg_scale: 1.0
                   size: "1024x1024"
               model_info:
                 type: "image_generation"
@@ -298,8 +298,8 @@ spec:
                         model = body.get("model", "black-forest-labs/flux.2-klein-4b")
                         prompt = body.get("prompt", "")
                         size = body.get("size", "1024x1024")
-                        steps = int(body.get("steps", 30))
-                        cfg_scale = float(body.get("cfg_scale", 4.0))
+                        steps = int(body.get("steps", 4))
+                        cfg_scale = float(body.get("cfg_scale", 1.0))
                         seed = int(body.get("seed", 0))
                         w, h = parse_size(size)
                         nim_payload = {"prompt": prompt, "width": w, "height": h,
@@ -327,8 +327,8 @@ spec:
                         prompt = body.get("prompt", "")
                         image = body.get("image")
                         size = body.get("size", "1024x1024")
-                        steps = int(body.get("steps", 30))
-                        cfg_scale = float(body.get("cfg_scale", 4.0))
+                        steps = int(body.get("steps", 4))
+                        cfg_scale = float(body.get("cfg_scale", 1.0))
                         seed = int(body.get("seed", 0))
                         w, h = parse_size(size)
                         nim_payload = {"prompt": prompt, "width": w, "height": h,
