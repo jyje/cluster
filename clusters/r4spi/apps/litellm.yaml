@@ -110,6 +110,17 @@ spec:
 
             # Image Models
             -
+              model_name: "qwen/qwen-image"
+              litellm_params:
+                model: "openai/qwen/qwen-image"
+                api_base: "https://ai.api.nvidia.com/v1/genai"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  steps: 30
+                  cfg_scale: 4.0
+              model_info:
+                type: "image_generation"
+            -
               model_name: "black-forest-labs/flux.2-klein-4b"
               litellm_params:
                 model: "openai/black-forest-labs/flux.2-klein-4b"
