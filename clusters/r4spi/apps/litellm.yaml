@@ -102,6 +102,12 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
+              model_name: "stepfun-ai/step-3.7-flash"
+              litellm_params:
+                model: "nvidia_nim/stepfun-ai/step-3.7-flash"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
               model_name: "z-ai/glm-5.1"
               litellm_params:
                 model: "nvidia_nim/z-ai/glm-5.1"
