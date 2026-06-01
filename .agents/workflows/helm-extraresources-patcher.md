@@ -30,27 +30,41 @@ If a chart has NO mechanism for injecting extra external resources:
 ### A. Add template file
 Create `<chart-dir>/templates/extra-resources.yaml` with the following content:
 ```yaml
-{{- if .Values.extraResources }}
 {{- range .Values.extraResources }}
 ---
-{{ toYaml . | nindent 0 }}
+{{- if typeIs "string" . }}
+  {{- tpl . $ }}
+{{- else }}
+  {{- tpl (toYaml .) $ }}
 {{- end }}
 {{- end }}
 ```
+
+Each item is rendered through `tpl`, so Helm template expressions (e.g. `{{ .Release.Namespace }}`) inside `extraResources` values are evaluated at render time. Both object and raw string formats are supported (see values.yaml below).
 
 ### B. Update values.yaml
 Append the `extraResources: []` definition at the end of `<chart-dir>/values.yaml`:
 ```yaml
 
-# -- Extra resources to deploy with the chart
+# -- Extra resources to deploy with the chart.
+# Supports both object and string (multiline) formats. Helm template expressions are evaluated.
 extraResources: []
-# - apiVersion: v1
-#   kind: ConfigMap
-#   metadata:
-#     name: example-configmap
-#   data:
-#     example-key: example-value
-
+  # Object format:
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"
+  #   data:
+  #     example-key: example-value
+  #
+  # String format (multiline):
+  # - |
+  #   apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"
 ```
 
 ### C. Update values.schema.json (Optional)
@@ -58,7 +72,12 @@ If `<chart-dir>/values.schema.json` exists, you MUST add `extraResources` to the
 ```json
         "extraResources": {
             "type": "array",
-            "items": { "type": "object" }
+            "items": {
+                "oneOf": [
+                    { "type": "string" },
+                    { "type": "object" }
+                ]
+            }
         }
 ```
 If `additionalProperties` is set to `false` at the root, ensure this field is included to avoid validation errors.
@@ -67,9 +86,14 @@ If `additionalProperties` is set to `false` at the root, ensure this field is in
 
 1. **Verify template rendering**:
    Run `helm template .` in the patched directory to ensure it doesn't break basic rendering.
-   
-2. **Test injection**:
-   Verify functionality by setting a test resource:
+
+2. **Test object format**:
    ```bash
    helm template . --set "extraResources[0].apiVersion=v1,extraResources[0].kind=ConfigMap,extraResources[0].metadata.name=test"
    ```
+
+3. **Test string format with Helm expression**:
+   ```bash
+   helm template . --set-string 'extraResources[0]=apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n  namespace: "{{ .Release.Namespace }}"'
+   ```
+   Confirm that `{{ .Release.Namespace }}` is rendered as the actual namespace, not left as a literal string.
