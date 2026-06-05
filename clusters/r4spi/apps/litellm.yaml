@@ -89,10 +89,6 @@ spec:
                 model: "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-                extra_body:
-                  chat_template_kwargs:
-                    enable_thinking: true
-                  reasoning_budget: 16384
             -
               model_name: "openai/gpt-oss-120b"
               litellm_params:
