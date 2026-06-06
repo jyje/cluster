@@ -12,6 +12,32 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
+        replicaCount: 2
+
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 0
+            maxSurge: 1
+
+        deploymentMinReadySeconds: 15
+
+        startupProbe:
+          path: /health/readiness
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 18
+
+        readinessProbe:
+          path: /health/readiness
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
         image:
           repository: ghcr.io/berriai/litellm
           tag: v1.83.7-stable.patch.1
