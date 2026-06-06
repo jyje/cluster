@@ -5,6 +5,8 @@ description: Pull a Helm chart from a repo (or OCI) at a specific version and sa
 
 # Helm Chart Vendor
 
+> **Language:** Always communicate with the user in their language. If the user writes in Korean, respond in Korean; if in English, respond in English.
+
 Pull a Helm chart from an external repo (or OCI) at a specific version and store it under **`helm/<group>/<chart-name>-<version>/`**. Used to pin versions for reproducible deployments.
 
 ## Group folder
@@ -53,6 +55,55 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
 
 6. **Patch for extraResources**
    Immediately after placing the chart, execute the `helm-extraresources-patcher` skill on the new chart directory to ensure it supports custom resource injection.
+
+7. **Diff values.yaml and confirm with user (upgrade only)**
+   When upgrading from a previous version (old chart dir exists), compare `values.yaml` between the two versions and present a structured report **before** touching any ArgoCD Application manifest.
+
+   ### 7a. Diff command
+   Compare meaningful lines (strip comments and blanks for signal-to-noise):
+   ```bash
+   diff <(grep -v "^#\|^$" helm/<group>/<old-chart>/values.yaml) \
+        <(grep -v "^#\|^$" helm/<group>/<new-chart>/values.yaml)
+   ```
+   Also diff `Chart.yaml` for dependency version changes.
+
+   ### 7b. Categorize changes
+   Classify every diff line into one of these categories:
+
+   | Category | What it means | Action |
+   |----------|--------------|--------|
+   | **Removed field** | Key existed in old, gone in new | Check if ArgoCD app sets this key — if yes, flag as ⚠️ breaking |
+   | **Default changed** | Key exists in both, value differs | Note old→new; check if our override supersedes it |
+   | **New field** | Key added in new chart | Note with its default; usually safe |
+   | **Dependency bump** | `charts/` subchart version changed | Note version delta; rarely breaking |
+
+   ### 7c. Cross-reference with ArgoCD Application overrides
+   Read the relevant `clusters/*/apps/<app>.yaml` and extract all keys under `valuesObject`. For each changed or removed field, determine:
+   - **Overridden by us** → our value takes precedence, upstream default change is irrelevant
+   - **Not overridden** → upstream default change applies to our deployment
+
+   ### 7d. Present report and ask for confirmation
+   Present a concise table to the user **before** editing any ArgoCD manifest:
+
+   ```
+   ## Chart upgrade: <app> <old-version> → <new-version>
+
+   ### ⚠️ Removed fields
+   | Field | Our override? | Impact |
+   ...
+
+   ### 🔄 Default changes
+   | Field | Old default | New default | Our override | Impact |
+   ...
+
+   ### ✨ New fields
+   | Field | Default | Notes |
+   ...
+   ```
+
+   Then ask the user to confirm they have reviewed the changes and whether to proceed with updating the ArgoCD Application manifest.
+
+   Do **not** proceed to update the ArgoCD Application manifest until the user explicitly confirms.
 
 ## Convention summary
 
