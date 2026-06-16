@@ -69,6 +69,12 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
+              model_name: "minimaxai/minimax-m3"
+              litellm_params:
+                model: "nvidia_nim/minimaxai/minimax-m3"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
               model_name: "mistralai/mistral-small-4-119b-2603"
               litellm_params:
                 model: "nvidia_nim/mistralai/mistral-small-4-119b-2603"
