@@ -16,7 +16,7 @@ spec:
           # ("litellm") is the provider id referenced by model.provider below.
           providers:
             litellm:
-              base_url: '${OPENAI_BASE_URL}'
+              base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
               key_env: 'OPENAI_API_KEY'    # env var that holds the proxy key
               discover_models: true        # populate the model picker from /v1/models
           model:
@@ -38,11 +38,9 @@ spec:
                 DISCORD_BOT_TOKEN: AgBLv6wYAwb4BS9C6V/f83q4JJBY3ki2lGQmB+f8ZtUK1wB5nvk4UdWU/p0f5FH/TlNODb3menW0aSo1LYbCOCVkauyRKxT9f5YsBfwvn2p2cL4+szLxYu4RQj+y9D6VTz08uN68AspYe78vm8lDhRhLRdTW6zuAYZXTcgtAGb6UQ21svrTT7GLwEVVrJemBuq1YKVLD+61qYVbc5xsjSebCjEzYS1n9W+GFS5bVX6XWSRw9ymM56g5ALLPxXVp8r7Z2wLV6rzKWk4dLk0CNLyW16w5MA86n7pXm7stBRAuueWXRYnQr9gyxsHGtmW74KTn/iKaUFFJF997VTTEHffuZF5fxVHvEml+p57J3qYX2WyiRDKZhembj93jUmLQ9cgYgymfZBOhFX0N8ZBQ9tM6QEGXABczA2FQdyHVF+19Cgi5vTaLDql9fdF0NeNuJ3YqES7WK2Mr8KITZM2lASw7CDOCcs0ZfqquLYG+LUJPJ45oJ1y6sqoopokGovf2trdXSi2vNXqMae4l8Qhk0npUI23YvHGK3EcLHGFJhpcpmnDzdz20SkJrfXKDDBwtYlSq9010avjQrMi6HVlCA4jWYKPlQJoNFW32dcuTgNnoxvUKn90v+N/l5QnIUmD/2yDckVWC64ifE6ddLkCOQClOWqMBYDNkIrba7EzwPYGPXCK8FxK7m1kZeoOJw6PoABDfRbpqQ5zYa5wK4aw73M4JKXAjCPEVjPqPeHi2FOFmirjJqJ+DamQj3dTqwmoS9QOFiXL8mI3ccQfWekYfq1Z/K3BEGtm+94OY=
                 DISCORD_HOME_CHANNEL: AgCQhD8TA2EaoQchXL+cElnhoMgGuQBjfUkQvBOqbYGIfDo5/MdNO4bUBFjWuaui08lfEWY/e0evWpOYVOxA4KhbfX7ZCXaEWg9dK0hO7l/XBDVcbzGiT6U0yL/t6nyjF97y3Rz4JkJ2WwCqTiZQJ+g0WLggEWk0Jkj0+qT4J1IsGpjOoMYHo1LGSOQ1avLkSF72mUi+mJbbuArWuiScBUr9vIym3VC4+DAtjhFfcbH+mkJkEZvSKoLcNOP6mqUHN3YwOCpWZwEuNpfdcRVposM9okB93lozHTbS1X8vWjwUpK/ZV7sz0LIeiOVjqxnpt6u2JYeQpq5dITTkI7VhRud/wQTLZx2X53yOyEh8XjB8bplwrXB/yzKsv30oChNl6jIIU8TGug8WRrteoqPAfXNSWC7ZTMIHqnuDf6pCpzI7JsVjkoe/twW3AGHOOUNPIQBFlRliDGztJYMn7NJQnM1dSg4nHQE+YoV/gYdpeWK0pEuDnydhuUm5DbVYpYy3+5ULzkwowTontfQ8MiYh80uFSRCpB7mgSk3J2x6TJKGT0Y8xmhcqrmqEMJNKKG0jQpKpboRNWOCW7rCfVFSl5jelhJWxaU+dOk7X7edEZ/isE5E0OqUS8FpGgSTJdNrNOXA0GiUeTX5dZJiZLsfx083YH9gvIrYMXfWwK8xq5Et5nKlWkqEYIPUQjURAtIoq7AKoPQGOw5lqUJUi4EQgI5v0POFr
                 OPENAI_API_KEY: AgB+9G7NCwQCGrYg6JcvR1aF3nyj3OGbLpZ0jsENi4pUDzB/NZhecPCEILgHNvT0NrFxojJJeP2CSujLzZkIm8lJ7ogAB6uHNpnZ5cp1OWquFrBqcR+O+q29niyOMazmvg70NYFaL7VUFJmoCjdU21rn2fpC7QQWPaCLy5qpTJmFIzf/LWhSEpOz2Vd+Yg3QLLg/iMmnw8usDPUgW966HMDEN1tOW4poOdQ3HyVO50vOVsePqrjSjVmrM5Q23THl2n8XXk4mV9bhor0iygzZv6loMONvAvCD3WTbogQCJbgzwPx/n7t2z/VHhxz5gXYlvBZYSAWu2AwUgXTPfTn0uwnbZwc2mpRq3JZkQCHfMnyyiSulBWBN10hJwA5YfCtb8bPXX3waFAa0ml2dbKpXzjE22MU6hsnE1wGBRJYKKpoqjRbqOZ5VLJq9neta4BoZSnM/B9sUO4gT3vAkW3R8bEeqARawhXB59IolXa2b5CqoPQQwIPcGkcvrnZwsF2pyYRNvzhB3GHQN38JBoWd+TvboMC4Rs9nXseZYODRg8by0NGDQasLui7lD+IBeqSK9x5QLtc6n2LN9VzaesOGXfRICB+gaxf1cbqBXzFlGFM/McR72HwA7IMtRTT1/8GMGx3JTGhTERPKgw02EYBNS++JOWPxRmnQ0SPZ+cTQr/88MO8LVTTGJItaJFJ652r8ltUV46GYqKNVDT7aRD3W8AkpcUsA=
-                OPENAI_BASE_URL: AgDkY/x2sVsgHQBX7GJsrp5JKfn3ggL90k75TpdjrnyefsBJnqqvlo5QaG3cD12jasgsFAJesPQNQdpOv9GKoXd31R78g3cQGlKXlLNA3jmoKjUGnbWk3fOCh/6Z6o3+CFbU/5r6LyDvzLfe7WvoRFYfiN5auNJ8fPxFWWv/IRZAdB0e0vQeUdzLBLaKE3+WPbxiD1tCBkTkrBH1v4ykslE17kzVTdUHNWq5ooQX3DydDQiwaXY4YECH+WIzt/dnQu+PWxwDtHjc/+hw7BGhV8HjJdsic0SzJAUtOes1S/y64Lb3fjfpxi8z2EkJ+8G+yvgp8RAtjQjqzzoARz9DlF7gV3CEqy1rroXIEtAnn3sxkLSoZiCXZ4IiHFyqX3QnyRebGrGD511iReLZtXfEVtNK9s412smzU5aEpuyrgHLyC/kDQyQxKM0CJxmimhdrHuKsbiC22KdQBYhoqaYIsEwqwBCclBIuvoMDEmjZro5VTuakyHPa2E9M9468pQSrm7G6a5UCZqVBjHPELTaL34d89WMwEe16qsdLOHHoDG6ELrSRCpblOrgGcvvK4y6FZ4IRXDrijN+PapZqlX+0A0jn7UfEN03LkUkblZLQcqIu7XHtU9B16xrlZ32W2KUo5hkUTpPjTrMuSGSG6wxh5kS/N+sjwTRyvsuNa8r8CPBo0qJ8xRmtozCyGiuJ+AuUZkSqNP64Z0MFOISXMpv8BLo5Qrt4A5y3qQ==
               template:
                 metadata:
                   name: hermes-agent-creds
-                  namespace: hermes-agent
                 type: Opaque
   destination:
     server: https://kubernetes.default.svc
