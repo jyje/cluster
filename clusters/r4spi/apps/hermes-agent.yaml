@@ -25,6 +25,8 @@ spec:
             default: openai/gpt-oss-120b
           terminal:
             backend: local
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
         extraEnvFrom:
           - secretRef:
               name: hermes-agent-creds
