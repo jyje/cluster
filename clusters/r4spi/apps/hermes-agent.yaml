@@ -22,7 +22,7 @@ spec:
           model:
             provider: litellm
             # Must match a model name exposed by the proxy (see /v1/models).
-            default: nvidia/nemotron-3-ultra-550b-a55b
+            default: openai/gpt-oss-120b
           terminal:
             backend: local
         extraEnvFrom:
