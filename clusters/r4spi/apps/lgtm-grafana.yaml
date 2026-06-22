@@ -17,6 +17,18 @@ spec:
         deploymentStrategy:
           type: Recreate
 
+        # First-boot DB migration against the new CNPG-backed database can take
+        # longer than the chart's default 160s liveness budget (60s delay + 10x10s)
+        # on RPi hardware, especially while the CNPG cluster itself is still
+        # settling. Extend to a 300s budget; this chart has no startupProbe
+        # support for the main container, so the liveness probe carries it.
+        livenessProbe:
+          failureThreshold: 24
+
+        # Default readiness timeout (1s) can flap under DB/CPU load; raise it.
+        readinessProbe:
+          timeoutSeconds: 5
+
         envValueFrom:
           GF_DATABASE_USER:
             secretKeyRef:
