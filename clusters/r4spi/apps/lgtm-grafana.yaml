@@ -29,6 +29,12 @@ spec:
         readinessProbe:
           timeoutSeconds: 5
 
+        # Disable the chart's auto-generated random admin account. A custom
+        # admin account provisioned via a SealedSecret (admin.existingSecret)
+        # will be set up separately — see desktop guide.
+        env:
+          GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
+
         envValueFrom:
           GF_DATABASE_USER:
             secretKeyRef:
