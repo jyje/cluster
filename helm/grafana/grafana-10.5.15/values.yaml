@@ -1705,3 +1705,23 @@ extraObjects: []
 # Alternatively, if you wish to allow secret values to be exposed in the rendered grafana.ini configmap,
 # you can disable this check by setting assertNoLeakedSecrets to false.
 assertNoLeakedSecrets: true
+
+# -- Extra resources to deploy with the chart.
+# Supports both object and string (multiline) formats. Helm template expressions are evaluated.
+extraResources: []
+  # Object format:
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"
+  #   data:
+  #     example-key: example-value
+  #
+  # String format (multiline):
+  # - |
+  #   apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"

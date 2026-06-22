@@ -30,6 +30,10 @@ spec:
                   prefix: loki_index_
                   period: 24h
 
+        sidecar:
+          rules:
+            enabled: false
+
         singleBinary:
           replicas: 1
           persistence:
