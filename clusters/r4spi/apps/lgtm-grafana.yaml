@@ -14,6 +14,26 @@ spec:
       valuesObject:
         replicas: 1
 
+        deploymentStrategy:
+          type: Recreate
+
+        envValueFrom:
+          GF_DATABASE_USER:
+            secretKeyRef:
+              name: grafana-pg-app
+              key: username
+          GF_DATABASE_PASSWORD:
+            secretKeyRef:
+              name: grafana-pg-app
+              key: password
+
+        grafana.ini:
+          database:
+            type: postgres
+            host: grafana-pg-rw.observability:5432
+            name: grafana
+            ssl_mode: require
+
         ingress:
           enabled: true
           ingressClassName: nginx
@@ -89,6 +109,26 @@ spec:
               gnetId: 1860
               revision: 37
               datasource: Prometheus
+
+        extraResources:
+          - apiVersion: postgresql.cnpg.io/v1
+            kind: Cluster
+            metadata:
+              name: grafana-pg
+            spec:
+              instances: 3
+              storage:
+                size: 2Gi
+              bootstrap:
+                initdb:
+                  database: grafana
+                  owner: grafana
+              failoverDelay: 30
+              postgresql:
+                parameters:
+                  wal_sender_timeout: 60s
+                  wal_receiver_timeout: 60s
+                  wal_keep_size: 2048MB
 
   destination:
     server: https://kubernetes.default.svc
