@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/grafana/grafana-10.5.15
+    helm:
+      valuesObject:
+        replicas: 1
+
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            nginx.ingress.kubernetes.io/configuration-snippet: |
+              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+          hosts:
+            - grafana.app.jyje.online
+          tls:
+            - secretName: grafana.app.jyje.online
+              hosts:
+                - grafana.app.jyje.online
+
+        persistence:
+          enabled: true
+          storageClassName: subdir-usb
+          size: 5Gi
+
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Prometheus
+                type: prometheus
+                uid: prometheus
+                url: http://prometheus-kube-prometheus-stack-prometheus.observability:9090
+                isDefault: true
+                jsonData:
+                  timeInterval: 30s
+              - name: Loki
+                type: loki
+                uid: loki
+                url: http://loki.observability:3100
+                jsonData:
+                  maxLines: 1000
+              - name: Tempo
+                type: tempo
+                uid: tempo
+                url: http://tempo-distributed.observability:3100
+                jsonData:
+                  tracesToLogsV2:
+                    datasourceUid: loki
+                  tracesToMetrics:
+                    datasourceUid: prometheus
+                  serviceMap:
+                    datasourceUid: prometheus
+
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: default
+                orgId: 1
+                folder: ""
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+
+        dashboards:
+          default:
+            kubernetes-cluster:
+              gnetId: 7249
+              revision: 1
+              datasource: Prometheus
+            node-exporter:
+              gnetId: 1860
+              revision: 37
+              datasource: Prometheus
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

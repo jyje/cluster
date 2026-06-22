@@ -25,6 +25,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | cert-manager | jetstack | https://charts.jetstack.io |
 | cert-manager | adfinis | https://charts.adfinis.com |
 | cnpg | cnpg | https://cloudnative-pg.github.io/charts |
+| grafana | grafana | https://grafana.github.io/helm-charts |
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
 | ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
@@ -32,6 +33,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | litellm | berriai | oci://docker.litellm.ai/berriai/litellm-helm |
 | longhorn | longhorn | https://charts.longhorn.io |
 | metrics-server | metrics-server | https://kubernetes-sigs.github.io/metrics-server |
+| prometheus | prometheus-community | https://prometheus-community.github.io/helm-charts |
 | milvus | milvus | https://zilliztech.github.io/milvus-helm/ |
 | nfs-subdir-external-provisioner | nfs-subdir-external-provisioner | https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/ |
 | nvidia | nvidia | https://helm.ngc.nvidia.com/nvidia |

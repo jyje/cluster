@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo-distributed
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/grafana/tempo-distributed-1.61.3
+    helm:
+      valuesObject:
+        ingester:
+          replicas: 1
+          persistence:
+            enabled: true
+            storageClass: subdir-usb
+            size: 5Gi
+
+        distributor:
+          replicas: 1
+
+        querier:
+          replicas: 1
+
+        queryFrontend:
+          replicas: 1
+
+        compactor:
+          replicas: 1
+
+        storage:
+          trace:
+            backend: local
+
+        traces:
+          otlp:
+            grpc:
+              enabled: true
+            http:
+              enabled: true
+          jaeger:
+            thriftHttp:
+              enabled: true
+
+        memcached:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
