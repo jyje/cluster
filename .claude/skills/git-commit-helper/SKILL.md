@@ -29,6 +29,7 @@ Only use the following approved types and emojis:
 
 | Gitmoji | Type       | Description |
 | :------ | :--------- | :---------- |
+| 🎉      | `init`     | Initial commit of a project |
 | 🔧      | `chore`    | Routine maintenance or minor corrections |
 | 🛠️      | `fix`      | Intentional functional configuration changes |
 | ✨      | `feat`     | New features |
@@ -44,6 +45,7 @@ Only use the following approved types and emojis:
 | ⚡      | `perf`     | Improve performance |
 | ✅      | `test`     | Add, update, or pass tests |
 | 🔨      | `build`    | Add or update development scripts |
+| 🚀      | `release`  | Cut or merge a release (e.g. the release-proposal PR title/merge commit) |
 
 #### Automated / Bot Commits
 Commits created entirely by automation (e.g., Dependabot, Renovate) without direct user or agent involvement use a dedicated pairing, kept separate from the manual mapping above:
@@ -52,7 +54,14 @@ Commits created entirely by automation (e.g., Dependabot, Renovate) without dire
 | :------ | :--- | :---------- |
 | 🤖      | `ci` | Added automatically by a bot/automation (e.g., Dependabot), not by direct user intervention |
 
-This pairing is configured directly in the automation tool itself (e.g., `commit-message.prefix` in `dependabot.yml`), not generated through this skill's workflow.
+Configure this pairing directly in the automation tool itself, not by hand-editing bot commits after the fact. For Dependabot, set `commit-message` in `dependabot.yml` for every `package-ecosystem` entry:
+```yaml
+commit-message:
+  prefix: "🤖 ci"
+  prefix-development: "🤖 ci"
+  include: "scope"
+```
+This renders as `🤖 ci(deps): bump <package> from X to Y` for production dependencies and `🤖 ci(deps-dev): ...` for development ones (the `(scope)` comes from `include: "scope"`, not from manually typing a domain). Without this config, Dependabot's default has no gitmoji at all, e.g. `build(deps): bump the production-dependencies group with 6 updates` — that default is the bug to fix, not a format to tolerate.
 
 ---
 
@@ -77,18 +86,34 @@ This pairing is configured directly in the automation tool itself (e.g., `commit
 
 ## 5. Examples
 
-### Feature addition
+### Initial commit
 ```
-✨ feat(n8n): add n8n application
+🎉 init: setup project
 
-Add n8n workflow automation application to the cluster.
+Make a Next.js project for UI/UX and a FastAPI project for the AI backend. 
+```
+
+### Feature addition (AI/agent)
+```
+✨ feat(agent): add Deep Agents example with OpenAI-compatible API
+
+Wire up a Deep Agents example that talks to any OpenAI-compatible
+endpoint via uv-managed dependencies.
+```
+
+### Feature addition (web frontend)
+```
+✨ feat(vue): initialize Vue frontend and implement 1:1 parity with Next.js chat
+
+Port the existing Next.js chat UI to Vue so both frontends share the
+same feature set and API contract.
 ```
 
 ### Intentional functional configuration change
 ```
 🛠️ fix(nfs): rollback health probes and chart rename to fix distroless image compatibility
 
-Revert recent changes including health উজ্জchanges including health probes and chart renaming because the
+Revert recent changes including health probes and chart renaming because the
 distroless image lacks 'sh' and other shell utilities required for probes.
 ```
 
@@ -116,11 +141,12 @@ Fix three bugs in the git commit policy rule:
 Upgrade open-webui Helm chart to latest version.
 ```
 
-### Refactoring
+### Refactoring (web frontend)
 ```
-♻️ refactor(nfs): rename custom Helm chart with -jyje suffix and add health probes
+♻️ refactor(assets): reorganize logos into subdirectories
 
-Rename Helm chart directory and add health probe configurations.
+Group logo images by source/purpose instead of dumping them all into
+a single flat assets folder.
 ```
 
 ### Security
@@ -142,4 +168,20 @@ Correct "gitmodi" to "gitmoji" in documentation.
 📝 article(blog): add new post about kubernetes best practices
 
 Add a new blog post discussing kubernetes deployment strategies and best practices.
+```
+
+### Documentation
+```
+📄 docs(chart): add Korean translation of the chart README
+
+Add the Korean README as a twin of the English one so non-English
+users get the same install/config guidance.
+```
+
+### Build / CI
+```
+🔨 build(ci): bump ubuntu runner version to 26.04-arm
+
+Move workflows onto the arm runner image to match production hardware
+and pick up its faster cold-start time.
 ```
