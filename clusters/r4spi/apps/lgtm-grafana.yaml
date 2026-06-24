@@ -63,6 +63,15 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
+            # Discovered by Homer's Dashboard CR via ingressSelector
+            # (matchExpressions: app.kubernetes.io/name in [...]).
+            item.homer.rajsingh.info/name: "Grafana"
+            item.homer.rajsingh.info/subtitle: "Cluster monitoring"
+            item.homer.rajsingh.info/logo: "https://grafana.com/static/img/menu/grafana2.svg"
+            item.homer.rajsingh.info/tag: "grafana #monitoring #dashboard #lgtm"
+            item.homer.rajsingh.info/type: "Ping"
+            service.homer.rajsingh.info/name: "Management"
+            service.homer.rajsingh.info/icon: "fas fa-microchip"
           hosts:
             - grafana.app.jyje.online
           tls:
