@@ -169,6 +169,7 @@ spec:
                       - portainer
                       - argocd-server
                       - homer
+                      - grafana
               assets:
                 configMapRef:
                   name: homer-assets
