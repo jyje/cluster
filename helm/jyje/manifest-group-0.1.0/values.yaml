@@ -1,0 +1,19 @@
+# -- Resources to render and deploy. Supports both object and string
+# (multiline) formats. Helm template expressions are evaluated.
+manifests: []
+  # Object format:
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"
+  #   data:
+  #     example-key: example-value
+  #
+  # String format (multiline):
+  # - |
+  #   apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"

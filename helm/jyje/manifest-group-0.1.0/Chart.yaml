@@ -1,0 +1,14 @@
+apiVersion: v2
+name: manifest-group
+description: Minimal shell chart whose only purpose is to render arbitrary Kubernetes resources declared under values.manifests. Used when an ArgoCD Application needs to deploy raw manifests via GitOps without an underlying application chart.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/jyje/cluster
+maintainers:
+  - name: jyje
+    email: jyjeon@outlook.com
+keywords:
+  - manifest-group
+  - shell
+  - utility
