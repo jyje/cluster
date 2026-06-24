@@ -16,9 +16,10 @@ spec:
           enableGatewayAPI: false
           metrics:
             # gcr.io/kubebuilder/kube-rbac-proxy:v0.16.0 no longer resolves (image
-            # removed upstream); disable the proxy sidecar rather than pin a
-            # replacement we haven't vetted on ARM64.
-            secureMetrics: false
+            # removed upstream). The proxy sidecar is gated by metrics.enabled
+            # (not secureMetrics, which only toggles the --metrics-secure flag),
+            # so metrics must be disabled entirely to avoid pulling that image.
+            enabled: false
 
         extraResources:
           - apiVersion: homer.rajsingh.info/v1alpha1
@@ -32,6 +33,7 @@ spec:
               homerConfig:
                 title: "jyje Cluster"
                 subtitle: "Auto-discovered services"
+                header: true
 
   destination:
     server: https://kubernetes.default.svc
