@@ -361,7 +361,7 @@ spec:
                   restartPolicy: Never
                   containers:
                     - name: restart
-                      image: bitnami/kubectl:1.32
+                      image: alpine/k8s:1.36.2
                       command:
                         - sh
                         - -c
