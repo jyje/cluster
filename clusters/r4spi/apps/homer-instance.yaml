@@ -153,13 +153,15 @@ spec:
               namespace: "{{ .Release.Namespace }}"
             spec:
               replicas: 2
-              # Manual curation (mirrors the retired homer-legacy-jyje's config.yml)
-              # instead of auto-discovery, to keep the curated card layout. Unset
-              # selectors default to "match everything", so an unmatchable label
-              # is required to fully disable Ingress-based discovery.
+              # Mostly manual curation (mirrors the retired homer-legacy-jyje's
+              # config.yml) to keep the curated card layout, but n8n is opted in
+              # to Ingress-based auto-discovery as a worked example: matching on
+              # the chart's own standard label (app.kubernetes.io/name=n8n) scopes
+              # this to just that one Ingress instead of "match everything"
+              # (the unset default), which would duplicate every other app's card.
               ingressSelector:
                 matchLabels:
-                  homer-operator/never-match: "true"
+                  app.kubernetes.io/name: n8n
               assets:
                 configMapRef:
                   name: homer-assets
@@ -232,13 +234,9 @@ spec:
                           subtitle: "Interactive LLM with Ollama, OpenAI"
                           tag: "open-webui #ollama #openai #gpt #llm"
                           url: "https://llm.app.jyje.online"
-                      - parameters:
-                          name: "n8n"
-                          type: "Ping"
-                          logo: "https://avatars.githubusercontent.com/u/45487711"
-                          subtitle: "Workflow automation"
-                          tag: "n8n #workflow #automation #cicd"
-                          url: "https://n8n.app.jyje.online"
+                      # n8n is intentionally omitted here — it's now discovered
+                      # automatically via Ingress annotations (see ingressSelector
+                      # above and clusters/r4spi/apps/n8n.yaml).
                   - parameters:
                       name: "Management"
                       icon: "fas fa-microchip"
