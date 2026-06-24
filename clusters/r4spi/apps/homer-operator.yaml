@@ -14,6 +14,11 @@ spec:
       valuesObject:
         operator:
           enableGatewayAPI: false
+          metrics:
+            # gcr.io/kubebuilder/kube-rbac-proxy:v0.16.0 no longer resolves (image
+            # removed upstream); disable the proxy sidecar rather than pin a
+            # replacement we haven't vetted on ARM64.
+            secureMetrics: false
 
         extraResources:
           - apiVersion: homer.rajsingh.info/v1alpha1
