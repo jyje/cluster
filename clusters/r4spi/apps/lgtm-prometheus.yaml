@@ -57,3 +57,8 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Several Prometheus Operator CRDs (prometheuses, alertmanagers, etc.)
+      # exceed the 262144-byte last-applied-configuration annotation limit
+      # under client-side apply, leaving them unregistered and blocking the
+      # Prometheus/Alertmanager custom resources from ever syncing.
+      - ServerSideApply=true
