@@ -252,7 +252,7 @@ spec:
                           logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
                           subtitle: "This dashboard"
                           tag: "homer #dashboard #monitoring"
-                          url: "https://homer-operator.app.jyje.online"
+                          url: "https://app.jyje.online"
                       - parameters:
                           name: "Portainer"
                           type: "Ping"
@@ -286,11 +286,11 @@ spec:
             spec:
               ingressClassName: nginx
               tls:
-                - secretName: homer-operator.app.jyje.online
+                - secretName: app.jyje.online
                   hosts:
-                    - homer-operator.app.jyje.online
+                    - app.jyje.online
               rules:
-                - host: homer-operator.app.jyje.online
+                - host: app.jyje.online
                   http:
                     paths:
                       - path: /
