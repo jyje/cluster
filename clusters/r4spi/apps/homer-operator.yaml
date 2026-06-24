@@ -22,6 +22,13 @@ spec:
             enabled: false
 
         extraResources:
+          # Dashboard instance lives in its own namespace, separate from the
+          # operator/controller (destination.namespace = homer-system).
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: homer-instance
+
           # Extra Homer pages (About/Stack), mirrored verbatim from the
           # jyje/homer fork (jyje branch). Mounted into /www/assets/ via
           # assets.configMapRef on the Dashboard below; Homer's frontend
@@ -29,8 +36,8 @@ spec:
           - apiVersion: v1
             kind: ConfigMap
             metadata:
-              name: homer-operator-assets
-              namespace: "{{ .Release.Namespace }}"
+              name: homer-assets
+              namespace: homer-instance
             data:
               about.yml: |
                 ---
@@ -160,21 +167,20 @@ spec:
           - apiVersion: homer.rajsingh.info/v1alpha1
             kind: Dashboard
             metadata:
-              name: homer-operator
-              namespace: "{{ .Release.Namespace }}"
+              name: homer
+              namespace: homer-instance
             spec:
               replicas: 2
-              # Manual curation (mirrors homer-legacy-jyje's config.yml) instead of
-              # auto-discovery, to avoid duplicate cards with the parallel
-              # homer-legacy-jyje dashboard. Unset selectors default to "match
-              # everything", so an unmatchable label is required to fully disable
-              # Ingress-based discovery.
+              # Manual curation (mirrors the retired homer-legacy-jyje's config.yml)
+              # instead of auto-discovery, to keep the curated card layout. Unset
+              # selectors default to "match everything", so an unmatchable label
+              # is required to fully disable Ingress-based discovery.
               ingressSelector:
                 matchLabels:
                   homer-operator/never-match: "true"
               assets:
                 configMapRef:
-                  name: homer-operator-assets
+                  name: homer-assets
               homerConfig:
                 title: "Dashboard"
                 subtitle: "app.jyje.online"
@@ -291,8 +297,8 @@ spec:
           - apiVersion: networking.k8s.io/v1
             kind: Ingress
             metadata:
-              name: homer-operator
-              namespace: "{{ .Release.Namespace }}"
+              name: homer
+              namespace: homer-instance
               annotations:
                 cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
             spec:
@@ -309,7 +315,7 @@ spec:
                         pathType: Prefix
                         backend:
                           service:
-                            name: homer-operator-homer
+                            name: homer-homer
                             port:
                               number: 80
 
@@ -321,13 +327,13 @@ spec:
           - apiVersion: v1
             kind: ServiceAccount
             metadata:
-              name: homer-operator-restart-hook
-              namespace: "{{ .Release.Namespace }}"
+              name: homer-restart-hook
+              namespace: homer-instance
           - apiVersion: rbac.authorization.k8s.io/v1
             kind: Role
             metadata:
-              name: homer-operator-restart-hook
-              namespace: "{{ .Release.Namespace }}"
+              name: homer-restart-hook
+              namespace: homer-instance
             rules:
               - apiGroups: ["apps"]
                 resources: ["deployments"]
@@ -335,21 +341,21 @@ spec:
           - apiVersion: rbac.authorization.k8s.io/v1
             kind: RoleBinding
             metadata:
-              name: homer-operator-restart-hook
-              namespace: "{{ .Release.Namespace }}"
+              name: homer-restart-hook
+              namespace: homer-instance
             subjects:
               - kind: ServiceAccount
-                name: homer-operator-restart-hook
-                namespace: "{{ .Release.Namespace }}"
+                name: homer-restart-hook
+                namespace: homer-instance
             roleRef:
               kind: Role
-              name: homer-operator-restart-hook
+              name: homer-restart-hook
               apiGroup: rbac.authorization.k8s.io
           - apiVersion: batch/v1
             kind: Job
             metadata:
-              name: homer-operator-restart-hook
-              namespace: "{{ .Release.Namespace }}"
+              name: homer-restart-hook
+              namespace: homer-instance
               annotations:
                 argocd.argoproj.io/hook: PostSync
                 argocd.argoproj.io/hook-delete-policy: HookSucceeded,BeforeHookCreation
@@ -357,7 +363,7 @@ spec:
               backoffLimit: 2
               template:
                 spec:
-                  serviceAccountName: homer-operator-restart-hook
+                  serviceAccountName: homer-restart-hook
                   restartPolicy: Never
                   containers:
                     - name: restart
@@ -367,11 +373,11 @@ spec:
                         - -c
                         # Tolerate the deployment not existing yet on first install
                         # (the operator creates it asynchronously after this sync).
-                        - kubectl rollout restart deployment/homer-operator-homer -n "{{ .Release.Namespace }}" || true
+                        - kubectl rollout restart deployment/homer-homer -n homer-instance || true
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: homer-operator
+    namespace: homer-system
   syncPolicy:
     automated:
       prune: true
