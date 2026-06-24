@@ -160,8 +160,15 @@ spec:
               # this to just that one Ingress instead of "match everything"
               # (the unset default), which would duplicate every other app's card.
               ingressSelector:
-                matchLabels:
-                  app.kubernetes.io/name: n8n
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - n8n
+                      - open-webui
+                      - portainer
+                      - argocd-server
+                      - homer
               assets:
                 configMapRef:
                   name: homer-assets
@@ -222,55 +229,27 @@ spec:
                   - name: "About"
                     icon: "fas fa-user-astronaut"
                     url: "#about"
+                # Applications group is omitted here entirely — both of its members
+                # (n8n, Open WebUI) are now discovered automatically via Ingress
+                # annotations (see ingressSelector above), which recreates the same
+                # group via each Ingress's service.homer.rajsingh.info/name tag.
                 services:
-                  - parameters:
-                      name: "Applications"
-                      icon: "fas fa-rocket"
-                    items:
-                      - parameters:
-                          name: "Open WebUI (AI Chat)"
-                          type: "Ping"
-                          logo: "https://docs.openwebui.com/images/logo.png"
-                          subtitle: "Interactive LLM with Ollama, OpenAI"
-                          tag: "open-webui #ollama #openai #gpt #llm"
-                          url: "https://llm.app.jyje.online"
-                      # n8n is intentionally omitted here — it's now discovered
-                      # automatically via Ingress annotations (see ingressSelector
-                      # above and clusters/r4spi/apps/n8n.yaml).
                   - parameters:
                       name: "Management"
                       icon: "fas fa-microchip"
                     items:
-                      - parameters:
-                          name: "Homer"
-                          type: "Ping"
-                          # The original config used the stock Homer image's default
-                          # logo.png for this card (never customized it); reproduce
-                          # via the official Homer logo URL.
-                          logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
-                          subtitle: "This dashboard"
-                          tag: "homer #dashboard #monitoring"
-                          url: "https://app.jyje.online"
-                      - parameters:
-                          name: "Portainer"
-                          type: "Ping"
-                          logo: "https://avatars.githubusercontent.com/u/22225832"
-                          subtitle: "Cluster administration"
-                          tag: "portainer #admin #catalog"
-                          url: "https://portainer.app.jyje.online"
+                      # Homer is intentionally omitted here — it now discovers
+                      # itself automatically via its own Ingress annotations
+                      # (see the Ingress resource below and ingressSelector above).
                       - parameters:
                           name: "Infisical"
                           logo: "https://avatars.githubusercontent.com/u/107880645"
                           subtitle: "Secrets manager"
                           tag: "infisical #devsecops #valut #cicd"
                           url: "https://infisical.app.jyje.online"
-                      - parameters:
-                          name: "Argo CD"
-                          type: "Ping"
-                          logo: "https://argo-cd.readthedocs.io/en/stable/assets/logo.png"
-                          subtitle: "App deployment"
-                          tag: "argocd #argo #gitops #cicd"
-                          url: "https://cd.app.jyje.online"
+                      # Portainer and Argo CD are intentionally omitted here — both
+                      # are now discovered automatically via Ingress annotations
+                      # (see ingressSelector above and the respective app manifests).
 
           # Chart has no built-in ingress template; the operator names the
           # generated Service "<dashboard-name>-homer" (confirmed post-deploy).
@@ -279,8 +258,23 @@ spec:
             metadata:
               name: homer
               namespace: "{{ .Release.Namespace }}"
+              # Unlike vendored charts, this is a raw resource we fully control,
+              # so a custom discovery label can be added directly (no need to
+              # match on a pre-existing standard label).
+              labels:
+                app.kubernetes.io/name: homer
               annotations:
                 cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+                # Discovered by this same Dashboard CR via ingressSelector
+                # (matchExpressions: app.kubernetes.io/name in [...]) — the
+                # dashboard discovers its own Ingress.
+                item.homer.rajsingh.info/name: "Homer"
+                item.homer.rajsingh.info/subtitle: "This dashboard"
+                item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
+                item.homer.rajsingh.info/tag: "homer #dashboard #monitoring"
+                item.homer.rajsingh.info/type: "Ping"
+                service.homer.rajsingh.info/name: "Management"
+                service.homer.rajsingh.info/icon: "fas fa-microchip"
             spec:
               ingressClassName: nginx
               tls:
