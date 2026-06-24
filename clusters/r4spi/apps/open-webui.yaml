@@ -44,7 +44,7 @@ spec:
             nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
             nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
             nginx.ingress.kubernetes.io/proxy-body-size: "4096m"
-            # Discovered by homer-instance's Dashboard CR via ingressSelector
+            # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchExpressions: app.kubernetes.io/name in [...]).
             item.homer.rajsingh.info/name: "Open WebUI (AI Chat)"
             item.homer.rajsingh.info/subtitle: "Interactive LLM with Ollama, OpenAI"

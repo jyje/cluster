@@ -26,7 +26,7 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
-            # Discovered by homer-instance's Dashboard CR via ingressSelector
+            # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchLabels: app.kubernetes.io/name=n8n, the chart's own standard
             # label — the chart has no values field to add a custom label).
             item.homer.rajsingh.info/name: "n8n"

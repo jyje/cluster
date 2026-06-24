@@ -41,7 +41,7 @@ spec:
               nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
               nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
               nginx.ingress.kubernetes.io/enable-cors: "true"
-              # Discovered by homer-instance's Dashboard CR via ingressSelector
+              # Discovered by Homer's Dashboard CR via ingressSelector
               # (matchExpressions: app.kubernetes.io/name in [...]).
               item.homer.rajsingh.info/name: "Argo CD"
               item.homer.rajsingh.info/subtitle: "App deployment"
