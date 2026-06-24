@@ -44,6 +44,15 @@ spec:
             nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
             nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
             nginx.ingress.kubernetes.io/proxy-body-size: "4096m"
+            # Discovered by homer-instance's Dashboard CR via ingressSelector
+            # (matchExpressions: app.kubernetes.io/name in [...]).
+            item.homer.rajsingh.info/name: "Open WebUI (AI Chat)"
+            item.homer.rajsingh.info/subtitle: "Interactive LLM with Ollama, OpenAI"
+            item.homer.rajsingh.info/logo: "https://docs.openwebui.com/images/logo.png"
+            item.homer.rajsingh.info/tag: "open-webui #ollama #openai #gpt #llm"
+            item.homer.rajsingh.info/type: "Ping"
+            service.homer.rajsingh.info/name: "Applications"
+            service.homer.rajsingh.info/icon: "fas fa-rocket"
           host: llm.app.jyje.online
           tls: true
           existingSecret: llm-letsencrypt-tls
