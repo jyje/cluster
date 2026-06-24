@@ -247,6 +247,17 @@ spec:
                           subtitle: "Secrets manager"
                           tag: "infisical #devsecops #valut #cicd"
                           url: "https://infisical.app.jyje.online"
+                      - parameters:
+                          name: "Hermes Agent"
+                          # No web dashboard exposed (the upstream --insecure flag
+                          # required to bind it network-wide leaks API keys, so we
+                          # keep it disabled). Link to the upstream project instead
+                          # of an internal URL; no "type" (Ping) since there's no
+                          # endpoint here to health-check.
+                          logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
+                          subtitle: "Multi-provider LLM Discord agent"
+                          tag: "hermes-agent #discord #llm #agent"
+                          url: "https://github.com/NousResearch/hermes-agent"
                       # Portainer and Argo CD are intentionally omitted here — both
                       # are now discovered automatically via Ingress annotations
                       # (see ingressSelector above and the respective app manifests).
