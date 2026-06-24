@@ -1,0 +1,380 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homer-operator
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/homer-operator/homer-operator-1.2.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        operator:
+          enableGatewayAPI: false
+          metrics:
+            # gcr.io/kubebuilder/kube-rbac-proxy:v0.16.0 no longer resolves (image
+            # removed upstream). The proxy sidecar is gated by metrics.enabled
+            # (not secureMetrics, which only toggles the --metrics-secure flag),
+            # so metrics must be disabled entirely to avoid pulling that image.
+            enabled: false
+
+        extraResources:
+          # Extra Homer pages (About/Stack), mirrored verbatim from the
+          # jyje/homer fork (jyje branch). Mounted into /www/assets/ via
+          # assets.configMapRef on the Dashboard below; Homer's frontend
+          # picks up <name>.yml as the #<name> anchor page automatically.
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: homer-operator-assets
+              namespace: "{{ .Release.Namespace }}"
+            data:
+              about.yml: |
+                ---
+                # Additional 'about' page configuration
+                title: About
+                message: |
+                  I'm Jeayoung Jeon. If you want to know more about me, please visit my personal website <a href="https://jyje.online">Jeayoung Jeon</a>.
+                services:
+                  - name: Links
+                    icon: fas fa-layer-group
+                    items:
+                      - name: jyje.online
+                        logo: https://app.jyje.online/assets/icons/pwa-192x192.png
+                        url: https://jyje.online
+              stack.yml: |
+                ---
+                # Additional 'stack' page configuration
+                title: Stack
+                message: ~
+                services:
+                  - name: Infra
+                    icon: fas fa-server
+                    items:
+                      - name: Raspberry Pi (2x4B, 2x5B)
+                        logo: https://upload.wikimedia.org/wikipedia/en/c/cb/Raspberry_Pi_Logo.svg
+                        subtitle: ARM64-based Micro Computers
+                        tag: "raspi #arm #edge #iot #infra"
+                        url: https://www.raspberrypi.com
+                      - name: MicroK8s v1.32.0
+                        logo: https://cdn.simpleicons.org/kubernetes
+                        subtitle: Lightweight Kubernetes for Edge Devices
+                        tag: "microk8s #cluster #k8s #canonical #infra"
+                        url: https://microk8s.io
+                      - name: Noctua NF-A12x25 PWM
+                        logo: https://raw.githubusercontent.com/jyje/homer/jyje/public/assets/tools/noctua-logo.png
+                        subtitle: Silent Fan controlled by Raspberry Pi
+                        tag: "noctua #cooling #fan #pwm #infra"
+                        url: https://noctua.at/en/nf-a12x25-pwm
+                      - name: ipTIME A3004NS-M
+                        logo: https://raw.githubusercontent.com/jyje/homer/jyje/public/assets/tools/iptime-logo.webp
+                        subtitle: Home Router for Ingress Traffic
+                        tag: "iptime #router #network #infra"
+                        url: https://iptime.com/iptime
+                      - name: NVIDIA GeForce GTX 1660 Ti
+                        logo: https://cdn.simpleicons.org/nvidia
+                        subtitle: AMD64 with Ubuntu 22.04 LTS
+                        tag: "nvidia #gpu #ai #ml"
+                        url: https://www.nvidia.com/en-us/geforce/graphics-cards/compare/?section=compare-16
+                  - name: CI/CD
+                    icon: fas fa-arrows-spin
+                    items:
+                      - name: Argo CD
+                        logo: https://argo-cd.readthedocs.io/en/stable/assets/logo.png
+                        subtitle: App deployment
+                        tag: "argocd #argo #gitops #cicd"
+                        url: https://github.com/argoproj/argo-cd
+                      - name: Argo Workflows
+                        logo: https://argoproj.github.io/argo-workflows/assets/logo.png
+                        subtitle: Workflow engine for CI/CD
+                        tag: "argo-workflows #argo #workflow #pipeline #cicd"
+                        url: https://github.com/argoproj/argo-workflows
+                      - name: Infisical
+                        logo: https://avatars.githubusercontent.com/u/107880645
+                        subtitle: Secrets manager
+                        tag: "infisical #secretops #vault #cicd"
+                        url: https://github.com/infisical/infisical
+                      - name: GitHub ARC
+                        logo: https://avatars.githubusercontent.com/in/15368
+                        subtitle: Self-hosted ARM64 runners
+                        tag: "github-actions #runner #cicd"
+                        url: https://github.com/actions/actions-runner-controller
+                  - name: Database
+                    icon: fas fa-database
+                    items:
+                      - name: CloudNativePG
+                        logo: https://cloudnative-pg.io/images/hero_image.svg
+                        subtitle: PostgreSQL operator
+                        tag: "cnpg #operator #dbaas #psql #database"
+                        url: https://github.com/cloudnative-pg/cloudnative-pg
+                      - name: Milvus
+                        logo: https://avatars.githubusercontent.com/u/51735404
+                        subtitle: Vector database
+                        tag: "milvus #vectordb #ai"
+                        url: https://github.com/milvus-io/milvus
+                      - name: Qdrant
+                        logo: https://avatars.githubusercontent.com/u/73504361
+                        subtitle: Vector database
+                        tag: "qdrant #vectordb #ai"
+                        url: https://github.com/qdrant/qdrant
+                  - name: Storage
+                    icon: fas fa-hdd
+                    items:
+                      - name: Longhorn
+                        logo: https://avatars.githubusercontent.com/u/51335366
+                        subtitle: Block storage for Kubernetes
+                        tag: "longhorn #storageclass #storage #rancher"
+                        url: https://github.com/longhorn/longhorn
+                      - name: MinIO
+                        logo: https://avatars.githubusercontent.com/u/695951
+                        subtitle: Object storage for Kubernetes
+                        tag: "minio #operator #dbaas #s3 #storage"
+                        url: https://github.com/minio/operator
+                  - name: AI/LLM
+                    icon: fas fa-flask
+                    items:
+                      - name: Argo Workflows
+                        logo: https://argoproj.github.io/argo-workflows/assets/logo.png
+                        subtitle: Workflow engine for data pipelines
+                        tag: "argo-workflows #argo #workflow #pipeline #cicd"
+                        url: https://github.com/argoproj/argo-workflows
+                      - name: Open WebUI
+                        logo: https://docs.openwebui.com/images/logo.png
+                        subtitle: Open source web UI for LLM
+                        tag: "open-webui #ollama #llm #webui"
+                        url: https://github.com/open-webui/open-webui
+                      - name: Ollama
+                        logo: https://ollama.com/public/ollama.png
+                        subtitle: Open source LLM and embeddings
+                        tag: "ollama #llm #open-source #ai"
+                        url: https://ollama.com/library
+                      - name: Attu
+                        logo: https://avatars.githubusercontent.com/u/18416694
+                        subtitle: Vector database manager
+                        tag: "attu #milvus #vectordb #ai"
+                        url: https://github.com/zilliztech/attu
+
+          - apiVersion: homer.rajsingh.info/v1alpha1
+            kind: Dashboard
+            metadata:
+              name: homer-operator
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              replicas: 2
+              # Manual curation (mirrors homer-legacy-jyje's config.yml) instead of
+              # auto-discovery, to avoid duplicate cards with the parallel
+              # homer-legacy-jyje dashboard. Unset selectors default to "match
+              # everything", so an unmatchable label is required to fully disable
+              # Ingress-based discovery.
+              ingressSelector:
+                matchLabels:
+                  homer-operator/never-match: "true"
+              assets:
+                configMapRef:
+                  name: homer-operator-assets
+              homerConfig:
+                title: "Dashboard"
+                subtitle: "app.jyje.online"
+                logo: "https://raw.githubusercontent.com/jyje/homer/jyje/public/assets/icons/pwa-192x192.png"
+                connectivityCheck: true
+                defaults:
+                  layout: columns
+                  colorTheme: light
+                header: true
+                footer: |
+                  2023 - 2026 ⓒ <a href="https://app.jyje.online">app.jyje.online</a>
+                  with <a href="https://jyje.online">Jeayoung Jeon</a>.
+                  Powered by <a href="https://github.com/bastienwirtz/homer">Homer</a>.
+                theme: default
+                colors:
+                  light:
+                    highlight-primary: "#680C2C"
+                    highlight-secondary: "#340616"
+                    highlight-hover: "#680C2C"
+                    background: "#fafafa"
+                    card-background: "#ffffff"
+                    text: "#363636"
+                    text-header: "#ffffff"
+                    text-title: "#303030"
+                    text-subtitle: "#424242"
+                    card-shadow: "rgba(0, 0, 0, 0.1)"
+                    link: "#3273dc"
+                    link-hover: "#363636"
+                  dark:
+                    highlight-primary: "#680C2C"
+                    highlight-secondary: "#340616"
+                    highlight-hover: "#680C2C"
+                    background: "#212631"
+                    card-background: "#2b2b2b"
+                    text: "#eaeaea"
+                    text-header: "#ffffff"
+                    text-title: "#fafafa"
+                    text-subtitle: "#f5f5f5"
+                    card-shadow: "rgba(0, 0, 0, 0.4)"
+                    link: "#3273dc"
+                    link-hover: "#ffdd57"
+                message:
+                  style: "is-dark"
+                  title: "NOTICE"
+                  icon: "fas fa-info"
+                  content: |
+                    This is a collection of applications for my demo cluster. It is not intended for production use.
+                links:
+                  - name: "Dashboard"
+                    icon: "fas fa-file-alt"
+                    url: "#"
+                  - name: "Stack"
+                    icon: "fas fa-layer-group"
+                    url: "#stack"
+                  - name: "About"
+                    icon: "fas fa-user-astronaut"
+                    url: "#about"
+                services:
+                  - parameters:
+                      name: "Applications"
+                      icon: "fas fa-rocket"
+                    items:
+                      - parameters:
+                          name: "Open WebUI (AI Chat)"
+                          type: "Ping"
+                          logo: "https://docs.openwebui.com/images/logo.png"
+                          subtitle: "Interactive LLM with Ollama, OpenAI"
+                          tag: "open-webui #ollama #openai #gpt #llm"
+                          url: "https://llm.app.jyje.online"
+                      - parameters:
+                          name: "n8n"
+                          type: "Ping"
+                          logo: "https://avatars.githubusercontent.com/u/45487711"
+                          subtitle: "Workflow automation"
+                          tag: "n8n #workflow #automation #cicd"
+                          url: "https://n8n.app.jyje.online"
+                  - parameters:
+                      name: "Management"
+                      icon: "fas fa-microchip"
+                    items:
+                      - parameters:
+                          name: "Homer"
+                          type: "Ping"
+                          # The original config used the stock Homer image's default
+                          # logo.png for this card (never customized it); reproduce
+                          # via the official Homer logo URL.
+                          logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
+                          subtitle: "This dashboard"
+                          tag: "homer #dashboard #monitoring"
+                          url: "https://homer-operator.app.jyje.online"
+                      - parameters:
+                          name: "Portainer"
+                          type: "Ping"
+                          logo: "https://avatars.githubusercontent.com/u/22225832"
+                          subtitle: "Cluster administration"
+                          tag: "portainer #admin #catalog"
+                          url: "https://portainer.app.jyje.online"
+                      - parameters:
+                          name: "Infisical"
+                          logo: "https://avatars.githubusercontent.com/u/107880645"
+                          subtitle: "Secrets manager"
+                          tag: "infisical #devsecops #valut #cicd"
+                          url: "https://infisical.app.jyje.online"
+                      - parameters:
+                          name: "Argo CD"
+                          type: "Ping"
+                          logo: "https://argo-cd.readthedocs.io/en/stable/assets/logo.png"
+                          subtitle: "App deployment"
+                          tag: "argocd #argo #gitops #cicd"
+                          url: "https://cd.app.jyje.online"
+
+          # Chart has no built-in ingress template; the operator names the
+          # generated Service "<dashboard-name>-homer" (confirmed post-deploy).
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: homer-operator
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            spec:
+              ingressClassName: nginx
+              tls:
+                - secretName: homer-operator.app.jyje.online
+                  hosts:
+                    - homer-operator.app.jyje.online
+              rules:
+                - host: homer-operator.app.jyje.online
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: homer-operator-homer
+                            port:
+                              number: 80
+
+          # assets.configMapRef mounts via subPath, which kubelet does not
+          # live-reload, and the homer-operator controller does not watch the
+          # referenced ConfigMap for changes (only the Dashboard CR's own
+          # spec). Force a rollout restart after every sync so about.yml/
+          # stack.yml edits actually take effect.
+          - apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: homer-operator-restart-hook
+              namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              name: homer-operator-restart-hook
+              namespace: "{{ .Release.Namespace }}"
+            rules:
+              - apiGroups: ["apps"]
+                resources: ["deployments"]
+                verbs: ["get", "patch"]
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: homer-operator-restart-hook
+              namespace: "{{ .Release.Namespace }}"
+            subjects:
+              - kind: ServiceAccount
+                name: homer-operator-restart-hook
+                namespace: "{{ .Release.Namespace }}"
+            roleRef:
+              kind: Role
+              name: homer-operator-restart-hook
+              apiGroup: rbac.authorization.k8s.io
+          - apiVersion: batch/v1
+            kind: Job
+            metadata:
+              name: homer-operator-restart-hook
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                argocd.argoproj.io/hook: PostSync
+                argocd.argoproj.io/hook-delete-policy: HookSucceeded,BeforeHookCreation
+            spec:
+              backoffLimit: 2
+              template:
+                spec:
+                  serviceAccountName: homer-operator-restart-hook
+                  restartPolicy: Never
+                  containers:
+                    - name: restart
+                      image: bitnami/kubectl:1.32
+                      command:
+                        - sh
+                        - -c
+                        # Tolerate the deployment not existing yet on first install
+                        # (the operator creates it asynchronously after this sync).
+                        - kubectl rollout restart deployment/homer-operator-homer -n "{{ .Release.Namespace }}" || true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: homer-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
