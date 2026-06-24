@@ -1,0 +1,251 @@
+# Default values for homer-operator
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/rajsinghtech/homer-operator
+  pullPolicy: Always
+  tag: "1.2.0"
+
+homer:
+  image:
+    repository: b4bz/homer
+    tag: latest
+    pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Operator configuration
+operator:
+  enableGatewayAPI: false
+  # Operator behavior configuration
+  reconcileInterval: "30s"
+  maxConcurrentReconciles: 1
+  # Logging configuration
+  logLevel: "info"
+  logFormat: "json"
+  leaderElection:
+    enabled: true
+    leaseDuration: "15s"
+    renewDeadline: "10s"
+    retryPeriod: "2s"
+  # Metrics configuration
+  metrics:
+    enabled: true
+    # Bind address for metrics server
+    bindAddress: ":8080"
+    # Secure metrics serving
+    secureMetrics: true
+    # Kube RBAC Proxy configuration for secure metrics
+    rbacProxy:
+      image:
+        repository: gcr.io/kubebuilder/kube-rbac-proxy
+        tag: v0.16.0
+        pullPolicy: Always
+      resources:
+        limits:
+          cpu: 500m
+          memory: 128Mi
+        requests:
+          cpu: 5m
+          memory: 64Mi
+  healthProbe:
+    bindAddress: ":8081"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+  annotations: {}
+
+# Custom Resource Definition configuration
+crd:
+  create: true
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+# Service configurations
+services:
+  # Webhook service (main service)
+  webhook:
+    type: ClusterIP
+    port: 8443
+    annotations: {}
+  # Metrics service
+  metrics:
+    enabled: true
+    type: ClusterIP
+    port: 8443
+    annotations: {}
+
+# ServiceMonitor configuration for Prometheus Operator
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  annotations: {}
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# Startup probe configuration
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 30
+
+# Scheduling and placement
+scheduling:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+
+# Additional volumes and mounts
+volumes: []
+volumeMounts: []
+
+# High availability and scaling
+highAvailability:
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+# VerticalPodAutoscaler configuration
+vpa:
+  enabled: false
+  updateMode: "Auto"
+  controlledResources: ["cpu", "memory"]
+  maxAllowed:
+    cpu: 1
+    memory: 512Mi
+  minAllowed:
+    cpu: 10m
+    memory: 32Mi
+  labels: {}
+  annotations: {}
+
+# Topology spread constraints
+topologySpreadConstraints: []
+# Example:
+# - maxSkew: 1
+#   topologyKey: topology.kubernetes.io/zone
+#   whenUnsatisfiable: DoNotSchedule
+#   labelSelector:
+#     matchLabels:
+#       app.kubernetes.io/name: homer-operator
+
+# PrometheusRule configuration
+prometheusRule:
+  enabled: false
+  additionalRules: []
+  labels: {}
+  annotations: {}
+
+# Grafana Dashboard configuration
+grafanaDashboard:
+  enabled: false
+  labels: {}
+  annotations: {}
+
+# Deployment strategy configuration
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+# Termination grace period
+terminationGracePeriodSeconds: 10
+
+# Environment variables
+env: []
+# Example:
+# - name: LOG_LEVEL
+#   value: "debug"
+# - name: SECRET_VALUE
+#   valueFrom:
+#     secretKeyRef:
+#       name: my-secret
+#       key: password
+
+envFrom: []
+# Example:
+# - configMapRef:
+#     name: my-config
+# - secretRef:
+#     name: my-secret
+
+# -- Extra resources to deploy with the chart.
+# Supports both object and string (multiline) formats. Helm template expressions are evaluated.
+extraResources: []
+  # Object format:
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"
+  #   data:
+  #     example-key: example-value
+  #
+  # String format (multiline):
+  # - |
+  #   apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #     namespace: "{{ .Release.Namespace }}"

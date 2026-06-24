@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homer-operator
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/homer-operator/homer-operator-1.2.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        operator:
+          enableGatewayAPI: false
+
+        extraResources:
+          - apiVersion: homer.rajsingh.info/v1alpha1
+            kind: Dashboard
+            metadata:
+              name: homer-operator
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              domainFilters:
+                - "app.jyje.online"
+              homerConfig:
+                title: "jyje Cluster"
+                subtitle: "Auto-discovered services"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: homer-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

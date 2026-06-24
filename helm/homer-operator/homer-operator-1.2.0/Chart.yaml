@@ -1,0 +1,25 @@
+annotations:
+  category: Monitoring
+  licenses: Apache-2.0
+apiVersion: v2
+appVersion: 1.2.0
+description: Kubernetes operator for automated Homer dashboard deployment with service
+  discovery
+home: https://github.com/rajsinghtech/homer-operator
+icon: https://raw.githubusercontent.com/rajsinghtech/homer-operator/main/homer/Homer-Operator.png
+keywords:
+- homer
+- operator
+- dashboard
+- service-discovery
+- ingress
+- gateway-api
+- monitoring
+maintainers:
+- email: raj@rajsingh.tech
+  name: rajsingh
+name: homer-operator
+sources:
+- https://github.com/rajsinghtech/homer-operator
+type: application
+version: 1.2.0

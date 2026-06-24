@@ -1,0 +1,21 @@
+{{- if .Values.highAvailability.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "homer-operator.fullname" . }}
+  namespace: {{ include "homer-operator.namespace" . }}
+  labels:
+    {{- include "homer-operator.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.highAvailability.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.highAvailability.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.highAvailability.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.highAvailability.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "homer-operator.selectorLabels" . | nindent 6 }}
+      control-plane: controller-manager
+{{- end }}

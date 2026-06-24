@@ -21,6 +21,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | gateway-api | kubernetes-sigs | https://github.com/kubernetes-sigs/gateway-api (custom Helm wrapper; no official Helm repo — CRDs vendored from release manifests) |
 | argo | argo | https://argoproj.github.io/argo-helm |
 | homer-k8s | bananaops | https://bananaops.github.io/homer-k8s |
+| homer-operator | rajsinghtech | oci://ghcr.io/rajsinghtech/homer-operator/charts/homer-operator |
 | cloudflare | cloudflare | https://cloudflare.github.io/helm-charts (chart: cloudflare-tunnel-remote-0.1.2-custom, patched for secretName + extraResources) |
 | cert-manager | jetstack | https://charts.jetstack.io |
 | cert-manager | adfinis | https://charts.adfinis.com |
