@@ -35,6 +35,33 @@ spec:
                 subtitle: "Auto-discovered services"
                 header: true
 
+          # Chart has no built-in ingress template; the operator names the
+          # generated Service "<dashboard-name>-homer" (confirmed post-deploy).
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: homer-operator
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            spec:
+              ingressClassName: nginx
+              tls:
+                - secretName: homer-operator.app.jyje.online
+                  hosts:
+                    - homer-operator.app.jyje.online
+              rules:
+                - host: homer-operator.app.jyje.online
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: homer-operator-homer
+                            port:
+                              number: 80
+
   destination:
     server: https://kubernetes.default.svc
     namespace: homer-operator
