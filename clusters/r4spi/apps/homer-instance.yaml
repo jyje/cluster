@@ -368,7 +368,6 @@ spec:
     namespace: homer-instance
   syncPolicy:
     automated:
-      prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
