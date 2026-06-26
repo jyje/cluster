@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/ingress/ingress-nginx-4.15.1
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        controller:
+          # Required: all apps use nginx.ingress.kubernetes.io/configuration-snippet for CORS headers
+          allowSnippetAnnotations: true
+          replicaCount: 1
+          resources:
+            requests:
+              cpu: 100m
+              memory: 90Mi
+          service:
+            type: LoadBalancer
+          ingressClassResource:
+            name: nginx
+            enabled: true
+            default: false
+  destination:
+    namespace: ingress
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
