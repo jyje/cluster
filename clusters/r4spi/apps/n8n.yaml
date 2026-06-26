@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/n8n-2.0.1
+    path: helm/n8n/n8n-2.0.1
     helm:
       valueFiles:
         - values.yaml
