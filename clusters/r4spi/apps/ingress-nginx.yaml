@@ -18,13 +18,20 @@ spec:
           config:
             # Required for configuration-snippet annotation (risk level Critical in ingress-nginx 1.11+)
             annotations-risk-level: Critical
-          replicaCount: 1
+          # hostNetwork DaemonSet: bind node IP 80/443 directly (same as the old microk8s addon).
+          # Avoids MetalLB L2 ARP conflict — node IPs and the MetalLB pool share 10.0.4.40-51,
+          # so a LoadBalancer VIP would collide with a node's own IP. Router port-forwards to node IPs.
+          kind: DaemonSet
+          hostNetwork: true
+          # Required so hostNetwork pods still resolve cluster DNS (admission webhook, cert-manager).
+          dnsPolicy: ClusterFirstWithHostNet
           resources:
             requests:
               cpu: 100m
               memory: 90Mi
           service:
-            type: LoadBalancer
+            # No MetalLB VIP needed; traffic arrives via hostNetwork node ports.
+            type: ClusterIP
           ingressClassResource:
             name: nginx
             enabled: true
