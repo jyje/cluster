@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/metrics-server/metrics-server-3.13.0
+    path: helm/metrics-server/metrics-server-3.13.1
     helm:
       valuesObject:
         replicas: 2
