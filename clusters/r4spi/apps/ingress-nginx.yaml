@@ -15,6 +15,9 @@ spec:
         controller:
           # Required: all apps use nginx.ingress.kubernetes.io/configuration-snippet for CORS headers
           allowSnippetAnnotations: true
+          config:
+            # Required for configuration-snippet annotation (risk level Critical in ingress-nginx 1.11+)
+            annotations-risk-level: Critical
           replicaCount: 1
           resources:
             requests:
