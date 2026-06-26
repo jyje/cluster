@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/prometheus/kube-prometheus-stack-86.2.0
+    path: helm/prometheus/kube-prometheus-stack-87.2.1
     helm:
       valuesObject:
         grafana:
