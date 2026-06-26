@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio/base-1.29.0
+    path: helm/istio/base-1.30.2
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
@@ -41,7 +41,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio/istiod-1.29.0
+    path: helm/istio/istiod-1.30.2
     helm:
       valuesObject:
         profile: ambient
@@ -77,7 +77,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio/cni-1.29.0
+    path: helm/istio/cni-1.30.2
     helm:
       valuesObject:
         profile: ambient
@@ -98,7 +98,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/istio/ztunnel-1.29.0
+    path: helm/istio/ztunnel-1.30.2
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
