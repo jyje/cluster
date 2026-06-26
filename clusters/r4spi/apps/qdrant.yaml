@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/qdrant/qdrant-1.17.1
+    path: helm/qdrant/qdrant-1.18.2
     helm:
       valueFiles:
         - values.yaml
