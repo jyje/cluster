@@ -66,6 +66,10 @@
         "extraObjects": {
           "$ref": "#/$defs/helm-values.extraObjects"
         },
+        "extraResources": {
+          "items": {},
+          "type": "array"
+        },
         "featureGates": {
           "$ref": "#/$defs/helm-values.featureGates"
         },
