@@ -37,9 +37,8 @@ spec:
             enabled: true
             default: false
   destination:
-    namespace: ingress
+    namespace: kube-system
     server: 'https://kubernetes.default.svc'
   syncPolicy:
-    syncOptions:
-      - CreateNamespace=true
+    syncOptions: []
     automated: {}
