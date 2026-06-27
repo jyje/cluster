@@ -22,7 +22,7 @@ spec:
           # Hermes reads it. The token is NOT sealed here.
           model:
             provider: copilot
-            default: gpt-4o
+            default: claude-sonnet-4-6
           terminal:
             backend: local
           agent:
