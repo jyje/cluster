@@ -24,9 +24,9 @@ This v2 cluster focuses on **Declarative Everything**, **Flexible AI Serving**, 
 
 ### 2. Networking & Service Mesh
 - **Service Mesh**: **Istio Ambient Mesh** (Evaluation / Temporarily disabled)
-- **Ingress**: NGINX Ingress Controller
-- **Load Balancer**: MetalLB (L2 mode)
-- **DNS/Certs**: Cert-manager with Cloudflare integration
+- **Ingress**: NGINX Ingress Controller, run as a **hostNetwork DaemonSet** so each node binds `:80/:443` directly (no extra L2 hop, mirrors the old MicroK8s addon).
+- **Load Balancer**: MetalLB (L2 mode) — reserved for workloads that do not collide with node addresses (see [Design & Insights](#design--insights)).
+- **Certs**: Cert-manager issuing Let's Encrypt certificates via the ACME **HTTP-01** challenge through the NGINX ingress. `ClusterIssuer` definitions are themselves managed declaratively by ArgoCD.
 
 ### 3. LLMOps Architecture
 ```mermaid
@@ -87,6 +87,18 @@ graph TD
 - **Flexible AI**: Integrated with NVIDIA NIM for high-performance inference, with future plans for **Private LLM** infrastructure (e.g., NVIDIA DGX Spark).
 - **Conversational Agents**: Discord-facing [Hermes](https://github.com/jyje/hermes-agent-helm) agents, with a chart-native OAuth **device-flow login** that mints a GitHub Copilot token at startup — no secret to seal ([docs](docs/operations/hermes-agents.md)).
 - **Observability**: LGTM Stack (Loki, Grafana, Tempo, Mimir) for full-stack monitoring.
+
+## Design & Insights
+
+The macro-level design — the **delivery layers** a change passes through, the
+**logical stack** of workloads, and the **design decisions** behind them — is
+documented in **[docs/architecture/cluster-design.md](docs/architecture/cluster-design.md)**.
+
+Highlights:
+- **Direct ingress, no tunnel** — the Cloudflare Tunnel was retired for direct, router-forwarded ingress.
+- **Ingress as a hostNetwork DaemonSet, never a LoadBalancer** — the MetalLB pool overlaps node addresses, so a VIP would trigger an L2/ARP conflict that cascades into the API server and stateful workloads.
+- **Declarative certificate trust** — `ClusterIssuer`s ride along as Helm `extraResources`, reproducible from git.
+- **Scoped pruning** — migrations are pruned per-Application, never via the recursive root app.
 
 ## Maintainers
 - [jyje](https://github.com/jyje)

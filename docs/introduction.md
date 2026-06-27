@@ -11,6 +11,9 @@ This is a **GitOps-managed Kubernetes cluster** running on low-power ARM64
 hardware (Raspberry Pi 4/5). Every resource — applications, infrastructure,
 secrets — is declared in this repository and reconciled automatically by ArgoCD.
 
+> For the macro-level design — delivery layers, logical stack, and the design
+> decisions behind them — see [architecture/cluster-design.md](architecture/cluster-design.md).
+
 The cluster deliberately uses enterprise-grade tooling (service mesh, distributed
 storage, LLM proxy, vector DB) to prove that production patterns scale *down*
 to constrained hardware, not just up.
@@ -148,6 +151,13 @@ User → Open WebUI → LiteLLM Proxy → NVIDIA NIM (external)
 are declared in `proxy_config.model_list` organized into three sections:
 `# Text Models`, `# Image Models`, `# Embedding Models`.
 
+**Hermes agents** (`clusters/r4spi/apps/hermes-*.yaml`) are Discord-facing chat
+agents built from the [`jyje/hermes-agent-helm`](https://github.com/jyje/hermes-agent-helm)
+chart. They authenticate either through LiteLLM (proxy key) or, for the Copilot
+agent, via a chart-native **OAuth device-flow login** that mints a `gho_` token
+at startup with no secret to seal. See
+[operations/hermes-agents.md](operations/hermes-agents.md).
+
 ---
 
 ## Operations Notes
@@ -156,6 +166,7 @@ Runbooks and tuning notes live under `docs/operations/`. Current entries:
 
 | Document | Topic |
 |----------|-------|
+| [hermes-agents.md](operations/hermes-agents.md) | Hermes Discord agents — GitOps integration, LiteLLM vs Copilot device-flow login |
 | [litellm-startup-probe-tuning.md](operations/litellm-startup-probe-tuning.md) | Startup probe tuning for slow ARM64 nodes |
 
 ---
@@ -176,5 +187,4 @@ Runbooks and tuning notes live under `docs/operations/`. Current entries:
 | LLM UI | [Open WebUI](https://github.com/open-webui/open-webui) |
 | Vector DB | [Qdrant](https://qdrant.tech/) |
 | DB Operator | [CloudNativePG](https://cloudnative-pg.io/) |
-| TLS | cert-manager + Cloudflare DNS |
-| Tunnel | Cloudflare Tunnel (no public IP exposure) |
+| TLS | cert-manager + Let's Encrypt (HTTP-01 via NGINX ingress) |
