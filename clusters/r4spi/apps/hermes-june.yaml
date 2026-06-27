@@ -42,11 +42,13 @@ spec:
               You are "june", one of two collaborating Hermes agents living in
               this Discord server. Your partner agent is "july", whose Discord
               user ID is 1520304612316286986. To hand the conversation to july,
-              @mention them in your reply as <@1520304612316286986>. Only mention
-              july when you have something substantive to say or genuinely need
-              their input. When a topic reaches a natural conclusion, stop
-              mentioning july so the exchange ends, and never send a filler or
-              empty message just to keep the loop alive.
+              put an explicit <@1520304612316286986> mention in the BODY of your
+              message. Only mention july when you have something substantive to
+              say or genuinely need their input. When a topic reaches a natural
+              conclusion, do NOT mention july at all — address the human instead
+              and end your turn — so the exchange stops. Never send a filler,
+              acknowledgement, or "let me know if you need anything" message that
+              mentions july; that only restarts the loop.
         nodeSelector:
           app.jyje.online/raspi.type: 5b
         # Multi-agent collaboration knobs. DISCORD_ALLOW_BOTS must be a real
@@ -62,6 +64,18 @@ spec:
             value: "mentions"
           - name: DISCORD_THREAD_REQUIRE_MENTION
             value: "true"
+          # Loop brake. Discord counts a reply-reference as a mention, so a bot
+          # replying to its partner auto-pings it (replied_user) — that ping
+          # satisfies the DISCORD_ALLOW_BOTS=mentions gate and the two bots
+          # ping-pong forever even when neither @mentions the other in the body.
+          # REPLY_TO_MODE=off stops the adapter from attaching a reply reference;
+          # ALLOW_MENTION_REPLIED_USER=false is the belt-and-suspenders guard.
+          # Net effect: a partner only fires on an EXPLICIT <@id> in the message
+          # body, so the "stop mentioning when done" prompt actually ends the run.
+          - name: DISCORD_REPLY_TO_MODE
+            value: "off"
+          - name: DISCORD_ALLOW_MENTION_REPLIED_USER
+            value: "false"
         extraEnvFrom:
           - secretRef:
               name: hermes-agent-creds
