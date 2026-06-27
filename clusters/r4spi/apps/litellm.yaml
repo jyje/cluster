@@ -155,6 +155,19 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
 
+            # GitHub Copilot Models (June)
+            # Auth is FILE-based: LiteLLM's github_copilot provider reads the
+            # long-lived GitHub token from $GITHUB_COPILOT_TOKEN_DIR/access-token
+            # (mounted via subPath from the `github.token` key of litellm-creds),
+            # then exchanges it for short-lived Copilot tokens. The api_key
+            # litellm_param is ignored by this provider, so it is omitted.
+            # Exposed WITHOUT a vendor prefix so downstream clients (hermes-june,
+            # provider=litellm) don't misroute it as a built-in copilot provider.
+            -
+              model_name: "copilot-gpt-4o"
+              litellm_params:
+                model: "github_copilot/gpt-4o"
+
             # Image Models
             -
               model_name: "qwen/qwen-image-edit"
@@ -282,6 +295,33 @@ spec:
             value: "True"
           - name: TELEMETRY
             value: "False"
+          # Directory where the github_copilot provider reads `access-token`
+          # and writes its short-lived `api-key.json` cache (must be writable).
+          - name: GITHUB_COPILOT_TOKEN_DIR
+            value: /copilot-auth
+
+        # GitHub Copilot (June) token: the long-lived token from litellm-creds
+        # (`github.token`) is mounted directly as the read-only `access-token`
+        # file via subPath, while the rest of the token dir stays a writable
+        # emptyDir so the github_copilot provider can cache the short-lived
+        # `api-key.json` it exchanges. No init container needed.
+        volumes:
+          - name: copilot-auth
+            emptyDir: {}
+          - name: copilot-token
+            secret:
+              secretName: litellm-creds
+              items:
+                - key: github.token
+                  path: access-token
+        volumeMounts:
+          - name: copilot-auth
+            mountPath: /copilot-auth
+          - name: copilot-token
+            mountPath: /copilot-auth/access-token
+            subPath: access-token
+            readOnly: true
+
         extraResources:
           # SealedSecret for Litellm
           - apiVersion: bitnami.com/v1alpha1
@@ -290,6 +330,7 @@ spec:
               name: litellm-creds
             spec:
               encryptedData:
+                github.token: AgDmM+6Nr087SEGq+uG7A6atZqCUOF/g2105GHlLWnDHJC33GSQvO5/MwcRch0caO9Qaq9Zhg+96j7+htfLzS9upiQC3k/rc7ZmCqvrYRTPi1vIF6vzXHdcmvYyMws+fQKm4fiexld0UhzSbuRpsRxvhe31wW/YLEHou8ySzRYCewYmnBTt15o60/IytQ4K232BJYC1KhUmC666Ejuw4cebw/ZAfD9RptrKwn0NpNci4h2lKvvlao1CCkFGp+pV/Hez8TCMup/jJgTMrRptReB+qrvt/P813HbEQFKnkq4xAKBFAQc62Y6qVZlzyrERkHkbzMY8to0+J8/1YumSbP0evnggAA5+7Nc8fxZJFnNgsn6ESuLbcP8/9wQtdkOYO7uPtkpq49iefAJDKhMUdGYAUKjBsNGq2NAdDeplBrvvromC7Ra7ak/ysCOy+MJ1HZwreMgYbn48BSdqh/TBRg+N12GlEddgIsR4OmehfFzAEm96W5goxx6h1+aY5ReqlG6WX231HADJIvnIqwiTRE25fkxawxcUdMZMHhz48vb9M29evFztvUF2ahS4k64SPSRWxcZ8ji1ZvdMomB++FmKTyu3JIQDmEIl3E4A42VOCiXkqoFeAI2I86bCYMmJJ2T8K8xfew5xVULMzHjD5L3VszMLnnNYk8U+DimQu7o5a8/2QAGpBj4PFCmmlToAf4Pub33pa/udKkEvUBaCZZs3UkqkI9jWxAi+n6FSUc4VNsOz7VpsY0YbgA6SOHlE8zTGt9Ysc/6fJK98q5JORWB6i3AY3N8AGm66Xb147+RNLy41P0xxzztH3/grKYXas=
                 litellm.masterkey: AgB7Q1MEu2KB8mHUfplPEtq95Bu75+hOYXaG3WiUcPMPQ2B1FrOLIGSrsl0spRS5K+EOzKWDuxBDMlU47u6WOO91J48az7/RIsMPFvOi/PU6nF3WcZWACVl/KJRcEtCNtQzKhG+YvwbB6aIeCqe5oEhBewiEhQdc8uNKNA4BjpRfvzDmTqdbsp5Vsz3ZZKkCorZ2CnftKIEinfHhG2S+xwvxqi8UyOgEXcvYZTWXSWf8acRstXEHF6jueYnmsApAvBVrVWs4+ERlOKYA8ZwBlvi2rBA2cw0bYgfqgBskfSQkwonyftiYIrM9odbP8qPt6Kusq2tPzkBOxvoXj8S/n1rLMTkiJ9EgwspgFW7xzwfTB8PSeOj4u0silpjqCxQiKjjR0twVzX2PJVQgYKZ9MxLp2OC5oBwCs8SMbOnsP41Ryrw/5Hej+zL3ACBd0SnZHJH0t7m8+Fdmu9D7LUTlbGBX512V0iikUG3XkkNfWNGapiWkC5R4AsDo1oHGHLPRNBYAKw6cPGZ1hbaqNDxrqGRlCJlBThhwNqh8OoY7RdnlH5CkcieH7eoQuPQaEqzJA1ABQM/Yl2wkqDYQU0HnKB63j0yg5V3jnTSeYkczD6kT7jf2rbjIbF0gjfqxrU9bRoKYpzFbzddrsFdaB6J9elu+cR2v5HcqtyT+xpIpHmoqx52/l4btsyO5ia8KsA4Z8fCtWaQY/xmSr59f+v2yWcwLqx+R8goLcrm6yUZscPV6aPf9wwUOi3CiA8wO7dE=
                 litellm.ui-password: AgBQqq6gjTb7s4DaX6W5lwqFON3Lu8E9jcKbb3sUcFpToFhgI661YavCdg5DEE3MiavrT9w9Gwtj8ZoFHbIfBZU7OyjAe3NxdRM8zarCP7DOPtfMwAJeKklbXEiJLCLxUPBoBMwhpvwJLxYvH91HJwwN3i4XxRNpue75zdIELzI3voTShiNhoh5XckBp5uekIO7zEr/U8oLgiqR3C6raqfgfNEGNPKBrvqOC7ljl+j8NFIuAF8O/kaOS09DFItxRuymAwE32yxBoY2nYCYqkmBXTcz66MXEzu6x0tkLEc74rXOQW7p1+WkIdrfiVGEJAyVXm6WbBzlSNdvdc9ELHaMBR1/aYJA8y2HtU9pg9HxgQAy0hzREQ7mfsSfbqGXcEF2c53MObq/SBsw7WhQxhqN6V3w1ECQaMEAVrY/i5IfrMhMssnall8KSZu/mHjeb/vnTffrs74U1r2pF19F1huuWQVJXXOawWQtCzVx71SufWP9R3riG5FtAjplIrdkwFTKYOi30Ojw1eaBYSzyD8ciq/yWUo0hThwOgTM8J9auvxNF4fIo+QJ+DZCNOLzyKpV3oOwdZk6GB66dGkmlD/hK5ng11nHVMGIelhVnnBNgol2MzAjVV/7cduL+j93z8wfB4NCBV72GykhEvk/2OtiMuY61AnWyGOQF9WQivZhRb6Va3/q9tPm/PZCn0hMBHhdYsApaFrHBnOzXqoTXP3fENKEI0VTa17zE8=
                 litellm.ui-username: AgCHfOyf2Ylsa6DVgodjWRspLHvjDxmM/QPp8zdbA+252Qmg5JyZmQDdXtizs7SNyI7P1oBizK7UVIWjYK81QNSUCIsE5Ws48QBHZWCbUmf5oseukEMz1IPaltq0RXVCxF2+2YQ+bJp9aBaHlgMrI29d7yfPkSyzj4WqvUOiAwemcECn+tDXNI3quCNQ5/Cf2qtH2rYgOfyKvZJ3x2LdNzAI0DwUPiFPWW1pXPFTRhXtoLFFngftJq4W9Kdufwcy9jW3P490zuuDtlTc88psVO/m+GIRCyD4orig1IT/4kRoc7cAjcWDxuXJb6naxTqjGzNT4mkcr/3go/5terzj3Ho/7I5j5SYEDRkTQEQKMjNyZAuNQgkAvpJwfwyk9ftVdM1i62K0KfCFM8RgmzRcBPeKQzX9Ll+yRASxe7v1EcnpusGdOoabJYSdQBBGkYGTZpL06dZ0EGr7cQwppM1aHyfURjBRxO0rwzDUX6j2W73VLAqJpIMwXew7EjG3E9+YYR/WUit/HEk84g4iEGiITrXWGK5Wl6NskF0BJbI4FIpSbZG5bWvc1fEYRuJJEScqpAiZnEWxNvGJ4swYWM2esBWJAUxxw4pJxXrepbTvHAGEmEOuuGP2jVd311wV0K+x12bCzdaYnpIcrObro+aUrjpTYe2HmE5h2jHMwv1CGRwddhVeP8bAUqGdiHOe/4V2eOM8+5H0Vw==
