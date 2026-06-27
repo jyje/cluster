@@ -85,6 +85,7 @@ graph TD
 - **ARM64 Optimized**: All components are tailored for AARCH64.
 - **Hybrid Storage**: Combining high-performance block storage with scalable object storage (SeaweedFS).
 - **Flexible AI**: Integrated with NVIDIA NIM for high-performance inference, with future plans for **Private LLM** infrastructure (e.g., NVIDIA DGX Spark).
+- **Conversational Agents**: Discord-facing [Hermes](https://github.com/jyje/hermes-agent-helm) agents, with a chart-native OAuth **device-flow login** that mints a GitHub Copilot token at startup — no secret to seal ([docs](docs/operations/hermes-agents.md)).
 - **Observability**: LGTM Stack (Loki, Grafana, Tempo, Mimir) for full-stack monitoring.
 
 ## Maintainers
