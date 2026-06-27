@@ -25,6 +25,22 @@ spec:
             default: gpt-4o
           terminal:
             backend: local
+          agent:
+            # Injected into the system prompt as agent.environment_hint. Tells
+            # this bot who its partner is and how to hand the conversation over
+            # by @mentioning the partner bot's Discord user ID. The closing
+            # guidance is the loop brake: Hermes has no built-in bot-to-bot
+            # ping-pong limiter, so the agents must stop mentioning each other
+            # once a topic is exhausted.
+            environment_hint: |
+              You are "july", one of two collaborating Hermes agents living in
+              this Discord server. Your partner agent is "june", whose Discord
+              user ID is 1520295553768882246. To hand the conversation to june,
+              @mention them in your reply as <@1520295553768882246>. Only mention
+              june when you have something substantive to say or genuinely need
+              their input. When a topic reaches a natural conclusion, stop
+              mentioning june so the exchange ends, and never send a filler or
+              empty message just to keep the loop alive.
         # Chart-native OAuth device-flow login (replaces the old temp
         # copilot-login Job). Reuses the Discord bot creds below to deliver
         # the verification prompt.
@@ -35,6 +51,19 @@ spec:
             notify: discord
         nodeSelector:
           app.jyje.online/raspi.type: 5b
+        # Multi-agent collaboration knobs. DISCORD_ALLOW_BOTS must be a real
+        # env var: the Discord adapter reads os.getenv("DISCORD_ALLOW_BOTS")
+        # directly and the config.yaml discord: block is NOT bridged to it
+        # (unlike require_mention / allowed_channels). "mentions" = respond to
+        # the partner bot only when it @mentions us, which is what makes the
+        # june<->july handoff work while keeping random bots out.
+        # DISCORD_THREAD_REQUIRE_MENTION keeps multi-bot threads sane: without
+        # it, every bot already in a thread fires on every message.
+        extraEnv:
+          - name: DISCORD_ALLOW_BOTS
+            value: "mentions"
+          - name: DISCORD_THREAD_REQUIRE_MENTION
+            value: "true"
         extraEnvFrom:
           - secretRef:
               name: hermes-agent-creds
