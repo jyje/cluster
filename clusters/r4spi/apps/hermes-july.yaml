@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-july
+  namespace: argocd
+spec:
+  project: ai
+  source:
+    repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
+    targetRevision: 0.5.1
+    path: .
+    helm:
+      valuesObject:
+        fullnameOverride: hermes-july
+        config:
+          # Hermes' built-in GitHub Copilot provider. GitHub's Copilot API
+          # rejects PATs, so it needs a gho_/ghu_ OAuth token. That token is
+          # minted at startup by the chart-native auth.deviceFlow init
+          # container (RFC 8628 device grant): it posts the verification
+          # link+code to Discord for mobile auth, then writes
+          # COPILOT_GITHUB_TOKEN into $HERMES_HOME/.env on the PVC, where
+          # Hermes reads it. The token is NOT sealed here.
+          model:
+            provider: copilot
+            default: gpt-4o
+          terminal:
+            backend: local
+        # Chart-native OAuth device-flow login (replaces the old temp
+        # copilot-login Job). Reuses the Discord bot creds below to deliver
+        # the verification prompt.
+        auth:
+          deviceFlow:
+            enabled: true
+            provider: github-copilot
+            notify: discord
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-agent-creds
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: hermes-agent-creds
+            spec:
+              encryptedData:
+                # NOTE: COPILOT_GITHUB_TOKEN is intentionally NOT here — it is
+                # obtained at runtime via the auth.deviceFlow init container and
+                # stored in $HERMES_HOME/.env on the PVC.
+                DISCORD_ALLOWED_USERS: AgCZeFbrkbWQTWEv+6520N2/tSGrksycR4uQAY2jvtye1Bfwgwic8Bt+5n3oOU1caMybBe7CNE/CHiOECufeQq8mTeVGHlBcGQ6vvYJXuUGY/CHmdLwNJvRKIyTBkQYj/mb0ltrAdf3g4DrKext1v9Xv7HTLpA6AsgqtQe9kv7nT5KcFqNCu5UyYwX/nNYIJ7b3UheCQBfS2fkoSgA+VX+WhH/rilJlwQ24GrnUPH3t2em3O8W3wU4PZkzfQs6jscbgA2f76yk70BFReGCQaTGeOyWydVCy9vhu8vaNFWUFpLcPj03NAMZcQAZYPY4p8FiV3PSpKciTp3UjUelKCt4xkg2N902Z8JlwIv2TG7JuwVHjiIqEOVT4vzQPa4y/2hP9s3ciUuGJ6cV09SzW3paYzm6jllPZwgfwO1G+7z8bqHY5Pwnjofoflh/K9cxiYk6EaYxu638bswChh0oTC2UIGOX9Knr1sPb2CyQB6y0BZnyJX8njyNeJTH7oNuOzCE4UV6eBf2asKw2OTzurCh+0jZHveGPCHm9tnJJoIVS39wNh2pkebmccaXt5GxT/jZRgWsMm4iDUptO4uRtzdnS5eJNlw7rPUb+ZCnox+D2KT64eqAL6I19pO0ZA4JnLMPrdSGKc78w7WfJefNfDBtKLeqYLRa4imAzPtAwf4Pi+x0GN3cqZ9Z3ExA+/p3kE0Jlu9wD9AkW/dAG0oewFHH/K8SoNuNtus2N40uBzjQHJ3oWvHiKcA
+                DISCORD_BOT_TOKEN: AgBM8AufV9G5CJj3E2LJhUKti/Vr/cnAIg0n3JZjTdivStTtm1RpE1BJ0sjh1/erYmpqv5jAOThJdyqiBAD9bNjwaaRM0GBv8yOwyy6z6/n/m3mQzwXzzEjeEFCMmNWmm8ynYLCp0ZjLdaSGB5Zw/fKZcDtNzxc8j+0qLYnYoVq5MDxhkZKJrRWLeh/AK/SHc8s6fdwbDwuFfvhC3QpYMpBJX66O6WePis1EQ+ETXpAI2Yik+zheLyRcZ3MAgVlbo+kECcLs6edn4Y98MVDsCsMAmAneLrzK21QzBKs/cbC7pp6C6HhcnHoXFv13bS9pRRfq2XE5HksTzvnIEhVwVzfJ7C9UWxcX2gY5aYqnmAyD3LurAde2ro2sBcFmKhger90Sf3C2LgIROw7FgZaFiLoNBygIJo2k5Xwwx++XKNZH8xSr6hElazk8xJstxcOKtmm18XSgzK7NFlQtkZ/NONH7QsGRnHo10ju5OwRv59tOTLpSnxPUm9Qa/0tmUMR8xvMvb4ZHailDRhoNoKXxYopgxC3YqO7ECRPAunnIKcszS0ndfIsC29lemizRQEzCMc2sPTXF/5v0Aa5eP4wRu/Yh0o3zYknh0DzlWe/8u51yNn/r48REXpPzIPCwd3uY2FlyI6fKtZBvVgEh1H6sYYmp3kQoy8/Xnx/gs3VodsUwmhjTCbcDFkEfWOMumdx67peu7Cbze1PtDB35HVHAeXfHfnMmAcxQvaciWmIj/71rcfyiDBUhZg6N0imjHPiQ2CJR2Yiw90lV4A9DoiVaVSO/tadgDfPq5pM=
+                DISCORD_HOME_CHANNEL: AgBy9gUFIvtwnh5aQJt/U81dfQ6ZCBxoyZyCCJol6+EZs6P2NcbFx+GTr2idUc6F5SvfXxIYsbnuCNqXiBgF6ComWFKyU9V9aWhL8V7lAucCW5z0gEzLb536WEbcDV7+H2xmCHvBc6eC4IuND0KpiS4+f3R9J7eQTQ/tPM1jDZjB3/O+TlkY906bbdJm198kHu/BmKVXxmJZ3HBKlymY4EAbsOhzhoa485lYNYBAGm3sYpsNceTXLVuifcvAajIkFe2WHyidiCEo6O4WFzv05YsqO3gJgfndBeN0kdmAM81Mtyp6XIyToW9JhTLF/fd7is6n991DA19FGPF8U8W7B8jyM+3VpSIv+8yixtvKIMg9qxiJO915BHuINNgCU/70zzBUZJNiFdZacsxARdAnScz/T36oUbv21BmN6GTD9pskrQ+VJdxNIlRPRr5b7Ba4DE1CgYMwZGZMY2Ni298tfuOW/zDeuVzUMr/IAK+89nrPeINVCpMAnw1Y5HeEsLwUtTUeOooGI0XjtXrEWPDIXMv+9no3ORRbQziuTOSRFtkMnN4bahtUPeQyW7d0UpzKsX3ppDsMMcDIrSOnkTApRjtWGAcBjQgzuVSsm8NFw4Y18Tt8Ns6y/dSlSUsEbSzI0f6CqYFWjuskFJLFjNsjVY1U70qJesb1A8YXkbqFeqMNmn6BZSxbgKk9Ua6BSPw2WUscb4n/JYGH9VpA6Tj+K7POYone
+              template:
+                metadata:
+                  name: hermes-agent-creds
+                type: Opaque
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-july
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
