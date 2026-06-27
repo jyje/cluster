@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-june
+  namespace: argocd
+spec:
+  project: ai
+  source:
+    repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
+    targetRevision: 0.5.1
+    path: .
+    helm:
+      valuesObject:
+        fullnameOverride: hermes-june
+        config:
+          # Via the shared LiteLLM proxy: hermes-june talks to LiteLLM as a
+          # normal OpenAI-compatible custom provider. The proxy serves
+          # openai/gpt-oss-120b (backed by NVIDIA NIM, see litellm.yaml), so
+          # no GitHub Copilot token or device-flow login is needed here.
+          providers:
+            litellm:
+              base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
+              key_env: 'OPENAI_API_KEY'
+              discover_models: true
+          model:
+            provider: litellm
+            # Must match a model_name exposed by LiteLLM (see litellm.yaml).
+            # The openai/ prefix is the LiteLLM model_name, not a hermes vendor
+            # hint: provider is pinned to litellm, so hermes routes it through
+            # the proxy rather than a built-in OpenAI vendor.
+            default: openai/gpt-oss-120b
+          terminal:
+            backend: local
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-agent-creds
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: hermes-agent-creds
+            spec:
+              encryptedData:
+                DISCORD_ALLOWED_USERS: AgAK/uy+V36qKjcqESmseYS/T9d7IH5obP97+YNeoxhpRA3yf9KWOsTZ0b4P7mA48y1g4k7u0mGYFsX2eQ9HIeXAQC6fh8XJylWWesITZo7N8EGtO5WNlwLmo4jFGBWlhBsv9k8VmvNQLSm2SNWAxoHjte4v1fcXeYEApZneNsqIEci1VJ4afxjkqEwKncBa9aTE2Z64SOpkhGzkO/Xjjojwq1RQXyzI2a/MaJbZigjgziUE2pEXActbubMN0JGPxR0gAGgj+cFpZxGFQjsyqRE7/Mb6MrCqPjoIlyUpQIzA567b91PDy/EQ4obofg8EC6hszK+0ET3iHcZfGwux6euiTmiFxayT2yaB7tMPpaoCmikIyYquEmTJDr8PfOKcNl56+hq5HXQEKWJZHZNDhWnpxo3uZFiV79ES3BY3iROY4Kv1x6wmovnQ+J3B7wK2TgqYjZPHUpPOGBaX6XtG2rBsT+3CP+s1jndZu9d23GaIhILxWP/l00X+lFUIzc6yIcL6TMHgT39/CJK3psaYmoq7DLcJtdDx1iT6bXrtiAv3j72a+jA/uJtGVIz0rQcN7GONDwzfT75OJ7hecpB0PHX4Px16d4mowt1XaEeGLfbUk0RAbuOjBos+hfaq9KfW753qUe+PTpegQkKU/SX65bSSBfiQT2cMVyJVb9OqjKOnzz4+FBxHXJ6Q+szam6PK+iqlXbkhStahk3RPtLnTh0U0OikqcXNhnqexLNrrnF1wEnDc6/Do
+                DISCORD_BOT_TOKEN: AgAEQn9QfoakPt/WypVpCufrn+J4ye1DdclCI5b9J8y+3G0O9U5siJlnn76bcFVXcB53hWIvrnCN2h0YWBVQ1r1t6KQyH7eoXygk49NhoYVW337/L3WNltiJ/BCBtHgPxk5cEXoRbW1oc7uwPtdVsKqCj4kfSy8ewEO9CMXJtlhhmKa2uMwUl12yDWo/6XoYuNW8pf1iUjGCCfaZlNe+7POtQfzvVLta6V6MJy7yyJamvLaqhjNSPIucIGNH3oDMC5EoGGdxIEN//bgj1WnTClF3aS5vF0yJceodhMtB6peFYWV9LEcacW2RiNiYqKCrj842/zHXO09jOlf7Eql/qS2Z/upxk7v9xaC/AwUMen6iuphcGsxNLkZ2gI8ZZUSKqS4/oZoK//ocjIPokOz6DHc5wAHaeyxM7ODUbnsnCLRct6v+mJ0766Kn9mlPynhJ4Et0jMIT1q0GvO8AUTtU3eU3YZ9C9OOj394QKkYqdk0X0lgXhsd5gLrNKqzhh3E7p9vyVUG+6hXWlVvVWcoBeL5Wv5h8bJYoZfPiPvbdg5rbNvvOFscsOTwrHXx7G1MzgSrADC0IrqVfYxBKaEu8Ju3AB4pbJwqIMNhOpMkZ8U7voZk4dgxitSfui5TLEmLZ8vKhpC+rMcazjlPY3HST/AO4MlO46JDWT0iDVGFw1hwneiRI0bgmEYLNJNdtD4P4zZ4dPCNjPNJ+cnqNj0Jr8q3XskbHEHDHKDg1wy0m9rLQiOg0ID/5O0FZdleY6RbqSXm1mlW/SF4JAqbfrRryMlbBI1k9Dvf7spc=
+                DISCORD_HOME_CHANNEL: AgCct//V0gfEHzH4zI2fAcmp2LANtsMlqu8pMSwE7AoCxvMcfMN2rkLttrCC+vCDV6fuzrsz5t2ECUn50nsfw3zwxVSj1rb/GZLx9fmrSDdFe2iPsTd0fTr4VjrXBqlzDX+/bR3Lacp3PGwGyXPFemIf6fMBPYuEBjeYPPFQ6j0qccqQwfeHN2k24802AVa9ntnuxC9YX9NBlRXZSP8A65eRmejdyILosPpfwCYcI6uN0lOYU89cFO+eaJeoyaDuV5XBrN0ocAVnRDbD5ZYMYv5bporsoQvbBdAMsJVXbRn2ZLjv8RcN+SJ4CdA9TeXMosv9U2810k1cjzhT77COiirUoXAnOpsSMI7m3AI8QtMzVPPdtoAIDBOABv0Bh+JqhoYWylUbJ4fdauCCGsDwMmWnPqUGDoSqc5+vXNtZX4Go5GEHQxflBTIu3ki/WnTYUIphVHd9UdhZjuxSAmzhgKMZvFvAIfcyIYah7LWo6WB1b8/cyDGQGmLvgb4IZq5riIL1Q16+GtTdPyJM2FoVpgnqJ53vc8dOU49cKrGMQ6h2KxXBq4TkZWC/53Vxw83jnVymc9TOSWwmiPRSClbpxuHGxe2RotOkycXgx51fiYXf7kLJKGdJcRJSIE4xjuYDGmnztogJX1slC8T6RobOo7wLbHfws2rbO6J1D6yhIsrxSMt/puU/TuQM0U19UBSQ5hA0YUUBTzX/JFWje2bIt9ycBpAo
+                OPENAI_API_KEY: AgBpNpRhyr0tvv9CfLWNjo7Eu4YAv9/cCYYJMVYaqK/a5ET+ByELAAoy/1VYp9QZ022leDAHe4gFcygMoZ86HGaZf/OwK9WL+o9JnnB5G/iGoDKQchxDcnzCyWRvAPoFvfcuuUU34ZoP5vlwGAtWO2+yXsTcAnrLgKab8QMy11fqQPyueSAte8hDVfQ4f7pygtzcjTA5zOaiyJmbSt8ZGH+VQo5QzBaacU9EFsArbLyoTYbR+Ow4Ah5YJwI/6zERfXsgqyszpTLFIbHjJERl7dVxNktcXoSStetPvWe6YrIB/hPZW1XBfT8mLyW7IRhvT/QLvI3WOY+LiXY6XIC4jSjyV9jSyaB0iPocMQ0brO2wkHxES3HEj3/lUYJE/kDjbFMeYiKRZK1/bt0k0gEmGGFuOt4dDHC/HScQlEFTvuVS7RiHdfmOba1DIdD3na6Ltlnlu6ek/OwgcC19GEJWu4g642IS86Pjs3MN2TWc5lMetRV8jqCF9qFdd6pSHdHU8bKvckEXZOx9h43Yy9EsFFFZcAxnRkQhQQSqRVmIFwsO+uRMudSKuyEQevCjjZirNe7ADJWuZ+NjxadHXurxHPqLyFclkoquot8k48zDD9tYzkGlxcVSsdIclUhM0PCtlnyDuRh5Kf9k1gjLGuN8cNrW1OdqDxBzx6RfTnq6je3Js5i/ZM460yFbMCNZ1+1SntuOxNzGOh/TEQGa2GxubOvIICtfyQH902SmEcnHAD7dvGIClB/IXINa6zC7H8g=
+                OPENAI_BASE_URL: AgDAtL75xhr63wH7rpgl5M1lnrlsikDrahufVGNlbSRjCVHZJrLRb9NpG3/SFmRMLYDXyF9wLN3MF2zIru4v3p9urmobdZS+LqES2/oOjhrWfEFRTVEDEjdXS5xaSaXBE0pYNOlPvQvj/HmztKmkmGI7esQ7S+PEcFF1yEuG/KKJF/q8ha2z3P5JxnE0Y9iCUrlrFcE8dSemoA61qVclHaemRnByGJhIn/1IYnObfJ/r1HmJE/hOcnYTbXs6CPBXTqpXPNFWoO9bswyC0K+Kk78RT4IunA2ZBFbgfVh3Dt4dyVVeA9gjKYBH6mcAKPamRGxUcChgoLWVEaVmXC+k7ca/+4Pbj1pFuoWfxFBI0C1Bvz3jePR62h5+T/08nMp+opYVD0h7/i29XCCHTcPGCL5btKQSYS/lz8tYVD4ClbNM73jUDGHF3M0ubDfFQYmDQAz4LUbmgHmEdvVTLymhsZ2l0yaUJNDxKI2gDgEmu9DEUO2s/78h4pTsXrLTonVREIjU6RLeM5qut1cj6Bt299ePO2/nBkHmTj0In2dggum/1Z76NOo0VMTuGDqRZrG7Keu5oLMGW6Cijt8mot/yUF0wzVesi4wLbpFF7mw2QzbIKCRYVxaeEeZT+UlcbeMJ3BUJDLgEc5vmG+76q9ouR+xvkF7lRMW8/XrWSumKzaZmRM2gy5c6VpcLC0x+ODljHQZWv4fRgj2dOHkfk4CREEThUM9H/EBlgg0JUWhMZ1CbQDwYjxBBIUqKtyDN4zFigqVmToo2yu4=
+              template:
+                metadata:
+                  name: hermes-agent-creds
+                type: Opaque
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-june
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
