@@ -150,6 +150,13 @@ spec:
                 initdb:
                   database: grafana
                   owner: grafana
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: DoNotSchedule
+                  labelSelector:
+                    matchLabels:
+                      cnpg.io/cluster: grafana-pg
               failoverDelay: 30
               postgresql:
                 parameters:
