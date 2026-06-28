@@ -29,9 +29,11 @@ spec:
         readinessProbe:
           timeoutSeconds: 5
 
-        # Disable the chart's auto-generated random admin account. A custom
-        # admin account provisioned via a SealedSecret (admin.existingSecret)
-        # will be set up separately — see desktop guide.
+        admin:
+          existingSecret: grafana-admin-creds
+          userKey: admin-user
+          passwordKey: admin-password
+
         env:
           GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
 
@@ -138,6 +140,19 @@ spec:
               datasource: Prometheus
 
         extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: grafana-admin-creds
+            spec:
+              encryptedData:
+                admin-password: AgDe2kruswMLhGoIZa9PSB6SsrxcNtJ4pAHC4HWdPXcUPlhlDw53Cdo1CkoSLrASZrS97tHax4eWbCMTZ3p8x+6mgGQ0P4eD/LjCk9kJ8jWm2Kf0zWGKnXlXNCsrhV0JnUKmEXbOa8y2J5QTJFR+cVAQ6AqIJBIMGxdUGce0dcrPM1S9MKgUuZPddj0zvaM+Y4+oC5F9RxFxYb4/KrsnBpwCWS68nwpNvXz+A3vRtDwiNXxp+Z0Tc/SXEQ9w9HpVKpj6jpyNFtever8/G+ZMB9wSGHqbrS1OHAnTLuhJp9bP2r12uctF2b6QM8/27AVmmrFuvN5d5J/20DiEK6n/o6Zbz2RF6nonvLQoAUdj82bSv/ymYVLDcSQGdEEq/Ub9LyZejFTtGjXnHl2tkEMiCLMkDWW7W7s3J/oEvUaXrZcFeXBJYTnJA3m2W6beHwPzEv9FBcXofCB6yHKRy+PHowW8ZKxD07QY47PPXyte6XgMAmCmMin6z6FWJBJ2xVKx8n7A8YrI8aMroj0WJ0FpTxcT9vSZ4UAZWzmAZYuehTfQzzbKpYe+EGfBKbiUvEPfSI92rR80C4dgj1VD16Ipa2eaiVH0Pp/Zw+oo4RX1WMh/0xtRz8zdvlN+gDRAwScSKXhyjNLlqUbZapHYu8q+2fUCdGsvKyubBKU4Mi4W9NOgog3J/3tE/CRV91wD16qUtSomGQjlTNkq3WN33oFBJyao0PqxEoGkXt7RI+lGMK2UD2SiIn2ysp9/8TEDE2gMp8uQnp6T0oz54tW0/pY=
+                admin-user: AgBNROCAk8bGzSI2j9wYxVfBNydejNTfwRCu1HSLwhDz6Wxo6KbuMs3lJGfWg8nBxWxk0xdYSKkfI/iy/Oq/grNTr5Fj03PBUNqmIrxSbbAsFn1YIP92OP5lNLG5Jdf6jRpiQHDpzgrNbAF9vX5TBlgj45ob3KWlkjkA0QjWuQiBHTsDVYY4jIC2NhcGxyJodO7+9bS3M7yApadMF2cDfaCtayYJhd/O9osDaKX7ev1PTURcpIZxXWsKu5d0kY6oUKcLAfv4QHSa7PHcgVaxVHp57dXkI7rZOSOHxC6rzJ7mU8PxeiQIAMRdwmAzdIpl4LKCBXftC5elxWAPUUy73KLB1BmAF48s/OWuxbapW3cZl+RcV6o4fmFfONnc8dB6YBCUvRa0tHyV/sRTsOuKAOPsjtqwlo2z1CPP62/4yyCLSDZKBSTH5tKdc1bh9BvdUqj37WfgdgUISOQZkqaOuBvDU9vM3FrfHiQD+TIXkjLFv/1pYnddqurAtNKjkxFabMAWV+ZJjT93mC93rZ6L/DIVXQyXlc/7Vc/koaEJ9v3H1dNFHW//mjUOKVnY1RX1jcyyV9zsc8A2uXWXIcYFlBOIL1L1enq0cuIF5PlZDsMdevEf6YZZd1ICvS8WtqfRM9/0jlMz9iIZFPAYPkdF6UVJPZIcB0MaH+W9XH085o7RP3LoIei7Y6nUI7lyVugxfYtdga/gJg==
+              template:
+                metadata:
+                  name: grafana-admin-creds
+                type: Opaque
+
           - apiVersion: postgresql.cnpg.io/v1
             kind: Cluster
             metadata:
