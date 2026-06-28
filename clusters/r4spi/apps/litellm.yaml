@@ -536,6 +536,13 @@ spec:
               # Prevent repeated timeline divergence caused by CNPG's aggressive defaults:
               # - wal_sender/receiver_timeout: 5s causes false failovers on K8s network blips
               # - wal_keep_size: 512MB is too small for pg_rewind after multiple failovers
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: DoNotSchedule
+                  labelSelector:
+                    matchLabels:
+                      cnpg.io/cluster: litellm-pg
               failoverDelay: 30
               postgresql:
                 parameters:
