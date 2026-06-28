@@ -169,6 +169,7 @@ spec:
                     values:
                       - n8n
                       - open-webui
+                      - litellm
                       - portainer
                       - argocd-server
                       - homer
@@ -181,7 +182,7 @@ spec:
                   # /www/assets/icons/favicon.ico (replaces Homer's default favicon).
                   favicon: "favicon.ico"
               homerConfig:
-                title: "Dashboard"
+                title: "jyje's Kubernetes"
                 subtitle: "app.jyje.online"
                 logo: "https://raw.githubusercontent.com/jyje/homer/jyje/public/assets/icons/pwa-192x192.png"
                 connectivityCheck: true
@@ -237,38 +238,34 @@ spec:
                   - name: "About"
                     icon: "fas fa-user-astronaut"
                     url: "#about"
-                # Applications group is omitted here entirely — both of its members
-                # (n8n, Open WebUI) are now discovered automatically via Ingress
-                # annotations (see ingressSelector above), which recreates the same
-                # group via each Ingress's service.homer.rajsingh.info/name tag.
+                # Almost every card is discovered automatically from each app's
+                # Ingress annotations (see ingressSelector above), which build the
+                # groups via service.homer.rajsingh.info/name:
+                #   Applications — n8n, Open WebUI, LiteLLM
+                #   Dashboards   — Grafana, Homer
+                #   Management   — Argo CD, Portainer
+                # This manual block only adds Hermes Agent, which has NO Ingress
+                # (it runs as a Discord gateway — outbound only, no web endpoint),
+                # so it can't be auto-discovered. It joins the "Applications" group
+                # by name; the operator merges same-named manual + discovered groups.
                 services:
                   - parameters:
-                      name: "Management"
-                      icon: "fas fa-microchip"
+                      name: "Applications"
+                      icon: "fas fa-rocket"
                     items:
-                      # Homer is intentionally omitted here — it now discovers
-                      # itself automatically via its own Ingress annotations
-                      # (see the Ingress resource below and ingressSelector above).
-                      - parameters:
-                          name: "Infisical"
-                          logo: "https://avatars.githubusercontent.com/u/107880645"
-                          subtitle: "Secrets manager"
-                          tag: "infisical #devsecops #valut #cicd"
-                          url: "https://infisical.app.jyje.online"
+                      # Infisical is intentionally hidden from the dashboard for now
+                      # (its Ingress carries no Homer annotations, and it has no
+                      # manual card here).
                       - parameters:
                           name: "Hermes Agent"
-                          # No web dashboard exposed (the upstream --insecure flag
-                          # required to bind it network-wide leaks API keys, so we
-                          # keep it disabled). Link to the upstream project instead
-                          # of an internal URL; no "type" (Ping) since there's no
-                          # endpoint here to health-check.
+                          # No web dashboard exposed: Hermes runs as a Discord
+                          # gateway (outbound only), so there is no endpoint to link
+                          # or health-check. Link to the chart repo instead; no
+                          # "type" (Ping) for the same reason.
                           logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
                           subtitle: "Multi-provider LLM Discord agent"
                           tag: "hermes-agent #discord #llm #agent"
-                          url: "https://github.com/NousResearch/hermes-agent"
-                      # Portainer and Argo CD are intentionally omitted here — both
-                      # are now discovered automatically via Ingress annotations
-                      # (see ingressSelector above and the respective app manifests).
+                          url: "https://github.com/jyje/hermes-agent-helm"
 
           # Chart has no built-in ingress template; the operator names the
           # generated Service "<dashboard-name>-homer" (confirmed post-deploy).
@@ -292,8 +289,8 @@ spec:
                 item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
                 item.homer.rajsingh.info/tag: "homer #dashboard #monitoring"
                 item.homer.rajsingh.info/type: "Ping"
-                service.homer.rajsingh.info/name: "Management"
-                service.homer.rajsingh.info/icon: "fas fa-microchip"
+                service.homer.rajsingh.info/name: "Dashboards"
+                service.homer.rajsingh.info/icon: "fas fa-chart-line"
             spec:
               ingressClassName: nginx
               tls:

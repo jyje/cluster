@@ -49,6 +49,16 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
+            # Discovered by Homer's Dashboard CR via ingressSelector
+            # (matchExpressions: app.kubernetes.io/name in [...]). litellm's
+            # chart stamps app.kubernetes.io/name=litellm, matched there.
+            item.homer.rajsingh.info/name: "LiteLLM"
+            item.homer.rajsingh.info/subtitle: "LLM API gateway / proxy"
+            item.homer.rajsingh.info/logo: "https://avatars.githubusercontent.com/u/121462774"
+            item.homer.rajsingh.info/tag: "litellm #llm #proxy #gateway #openai"
+            item.homer.rajsingh.info/type: "Ping"
+            service.homer.rajsingh.info/name: "Applications"
+            service.homer.rajsingh.info/icon: "fas fa-rocket"
           hosts:
             - host: litellm.app.jyje.online
               paths:
