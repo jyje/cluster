@@ -1,6 +1,9 @@
 # Istio Ambient mode via Helm (https://istio.io/latest/docs/ambient/install/helm/)
 # Using local Helm charts from this repo (helm/istio/).
 # Gateway API CRDs (if using Gateway API): kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
+#
+# NOTE: automated sync disabled — Istio Ambient paused (istio-cni causes pod sandbox failures
+# on node restart before the CNI kubeconfig is ready). Re-enable after SD card fix on raspi-50.
 ---
 # Ignore drift: istiod patches these webhooks at runtime (e.g. istiod-default-validator: failurePolicy→Fail, caBundle).
 apiVersion: argoproj.io/v1alpha1
@@ -27,7 +30,6 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-    automated: {}
 ---
 # Ignore drift: istiod updates webhooks at runtime (failurePolicy, clientConfig.caBundle).
 apiVersion: argoproj.io/v1alpha1
@@ -63,8 +65,7 @@ spec:
       jqPathExpressions:
         - .webhooks[].failurePolicy
         - .webhooks[].clientConfig.caBundle
-  syncPolicy:
-    automated: {}
+  syncPolicy: {}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -84,8 +85,7 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
-  syncPolicy:
-    automated: {}
+  syncPolicy: {}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -102,5 +102,4 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
-  syncPolicy:
-    automated: {}
+  syncPolicy: {}

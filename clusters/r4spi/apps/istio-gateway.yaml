@@ -32,5 +32,4 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-gateway
-  syncPolicy:
-    automated: {}
+  syncPolicy: {}
