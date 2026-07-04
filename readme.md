@@ -15,6 +15,11 @@ This v2 cluster focuses on **Declarative Everything**, **Flexible AI Serving**, 
 
 ## Technical Architecture
 
+### Overview
+Infra, network edge, AI workload, and the GitOps loop that reconciles all of it — in one landscape view. Each section below drills into one column.
+
+![System Overview](docs/diagrams/system-overview.svg)
+
 ### 1. Hardware Stack
 ![Architecture](docs/diagrams/hardware-architecture.png)
 
@@ -28,58 +33,26 @@ This v2 cluster focuses on **Declarative Everything**, **Flexible AI Serving**, 
 - **Load Balancer**: MetalLB (L2 mode) — reserved for workloads that do not collide with node addresses (see [Design & Insights](#design--insights)).
 - **Certs**: Cert-manager issuing Let's Encrypt certificates via the ACME **HTTP-01** challenge through the NGINX ingress. `ClusterIssuer` definitions are themselves managed declaratively by ArgoCD.
 
-### 3. LLMOps Architecture
-```mermaid
-graph TD
-    subgraph UI_Layer [User Interface]
-        OWUI["Open WebUI (Pod)"]
-    end
+### 3. Logical Architecture
+The full logical stack — edge, certificates, service mesh, storage, stateful data, LLMOps, agents, observability, secrets, and GitOps — grouped the way an AWS reference architecture diagram groups services, but every icon is the component's own real logo.
 
-    subgraph LLM_Orchestration [AI Infrastructure]
-        LiteLLM["LiteLLM Proxy (Pod)"]
-    end
-
-    subgraph Storage [State & Vectors]
-        subgraph Persistence
-            CNPG["CloudNativePG (Cluster)"]
-            Qdrant["Qdrant (Vector DB)"]
-        end
-    end
-
-    subgraph LLM_Backends [Inference Services]
-        NIM["NVIDIA NIM (External)"]
-        Ollama["Ollama (Local Pod)"]
-        OpenAI["OpenAI (External)"]
-    end
-
-    %% Flow Relationships
-    User((User)) --> OWUI
-    OWUI -- "LLM Request (v1)" --> LiteLLM
-    OWUI -- "Query/Store Documents" --> Qdrant
-
-    LiteLLM -- "Proxy / Routing" --> NIM
-    LiteLLM -- "Proxy / Routing" --> Ollama
-    LiteLLM -- "Proxy / Routing" --> OpenAI
-    LiteLLM -- "Sync Metadata" --> CNPG
-
-    %% Styling
-    style User fill:#333,color:#fff
-    style OWUI fill:#3b82f6,color:#fff,stroke:#1d4ed8
-    style LiteLLM fill:#ef4444,color:#fff,stroke:#b91c1c
-    style Qdrant fill:#10b981,color:#fff,stroke:#047857
-    style CNPG fill:#8b5cf6,color:#fff,stroke:#6d28d9
-    style NIM fill:#84cc16,color:#fff,stroke:#4d7c0f
-    style Ollama fill:#f59e0b,color:#fff,stroke:#b45309
-```
+![Logical Architecture](docs/diagrams/logical-architecture.svg)
 
 ### 4. GitOps & Secrets
 - **Continuous Delivery**: [ArgoCD](https://argoproj.github.io/cd/)
 - **Secrets**: Sealed Secrets & [Infisical](https://infisical.com/)
 
+Every change is reconciled through five delivery layers (L0 bootstrap → L1 root app-of-apps → L2 per-app Applications → L3 vendored Helm charts → L4 extraResources) — see [Design & Insights](#design--insights) for the full rationale.
+
+![Delivery Pipeline](docs/diagrams/delivery-pipeline.png)
+
 ### 5. Storage Strategy
 - **Object Storage**: [SeaweedFS](https://github.com/seaweedfs/seaweedfs) (S3-compatible)
 - **Distributed Block**: [Longhorn](https://longhorn.io/)
 - **Legacy Storage**: NFS Subdir External Provisioner
+
+> [!NOTE]
+> Hardware Stack and Delivery Pipeline are generated from [docs/diagrams/r4spi.ipynb](docs/diagrams/r4spi.ipynb). Overview and Logical Architecture are hand-laid-out [draw.io](https://www.diagrams.net/) files ([system-overview.drawio](docs/diagrams/system-overview.drawio), [logical-architecture.drawio](docs/diagrams/logical-architecture.drawio)) — Graphviz's automatic layout couldn't give these two the tight, centered placement they needed. Icons are each project's own official logo — sourced from the [`diagrams`](https://diagrams.mingrammer.com/) package, [lobehub/lobe-icons](https://github.com/lobehub/lobe-icons) (MIT), and each project's own brand assets.
 
 ## Key Features
 - **ARM64 Optimized**: All components are tailored for AARCH64.
