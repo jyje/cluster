@@ -164,6 +164,12 @@ spec:
                 model: "nvidia_nim/z-ai/glm-5.1"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "z-ai/glm-5.2"
+              litellm_params:
+                model: "nvidia_nim/z-ai/glm-5.2"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
 
             # GitHub Copilot Models (June)
             # Auth is FILE-based: LiteLLM's github_copilot provider reads the
