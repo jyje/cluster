@@ -48,7 +48,7 @@ spec:
                         subtitle: ARM64-based Micro Computers
                         tag: "raspi #arm #edge #iot #infra"
                         url: https://www.raspberrypi.com
-                      - name: MicroK8s v1.32.0
+                      - name: MicroK8s v1.36.2
                         logo: https://cdn.simpleicons.org/kubernetes
                         subtitle: Lightweight Kubernetes for Edge Devices
                         tag: "microk8s #cluster #k8s #canonical #infra"
@@ -76,16 +76,6 @@ spec:
                         subtitle: App deployment
                         tag: "argocd #argo #gitops #cicd"
                         url: https://github.com/argoproj/argo-cd
-                      - name: Argo Workflows
-                        logo: https://argoproj.github.io/argo-workflows/assets/logo.png
-                        subtitle: Workflow engine for CI/CD
-                        tag: "argo-workflows #argo #workflow #pipeline #cicd"
-                        url: https://github.com/argoproj/argo-workflows
-                      - name: Infisical
-                        logo: https://avatars.githubusercontent.com/u/107880645
-                        subtitle: Secrets manager
-                        tag: "infisical #secretops #vault #cicd"
-                        url: https://github.com/infisical/infisical
                       - name: GitHub ARC
                         logo: https://avatars.githubusercontent.com/in/15368
                         subtitle: Self-hosted ARM64 runners
@@ -99,11 +89,6 @@ spec:
                         subtitle: PostgreSQL operator
                         tag: "cnpg #operator #dbaas #psql #database"
                         url: https://github.com/cloudnative-pg/cloudnative-pg
-                      - name: Milvus
-                        logo: https://avatars.githubusercontent.com/u/51735404
-                        subtitle: Vector database
-                        tag: "milvus #vectordb #ai"
-                        url: https://github.com/milvus-io/milvus
                       - name: Qdrant
                         logo: https://avatars.githubusercontent.com/u/73504361
                         subtitle: Vector database
@@ -112,24 +97,42 @@ spec:
                   - name: Storage
                     icon: fas fa-hdd
                     items:
-                      - name: Longhorn
-                        logo: https://avatars.githubusercontent.com/u/51335366
-                        subtitle: Block storage for Kubernetes
-                        tag: "longhorn #storageclass #storage #rancher"
-                        url: https://github.com/longhorn/longhorn
-                      - name: MinIO
-                        logo: https://avatars.githubusercontent.com/u/695951
-                        subtitle: Object storage for Kubernetes
-                        tag: "minio #operator #dbaas #s3 #storage"
-                        url: https://github.com/minio/operator
+                      - name: NFS Subdir External Provisioner
+                        logo: https://avatars.githubusercontent.com/kubernetes-sigs
+                        subtitle: Dynamic NFS-backed storage classes
+                        tag: "nfs #storageclass #storage #kubernetes-sigs"
+                        url: https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner
+                  - name: Observability
+                    icon: fas fa-chart-line
+                    items:
+                      - name: Grafana
+                        logo: https://grafana.com/static/img/menu/grafana2.svg
+                        subtitle: Cluster monitoring dashboards
+                        tag: "grafana #monitoring #dashboard #lgtm"
+                        url: https://github.com/grafana/grafana
+                      - name: Loki
+                        logo: https://grafana.com/static/img/menu/loki.svg
+                        subtitle: Log aggregation
+                        tag: "loki #logging #lgtm #observability"
+                        url: https://github.com/grafana/loki
+                      - name: Prometheus
+                        logo: https://cdn.simpleicons.org/prometheus
+                        subtitle: Metrics collection and alerting
+                        tag: "prometheus #metrics #monitoring #lgtm"
+                        url: https://github.com/prometheus/prometheus
+                      - name: Tempo
+                        logo: https://raw.githubusercontent.com/grafana/tempo/main/docs/sources/tempo/logo_and_name.png
+                        subtitle: Distributed tracing
+                        tag: "tempo #tracing #lgtm #observability"
+                        url: https://github.com/grafana/tempo
                   - name: AI/LLM
                     icon: fas fa-flask
                     items:
-                      - name: Argo Workflows
-                        logo: https://argoproj.github.io/argo-workflows/assets/logo.png
-                        subtitle: Workflow engine for data pipelines
-                        tag: "argo-workflows #argo #workflow #pipeline #cicd"
-                        url: https://github.com/argoproj/argo-workflows
+                      - name: LiteLLM
+                        logo: https://raw.githubusercontent.com/googlefonts/noto-emoji/main/svg/emoji_u1f684.svg
+                        subtitle: LLM API gateway / proxy
+                        tag: "litellm #llm #proxy #gateway #openai"
+                        url: https://github.com/BerriAI/litellm
                       - name: Open WebUI
                         logo: https://docs.openwebui.com/images/logo.png
                         subtitle: Open source web UI for LLM
@@ -140,11 +143,6 @@ spec:
                         subtitle: Open source LLM and embeddings
                         tag: "ollama #llm #open-source #ai"
                         url: https://ollama.com/library
-                      - name: Attu
-                        logo: https://avatars.githubusercontent.com/u/18416694
-                        subtitle: Vector database manager
-                        tag: "attu #milvus #vectordb #ai"
-                        url: https://github.com/zilliztech/attu
             binaryData:
               # Custom favicon mirrored from the jyje.online profile site
               # (https://jyje.online/assets/icons/favicon.ico) for brand consistency.
