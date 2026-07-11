@@ -76,6 +76,12 @@ spec:
           model_list:
             # Text Models
             -
+              model_name: "upstage/solar-open2"
+              litellm_params:
+                model: "openai/solar-open2"
+                api_base: "https://api.upstage.ai/v2"
+                api_key: "os.environ/UPSTAGE_API_KEY"
+            -
               model_name: "deepseek-ai/deepseek-v4-flash"
               litellm_params:
                 model: "nvidia_nim/deepseek-ai/deepseek-v4-flash"
@@ -295,6 +301,11 @@ spec:
               secretKeyRef:
                 name: litellm-creds
                 key: openai.api.key
+          - name: UPSTAGE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: upstage.api.key
           - name: DISABLE_METRICS
             value: "True"
           - name: TELEMETRY
@@ -343,6 +354,7 @@ spec:
                 openai.api.key: AgAdCLO9qjRK31Y0Vklqi6hM7FrQw7g+Yyo9nPD9muzoQWkwFfPuGHlk76a5pKdsqT9vj33/YL888GIslmZHNdBNpoYwkpQAmk2DGlzwzNSQEFpNIoHFgeg4Ij7S2pzaQwyMJcuAcnJknyNuBEFPfmyQNUOyJsw/zRQTD4FbswAxjT8b6QtMe4/9bhgW9hg0oR3aUz5csq5GT5pypkSKUhB5pQewrFedFS7/cCGubSz5MZpbi0m3R5xhkX1fbFqlq61lYbXmyDMwJp3F178FVr4drB5D9wRNkPsx4+9AjJ71wi8+4zUuRdRZ90gUYUKKuxarz7MEnJssf3w9i04ZmdrDFq1EQXxCJvbTdBkCgJ5xjM2yv/nIija5xvtPGBpSLfB3xrhU8S67mxIBQz8Fl8x9ds0gy5gAzO/WovMY5TfGCrFlSzxMtzCyrSIEE9evGgcqFu9NG+M2OlrdmSOEXd2Y7qr/Bsg5y7l/Au3HBeZZYj1X0FgqIbM36ilyTPX2nFy4SHCh+CYILRY/XIWdr9IUHzG96K4gKD0sxQrqVV0qqbHLeG/bf/8tGyCxrw8hi0zcCXY0XlUn/MqKtvakufLq4wiP1Bs3pBlSsNXVfYQ8hJS6WYdgmJs4oQ764WD/zvAdsir8RjRUhvF6IkVcmA+3Pos6SCJ8wU7KUCzQ0LU5EFTzZuCnTXCdBcCj01a6LyXk6M/8YRj8ZBDVgPUSIAgr58/8hU90WqKy36pipT521bhmdmNxXF2/JrAYDejvqWnmJGUvWI9MpLph4aV74BWtoDQnsRqCkw7CXVbKAosg1zWCGQPYlz0hewPp0CDxYzJHh/RI1il8tpGCuu6sJfMpj+vW232eVaCb17dSsBGDONB2sHDQG+Eo+ZWaOIF3lvLbLK4GZgd2F5e1Ixj9S5zXl6xvFw==
                 password: AgBH/P1J6+I2cqViMGHnrZUWvAM3WUZt5wtryroItorDH8t8/MHALlnytPkx3qjDlGMdfz1rjZKaEV3GFokfmrw5ztfdMHhGhO0FBpA+rAJcOyplO8ESfyT0Vpd3X6ZIIdN3P0jQ7nPJJB/CR8qB9cby//aSABeDq1KGFtePBTS6Wh0bOg2EFkVl31DivJ8gWMdQR+SOQFrNt3F+g2wgAvtPBEbbNqYTye9lJSbmxUcp6/Y96JPby2orYD8yXfFrcsTLS3x0pCnmMFuMTdA7CR/taD5Js1hQqwxMsl1c+Aa3gjBakQxx57DMCz/vLV50WzhG+NR4uVV/5e2YyKb3rW6SH+Ri2hWcsZbWUFcKic7qG4ukjBodzlK21FcC7zeyc+wcyhC9Gyaq51cZqn9uTbkX1f9lHEqT03hHXOf/6wdYSqtL/MP3WW53d7tMzhMlURadDHyAmT+wi4Q7DWT2h13t0MeUctHmaVLnyJoqTpXUFt3MA2/uBEkvpf5H1je+XEx0EmghMbjtKh600I1ZNzfhMxS11b9EKzKGz96bzN3MB5IfEcu3+2wc9PnfqFNj7MVd/jQbU3V/wT4rcnuQXey3IglrRkN7TtgXSExE6iX2lHxjQCM1bUawXLcPKN+a5m+ko4P2pv6bLM3wqA/MZ3euBNfowKEOMptmBJOkEw6NzbtyDZTpUtCGQAbRBRdnr19S1uNZguV3iBM2X7wvLXmEHVWUayvpabMHsVD2LHL5vw==
                 postgres-password: AgCwGfFiAB0jFWPsLZ3MB7qqUIt4twoEBNmrsqPYhAh8zDuCxQZ6TyvU6GhomCW64/prI6Ke9JDuOSLVB2/V2pvBrM+DDqMK4CnlxBlL0nTfN+cPsCCjzjdbO2KWu0OQoVyClYs1Q2X7m/x7789f7eMx0eX56KLExcvQugC8nzw/zw7WO6tOOgasQzYAdbzoo3C0ckgybkOJ+b+Pg1Xfw8B8vdsbuPlI02VPThTEGfhgGxn/XPpit+qJLsmkfXW2BNtFf0FDqj5NVS6o+UVGJDSu5GgFv2FMuvUEsgKlNLMwZz5sXc16tG772hnALPFsOyCuN3tZu7hs01rJ+7/j9ICM2YRmqrvY3u57820WGzDwU0/4Kla7ZKfRM/TmTYKHJ/pAzi4xT+r0mU5fdl7gD6o8ZMfvOIWFxgWuunM/Lo+MqHaJBRCMIgvVcMn9wfzK2ivBSk2yo4vBoVINv3o6hhOT7HCSk6LnQBOutsNqB5TmQqJfBN7xGtkKQw/Z4yyi1iLkMEdJga3k6+Lxa6Y7hBym1wHHOqSPbl00XB8FBmBWsVkBSTe0GahZnIdfzcAgwjDcBg6CwmZgrR+xnBcHKYqFEm5HNIA59tzDWOtmlsscH1O7A7FnjO8DrQqHy1YV18KZhB2imvx1OcV01VVbkhW3NGcvM/sl7vkeFBXVPXDGO8QqFdtyit47B/OLmkh5aV1YzjsEVmpFsDP0JscpCGBpwJDhYg==
+                upstage.api.key: AgAhVQih/IM80JDjT7dHf/i5/ldvul4wpLQLE2VOyHSzMT9YUexeijCH4S13wMkf08gQoCNUKmcOtUtaO7X0GPVrqe0oDfKGxU+Jw/XUKz3jw6pphiUiwVntzp+qWU0OkvfohGkYgEL+iFfzHCi+Ip7aJ7rwV8I1oTCaz7wDTxHt9S9cE/ml045vZxb2IiDFYCeuwPQHMuvz15iXxhlGg9Xm8EwlryB5t6HqowFwjQkohrjOuQJVGFRdDA1mQjsTlkw8WCdEFozACQeLHsVPzlWhLAy3RX9YecvFRMIzlOGat2VPYVc92y/2n4GtiqFeiKZv8q6slkkh4ZqbK558pbnD/IHe1o53IWV2gmfYzr3WrnTtaHWNAjka9sThZWFlwNphW0LxImG5rA9TonSoNBRbbJEQfV1u0vGE61yY8mqop0JAC6Wyb1ctGCemHAESxqiCDdShVFCwhxQKoRKeMTbwTrPpig+nzVX2d0bhF6cgfWIXxLZQ7409bt5ybPBnGSOiizwKgzX5Z0vyGJaJ8fq3HFKWmijB8+jru1bnsTEqQJZV24VNFuYRh48vW9lySs7oyzn9kAJiMyZELrWupINpLJIu4XlBoZ9+WzzGsh5EFn5MzdYKICYbbd5FfEBKrLzBg6BeqFAxr3eC7mLOGgUaur9ZYDREVUqF290FyOHNM+6Fxtjw10eu7OnP7i0Nzi7CYnb+Budh6TsYBPkhnFCuSOpOCUv0QVhVfPbzyJxLTw==
                 username: AgDSX4v1ZNdRg8X7AivEG/WEhcYTeTbpAGpSTzqHI1k6JZowskpvvleB341OszfK1NDfZg76CUdcNHqoh1q1AqKCaa0pVIEqiKvUSUl71ODrXr68+NfVVcd5j1NZGOSkZfqBWzlLmDmec4JiG9UB6bWZUnM7eYsPf3M77vbI4A8a+AW9wuxe1XjjvUfBySutannHbeMt2O5PQlEXI7q1rPneadn1snszGNADTQVHmxU9LKCQBjYp0ahrzht1axN/T++4Vn1mxQbfmcvLdTsS9qIuGS6lgxcJi14P8Ipxb9TvlpL6LCSAFdisNcs0Na9nvIS2X76MqS9kFuzCfzERap68vIzGpMuGKfxUSG/kGYxOjOhSWhn0NNDmAgA/BwKBu4yOJ8yiwEuJ8XzUutJTL8j4zAh87YkrSLO4VLmHON/iNkC3j9wsP8uF1QxWt+scEUSjyIG95Du5gCpdXZFCQyuS8eSLe7ozQqy8+0NZuHAQT6g+FQiAp+VWeEbfxgGQ0WeY/Yp1VQ3obT6YC8RM5dCE85vvbPKXQoAGm14cMUEDCRGJTtLUuWYnLxEbnhkAEyfoLw+xKr0Gj+uzMTrX56tjhefHulClIJXVEtmuK8cBKv2G3pzgH5eiRS6Wv0Nrm4aX7vzYtTWASzCWT9BZWs5HcAWsDp1l1OxWDvLt2fbjJIlM3csuKKE/N9tLe/vrek+tuzJ9mKrt
               template:
                 metadata:
