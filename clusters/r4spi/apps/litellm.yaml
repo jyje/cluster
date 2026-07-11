@@ -123,12 +123,6 @@ spec:
                   chat_template_kwargs:
                     thinking: true
             -
-              model_name: "nvidia/nemotron-3-super-120b-a12b"
-              litellm_params:
-                model: "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
               model_name: "nvidia/nemotron-3-ultra-550b-a55b"
               litellm_params:
                 model: "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b"
@@ -156,12 +150,6 @@ spec:
               model_name: "stepfun-ai/step-3.7-flash"
               litellm_params:
                 model: "nvidia_nim/stepfun-ai/step-3.7-flash"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "z-ai/glm-5.1"
-              litellm_params:
-                model: "nvidia_nim/z-ai/glm-5.1"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
