@@ -168,6 +168,7 @@ Runbooks and tuning notes live under `docs/operations/`. Current entries:
 |----------|-------|
 | [hermes-agents.md](operations/hermes-agents.md) | Hermes Discord agents — GitOps integration, LiteLLM vs Copilot device-flow login |
 | [litellm-startup-probe-tuning.md](operations/litellm-startup-probe-tuning.md) | Startup probe tuning for slow ARM64 nodes |
+| [calico-cni-token-renewal.md](operations/calico-cni-token-renewal.md) | Calico CNI ServiceAccount token expiry — diagnosis and scheduled renewal |
 
 ---
 
