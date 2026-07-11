@@ -79,7 +79,7 @@ spec:
               model_name: "upstage/solar-open2"
               litellm_params:
                 model: "openai/solar-open2"
-                api_base: "https://api.upstage.ai/v2"
+                api_base: "https://api.upstage.ai/v1"
                 api_key: "os.environ/UPSTAGE_API_KEY"
             -
               model_name: "deepseek-ai/deepseek-v4-flash"
