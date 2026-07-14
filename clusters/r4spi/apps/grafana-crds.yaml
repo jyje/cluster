@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-crds
+  annotations:
+    # Must land after grafana-operator (wave 2, installs the CRDs) and after
+    # grafana itself (wave 3, the Helm-deployed instance these CRs target).
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/jyje/manifest-group-0.1.0
+    helm:
+      valuesObject:
+        manifests:
+          # Adopts the existing Helm-deployed Grafana (grafana Service,
+          # observability namespace) in external mode, so grafana-operator
+          # manages its dashboards without redeploying Grafana itself.
+          - apiVersion: grafana.integreatly.org/v1beta1
+            kind: Grafana
+            metadata:
+              name: r4spi-grafana
+              namespace: "{{ .Release.Namespace }}"
+              labels:
+                dashboards: "r4spi"
+            spec:
+              external:
+                url: "http://grafana.observability.svc:80"
+                adminUser:
+                  name: grafana-admin-creds
+                  key: admin-user
+                adminPassword:
+                  name: grafana-admin-creds
+                  key: admin-password
+
+          # Migrated from lgtm-grafana.yaml's gnetId-based dashboardProviders
+          # (same marketplace IDs/revisions), now independently reconciled
+          # and status-visible via `kubectl get grafanadashboards`.
+          - apiVersion: grafana.integreatly.org/v1beta1
+            kind: GrafanaDashboard
+            metadata:
+              name: kubernetes-cluster
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              instanceSelector:
+                matchLabels:
+                  dashboards: "r4spi"
+              grafanaCom:
+                id: 7249
+                revision: 1
+
+          - apiVersion: grafana.integreatly.org/v1beta1
+            kind: GrafanaDashboard
+            metadata:
+              name: node-exporter
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              instanceSelector:
+                matchLabels:
+                  dashboards: "r4spi"
+              grafanaCom:
+                id: 1860
+                revision: 37
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      selfHeal: true

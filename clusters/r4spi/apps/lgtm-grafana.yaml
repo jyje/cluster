@@ -115,29 +115,11 @@ spec:
                   serviceMap:
                     datasourceUid: prometheus
 
-        dashboardProviders:
-          dashboardproviders.yaml:
-            apiVersion: 1
-            providers:
-              - name: default
-                orgId: 1
-                folder: ""
-                type: file
-                disableDeletion: false
-                editable: true
-                options:
-                  path: /var/lib/grafana/dashboards/default
-
-        dashboards:
-          default:
-            kubernetes-cluster:
-              gnetId: 7249
-              revision: 1
-              datasource: Prometheus
-            node-exporter:
-              gnetId: 1860
-              revision: 37
-              datasource: Prometheus
+        # Dashboard provisioning (dashboardProviders/dashboards) has moved to
+        # grafana-operator's GrafanaDashboard CRs — see grafana-crds.yaml.
+        # This chart is left otherwise untouched; the migration is purely a
+        # values-level change to avoid two mechanisms managing the same
+        # dashboards.
 
         extraResources:
           - apiVersion: bitnami.com/v1alpha1

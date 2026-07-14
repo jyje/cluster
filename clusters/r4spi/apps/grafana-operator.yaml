@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/grafana/grafana-operator-5.24.0
+    helm:
+      valuesObject:
+        replicas: 1
+        # Scope the operator to the namespace Grafana and its dashboards
+        # actually live in, keeping its watch/RBAC footprint minimal.
+        watchNamespaces: "observability"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: grafana-operator-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
