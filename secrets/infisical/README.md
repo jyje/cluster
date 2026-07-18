@@ -29,12 +29,12 @@ Use `SITE_URL` with `https` and the actual ingress host; do not use `http://loca
 
 ## SealedSecret
 
-After creating `infisical-secrets` in the cluster (see above), seal it and save the SealedSecret into this repo. The controller in this cluster is named `sealed-secrets`.
+After creating `infisical-secrets` in the cluster (see above), seal it and save the SealedSecret into this repo. The controller in this cluster uses `kubeseal`'s built-in defaults (`sealed-secrets-controller` in `kube-system`), so no `--controller-name`/`--controller-namespace` flags are needed.
 
 ```bash
 # From repo root; requires kubeseal and cluster access
 kubectl get secret infisical-secrets -n infisical -o yaml \
-  | kubeseal --controller-name sealed-secrets -o yaml \
+  | kubeseal -o yaml \
   > secrets/infisical/sealedsecret-infisical-secrets.yaml
 ```
 
@@ -70,7 +70,7 @@ kubectl create namespace infisical --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic infisical-postgresql -n infisical \
   --from-literal=postgres-password="$(openssl rand -base64 24)" \
   --from-literal=password=root \
-  --dry-run=client -o yaml | kubeseal --controller-name sealed-secrets -o yaml
+  --dry-run=client -o yaml | kubeseal -o yaml
 
 # 3. Copy the spec.encryptedData block from the output and replace the placeholder encryptedData
 #    in clusters/r4spi/apps/infisical.yaml (SealedSecret infisical-postgresql).
