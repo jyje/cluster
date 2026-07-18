@@ -1,0 +1,126 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authentik
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/authentik/authentik-2026.5.5
+    helm:
+      valuesObject:
+        authentik:
+          postgresql:
+            host: authentik-pg-rw.authentik
+            name: authentik
+            # user/password provided via server.env/worker.env below, sourced
+            # from the CNPG-generated authentik-pg-app secret (same pattern
+            # as grafana-pg/litellm-pg). Blank the chart's own "authentik"
+            # user default so this base secret doesn't emit a redundant,
+            # unused AUTHENTIK_POSTGRESQL__USER key.
+            user: ""
+
+        server:
+          env:
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-creds
+                  key: secret-key
+            - name: AUTHENTIK_POSTGRESQL__USER
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-pg-app
+                  key: username
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-pg-app
+                  key: password
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+              cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+              # Discovered by Homer's Dashboard CR via ingressSelector
+              # (matchExpressions: app.kubernetes.io/name in [...]).
+              item.homer.rajsingh.info/name: "authentik"
+              item.homer.rajsingh.info/subtitle: "Cluster SSO"
+              item.homer.rajsingh.info/logo: "https://goauthentik.io/img/icon.png"
+              item.homer.rajsingh.info/tag: "authentik #sso #oidc #iam"
+              item.homer.rajsingh.info/type: "Ping"
+              service.homer.rajsingh.info/name: "Dashboards"
+              service.homer.rajsingh.info/icon: "fas fa-key"
+            hosts:
+              - authentik.app.jyje.online
+            tls:
+              - secretName: authentik.app.jyje.online
+                hosts:
+                  - authentik.app.jyje.online
+
+        worker:
+          env:
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-creds
+                  key: secret-key
+            - name: AUTHENTIK_POSTGRESQL__USER
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-pg-app
+                  key: username
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-pg-app
+                  key: password
+
+        additionalObjects:
+          - apiVersion: postgresql.cnpg.io/v1
+            kind: Cluster
+            metadata:
+              name: authentik-pg
+            spec:
+              instances: 3
+              storage:
+                size: 2Gi
+              bootstrap:
+                initdb:
+                  database: authentik
+                  owner: authentik
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: DoNotSchedule
+                  labelSelector:
+                    matchLabels:
+                      cnpg.io/cluster: authentik-pg
+              failoverDelay: 30
+              postgresql:
+                parameters:
+                  wal_sender_timeout: 60s
+                  wal_receiver_timeout: 60s
+                  wal_keep_size: 2048MB
+
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-creds
+            spec:
+              encryptedData:
+                secret-key: AgBf9ZL5+uX8cb6BJh7hlYqihhFi74PHVLUfu1j3uGn8BM6boofN8JOYlFbQhCn/q+IrgQTWVO7/29191UYVQVNpu+M1e8S1kxZ2aJRWjn30L1IEBewEnhwL+PXQTD8o6t4rzWn78EiL4UR5nHUpCHx397RCAhWTg0+P971vlb2cMN+t65iTAt2mbDR2EciBkotPloWtXVrniDkSPw1YBuqeN7nXPGen1qgABH5pkgGAPS1ph2yEYjoPvYdduUaDkDccl0Eaytw+3Rxr6ToXZP94jx3W+u+cM99GZsy3L/QcIhhMTAGcCqq4AfolFiKkJ9Ca74PV+JGbiosZKNE/WZ9Y431tYKWOUqsQqX1FdCcO3mg6Sy/WpXyGF/VM3s/2NksyDNXYMPdfRNJZ+fkyiLEekFv0+zoUHgfvN/mCPxIkSO7389VppUZloxW84i9H92wUVGHXj76Q3Da2qoE2FhowqQwAzW9FrkxbP+CUkST31MS4PE0MiplIAcmjEBO9VYHy64aAzJpza1SQSK7U1Qg1xbMmil+kPb1ZbhNILIqP3gnnlJSut5mddGwRLt40QgiY/P5EYGFxxIzx0TFtV/ZrXDE+njTlZYhqrv4Zp1RXRq8IjkCVJQtSlPtVDpKGk5vUWeOusieX9G4etGXzxKScbJHl+2F/2GehzVaKzWbtzT0zHs3zw2ZkR/QF6QvQQ560v1bJS1gJ7jnw2jG3rQj70PiW6di6DSsKwfdB1Ae+INDKdEAcBSNgnoFaFloryJ6Tvk2uj+mg/O29Ks4YksP8
+              template:
+                metadata:
+                  name: authentik-creds
+                type: Opaque
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authentik
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
