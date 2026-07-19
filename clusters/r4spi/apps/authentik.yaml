@@ -45,6 +45,22 @@ spec:
                 secretKeyRef:
                   name: authentik-pg-app
                   key: password
+            # Codifies the initial admin (akadmin) email/password that was
+            # set live via the OOBE flow. The bootstrap blueprint's
+            # admin-user entry is state:created (create-only), so this
+            # doesn't touch the live account — it's a disaster-recovery
+            # safety net: a fresh install reproduces the same admin login
+            # instead of ending up with no usable admin credentials.
+            - name: AUTHENTIK_BOOTSTRAP_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-bootstrap-creds
+                  key: email
+            - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-bootstrap-creds
+                  key: password
           ingress:
             enabled: true
             ingressClassName: nginx
@@ -85,6 +101,18 @@ spec:
                 secretKeyRef:
                   name: authentik-pg-app
                   key: password
+            # See server.env above — same disaster-recovery rationale. The
+            # bootstrap blueprint is actually applied by this worker.
+            - name: AUTHENTIK_BOOTSTRAP_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-bootstrap-creds
+                  key: email
+            - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-bootstrap-creds
+                  key: password
 
         additionalObjects:
           - apiVersion: postgresql.cnpg.io/v1
@@ -119,6 +147,19 @@ spec:
                   # transaction, never an actively-running one, so this
                   # can't kill a genuinely slow migration.
                   idle_in_transaction_session_timeout: 10min
+
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-bootstrap-creds
+            spec:
+              encryptedData:
+                email: AgBW0C0d42fouMEbKvSqC90x7wX6zua0raQtZm00bKJFfi82WcHRRjwHKu0MAwl3+MJjA2bSJKvGMyVwN+RkaGEpQgyY5pP8q07XCCs6D/P28hW3d2I/2dvF1Loagvp32tNNxzvkJR69gP5++httmFEaPigZvf0Lj434NMtRSSAIeEEQ4blHbfRjflN+JhmcJu0+98kL2/lzMAQzItP/Wp8Y1kDN3Co+xculk/g5SY31stSPjjeIDcu2c/uetsj790zswsHPTKy72zJdEf2AVOV40mEqRTTrSspSsU+owHQkT1TWyp5+Wlcd0Uk4zFTyYvLQXzbtD8/K7/udJ3liSrkwG9BlXhVEXGNsgwVXzcM1jNjaZLRU8Qzu4OIPRVrFU5IJKB87XSoxYtmIm4XapXlhnjrxfykhrjQrq5e31fzFyuumGSNtMGW5Ldx774UklCszmeokps1PYu5Oem2T0qI+Ap3P/mpQXdx6+WDMadjEG1PTIwgcCX+jeRqS9vX6TsnOLZXcbFGGhSRxQoGM1Z9ffOQswtCKoHzYEGUBJQYnw9YM6fY4buKtt9xJHe4a69WKY+/EGY6n4cJZDWvUHqDNNUA7oCFwUe/akKs5wbUAZcV2Wwzp6CWwqNPVGh+kz1cnml3aG7juSexxLzUOLOCx7H+QH+uaPszBRLPJSLQ9JPiGI5NS/f8njuPPnwVm5OPvpCwn9at5wFRLXNiwa8yhDS0=
+                password: AgBF3iCZjInK8Qjka4PAYriTfE14xMFSGSPkd66Iz0YJf0J6yoPk4FQzmNtJn/AM8ZThDnx0Z6aJnhA5lHYsCuZuvX+YvBvNAPSte9fwvMEKwwvIC3MszXbrSpF3wh/ke1nophlfRyQBoiPEkIprxLWQSfiDGGN07yVSYZ9skZf+vCtZWCsXl8h/HvrXX6z8jYuN33VwG07A03Pp9SigpYfk5+uRd37dmFdn9hmvey/J15wuJ/ukPJae02zEXHugvQz0IdJ8ruWHtWCxZdJv4oCP0psH8cW7/sPDm2YuAV+Xv51n7UZrHJHwrcxYNdtr25o5tAVPnoFM8ueA8CQBQLK9A1BubWu6zGhzSRx+qZ1LZ8xwQhA+1THBylNwlDos54nfVQ7fvfKkbl2+xrxtcCIQTM35EHRgL8kP/qB7JIWNuuKWq7cIvK/ezcyX5NyXUKWjQ1T6AA4RfIX3Q21FgiDjB3JSvdcLRHo0sqYZP2Em1TN0XanbMBZZsMsFfZk7sQuusi7jIVPJ9Madi4MaZRzkoseL31nOWrlG5N/cyTSvslkgxQgXQY0jVcwSPPqeoxekqMQjLymmx+pFW97m20hCp2IojDQVlalL6h0JiXDFkbEejkA+VIsrCBXn0TYel5pA6ZGA6CddXM36EQuDO3PDsbjrGV9eEWpCWplT4UNMKhAGX3Ejij6B8iK8BUIccz6J4dfnh59U+H4+TwPU
+              template:
+                metadata:
+                  name: authentik-bootstrap-creds
+                type: Opaque
 
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
