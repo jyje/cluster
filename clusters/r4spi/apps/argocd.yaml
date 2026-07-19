@@ -23,6 +23,34 @@ spec:
           secret:
             argocdServerAdminPassword: "$2a$10$Fxz3iaT9JpTioBr8vPRvYONv5kRrdxfX1KHck46ueCPMl.Qmr.Rhq"
             argocdServerAdminPasswordMtime: "2025-10-07T07:31:00Z"
+          cm:
+            # SSO via authentik (which itself brokers Google login). The
+            # client secret lives in a separate, labeled SealedSecret
+            # (argocd-authentik-oidc, see extraObjects below) rather than
+            # this chart's own argocd-secret.
+            oidc.config: |
+              name: authentik
+              issuer: https://authentik.app.jyje.online/application/o/argocd/
+              clientID: argocd
+              clientSecret: $argocd-authentik-oidc:clientSecret
+              requestedScopes:
+                - openid
+                - profile
+                - email
+                - groups
+          rbac:
+            # Mirrors the authentik RBAC group hierarchy. The groups claim
+            # includes each user's full ancestor chain, so a Developer-tier
+            # (or higher) member's token already contains "Developer" and
+            # "Viewer" — only the top tier needs an explicit binding here.
+            policy.default: ""
+            policy.csv: |
+              p, role:developer, applications, get, */*, allow
+              p, role:developer, applications, sync, */*, allow
+              p, role:developer, applications, action/*, */*, allow
+              g, ClusterAdmin, role:admin
+              g, Developer, role:developer
+              g, Viewer, role:readonly
         controller:
           replicas: 2
           metrics:
@@ -94,6 +122,19 @@ spec:
                   server: https://kubernetes.default.svc
               sourceRepos:
                 - '*'
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: argocd-authentik-oidc
+            spec:
+              encryptedData:
+                clientSecret: AgAuY4UD3v/g8fVL5ndJ/lvOJWdUSiXFbiWr1FZeO/l6ZlnrOVhseR0mVCPd0gDS34P3hiUGq8/oVwwtw9eqC2/TmG9Oc57vPXwHnft+rIgoSOsKGP0G9Judjok6lsuqkocr3YJil+Ukwu6cWscPDioT4zyRYkb/QPg7fhU5BMvRMfqUKEdnKAIMaDBCHsKrlWt5AF0dh4qV6KbZoB5jyVFCVTqApDzlO0pm1Ah1HTdpiNjb+RCaB7FcDrpJHGRMC2aVRF6QjAVBbxvhMKzgzdPXqo1aKmXmNiBmWA4T3Ov8t7Ft8naW1KNynvZMAWN/pq0YqZpeo0B2AI5zWZ88d2MJrrnkLymgbpyNfrO3wsjLER23KHDHU520vgpRBFko0swgtQuU6wqC9L49lONzOQy3zKC/nYaJtb29qQSSjeWqh+D2uR+GrDrYBf1wTIdMO/XqL0LmzY3QeExCRRfG2ugNvdj9O+mSVvWHfWwm2SJGaem5pYKhtHVEWUFQ4Ls7MefEsaVVX3tqc9MEKGJztPmpLsdGBIP7MM3rzDe9x2+dfE2hwJaCyQgPSkqt5za8GVPVolRACTwIoTVr+eV11vCvQ4rQltJsE6Tp8qGFQlqSgcdiYlV6L3ghzlb7x3APj0UNTxB0SDJ1gFIWSBxjOapXXbW5wpa7vnseMsdux9WDBBkFzMCl+uqXl4Qb2gbxR+Ac2qFLj4SlTMxSB9ROyO662QX+JwVvVpJabgYH2Hq6jkcxbxB703jzyxrlOIT9uWuj7eAZIRcXqBG+BjcvtjmG
+              template:
+                metadata:
+                  name: argocd-authentik-oidc
+                  labels:
+                    app.kubernetes.io/part-of: argocd
+                type: Opaque
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

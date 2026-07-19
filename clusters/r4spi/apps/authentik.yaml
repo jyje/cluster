@@ -27,6 +27,7 @@ spec:
           # below). Only keys ending in .yaml are picked up.
           secrets:
             - authentik-google-source
+            - authentik-argocd-oidc
           # RBAC group hierarchy — no credentials involved, so a plain
           # ConfigMap (not a SealedSecret) is the right home for it.
           configMaps:
@@ -281,6 +282,18 @@ spec:
               template:
                 metadata:
                   name: authentik-google-source
+                type: Opaque
+
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-argocd-oidc
+            spec:
+              encryptedData:
+                argocd-oidc.yaml: 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
+              template:
+                metadata:
+                  name: authentik-argocd-oidc
                 type: Opaque
 
   destination:
