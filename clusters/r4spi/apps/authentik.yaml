@@ -27,6 +27,10 @@ spec:
           # below). Only keys ending in .yaml are picked up.
           secrets:
             - authentik-google-source
+          # RBAC group hierarchy — no credentials involved, so a plain
+          # ConfigMap (not a SealedSecret) is the right home for it.
+          configMaps:
+            - authentik-rbac-groups
 
         server:
           env:
@@ -123,6 +127,94 @@ spec:
                   key: password
 
         additionalObjects:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: authentik-rbac-groups
+            data:
+              rbac-groups.yaml: |
+                version: 1
+                metadata:
+                  name: RBAC Group Hierarchy
+                entries:
+                  - identifiers:
+                      name: Unknown
+                    model: authentik_core.group
+                    state: present
+                    id: group-unknown
+                    attrs:
+                      is_superuser: false
+
+                  - identifiers:
+                      name: Viewer
+                    model: authentik_core.group
+                    state: present
+                    id: group-viewer
+                    attrs:
+                      is_superuser: false
+                      parents:
+                        - !KeyOf group-unknown
+
+                  - identifiers:
+                      name: Developer
+                    model: authentik_core.group
+                    state: present
+                    id: group-developer
+                    attrs:
+                      is_superuser: false
+                      parents:
+                        - !KeyOf group-viewer
+
+                  - identifiers:
+                      name: AuthentikAdmin
+                    model: authentik_core.group
+                    state: present
+                    id: group-authentikadmin
+                    attrs:
+                      is_superuser: true
+                      parents:
+                        - !KeyOf group-developer
+
+                  - identifiers:
+                      name: ClusterAdmin
+                    model: authentik_core.group
+                    state: present
+                    id: group-clusteradmin
+                    attrs:
+                      is_superuser: true
+                      parents:
+                        - !KeyOf group-authentikadmin
+
+                  # Every newly-enrolled user (any Google login) lands in
+                  # Unknown by default, with zero permissions, until
+                  # manually promoted.
+                  - identifiers:
+                      name: default-source-enrollment-write
+                    model: authentik_stages_user_write.userwritestage
+                    state: present
+                    attrs:
+                      create_users_group: !KeyOf group-unknown
+
+                  # akadmin: authentik-admin scope only, not cluster-admin.
+                  - identifiers:
+                      username: akadmin
+                    model: authentik_core.user
+                    state: present
+                    attrs:
+                      groups:
+                        - !KeyOf group-authentikadmin
+
+                  # jyje: promoted to the top tier (inherits
+                  # AuthentikAdmin/Developer/Viewer/Unknown automatically
+                  # via the parent chain).
+                  - identifiers:
+                      username: jyje
+                    model: authentik_core.user
+                    state: present
+                    attrs:
+                      groups:
+                        - !KeyOf group-clusteradmin
+
           - apiVersion: postgresql.cnpg.io/v1
             kind: Cluster
             metadata:
