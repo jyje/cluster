@@ -50,7 +50,9 @@ spec:
               item.homer.rajsingh.info/logo: "https://goauthentik.io/img/icon.png"
               item.homer.rajsingh.info/tag: "authentik #sso #oidc #iam"
               item.homer.rajsingh.info/type: "Ping"
-              service.homer.rajsingh.info/name: "Dashboards"
+              # Grouped with Argo CD/Portainer — occasionally-visited admin
+              # tools, not daily-use apps.
+              service.homer.rajsingh.info/name: "Management"
               service.homer.rajsingh.info/icon: "fas fa-key"
             hosts:
               - authentik.app.jyje.online
@@ -103,6 +105,13 @@ spec:
                   wal_sender_timeout: 60s
                   wal_receiver_timeout: 60s
                   wal_keep_size: 2048MB
+                  # Self-heal a known authentik bug (0056_user_roles migration
+                  # can leave a client idle-in-transaction indefinitely,
+                  # blocking DDL — see goauthentik/authentik#20734). Only
+                  # affects sessions idle *between* queries inside an open
+                  # transaction, never an actively-running one, so this
+                  # can't kill a genuinely slow migration.
+                  idle_in_transaction_session_timeout: 10min
 
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret

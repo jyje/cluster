@@ -63,6 +63,11 @@ spec:
                         subtitle: Home Router for Ingress Traffic
                         tag: "iptime #router #network #infra"
                         url: https://iptime.com/iptime
+                      - name: error-pages
+                        logo: https://hsto.org/webt/rm/9y/ww/rm9ywwx3gjv9agwkcmllhsuyo7k.png
+                        subtitle: Themed default backend for ingress-nginx
+                        tag: "error-pages #ingress-nginx #infra"
+                        url: https://github.com/tarampampam/error-pages
                       - name: NVIDIA GeForce GTX 1660 Ti
                         logo: https://cdn.simpleicons.org/nvidia
                         subtitle: AMD64 with Ubuntu 22.04 LTS
@@ -174,6 +179,7 @@ spec:
                       - argocd-server
                       - homer
                       - grafana
+                      - authentik
               assets:
                 configMapRef:
                   name: homer-assets
@@ -243,7 +249,7 @@ spec:
                 # groups via service.homer.rajsingh.info/name:
                 #   Applications — n8n, Open WebUI, LiteLLM
                 #   Dashboards   — Grafana, Homer
-                #   Management   — Argo CD, Portainer
+                #   Management   — Argo CD, Portainer, authentik
                 # This manual block only adds Hermes Agent, which has NO Ingress
                 # (it runs as a Discord gateway — outbound only, no web endpoint),
                 # so it can't be auto-discovered. It joins the "Applications" group
