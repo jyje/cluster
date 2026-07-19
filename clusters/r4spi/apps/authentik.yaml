@@ -66,6 +66,14 @@ spec:
             ingressClassName: nginx
             annotations:
               cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+              # Without this, Homer's browser-side Ping check is blocked by
+              # CORS and shows the app as offline even though it's healthy
+              # (same annotations as every other "online" card: Grafana,
+              # Argo CD, Portainer).
+              nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+              nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+              nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+              nginx.ingress.kubernetes.io/enable-cors: "true"
               # Discovered by Homer's Dashboard CR via ingressSelector
               # (matchExpressions: app.kubernetes.io/name in [...]).
               item.homer.rajsingh.info/name: "authentik"
