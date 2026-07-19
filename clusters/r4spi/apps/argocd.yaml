@@ -43,11 +43,24 @@ spec:
             # includes each user's full ancestor chain, so a Developer-tier
             # (or higher) member's token already contains "Developer" and
             # "Viewer" — only the top tier needs an explicit binding here.
+            # Developer is allowed on every project by default, with
+            # default/base explicitly denied (deny wins over allow). This
+            # means new projects are visible to Developer automatically,
+            # while default/base stay blocked regardless.
             policy.default: ""
             policy.csv: |
+              p, role:developer, projects, get, *, allow
+              p, role:developer, projects, get, default, deny
+              p, role:developer, projects, get, base, deny
               p, role:developer, applications, get, */*, allow
               p, role:developer, applications, sync, */*, allow
               p, role:developer, applications, action/*, */*, allow
+              p, role:developer, applications, get, default/*, deny
+              p, role:developer, applications, sync, default/*, deny
+              p, role:developer, applications, action/*, default/*, deny
+              p, role:developer, applications, get, base/*, deny
+              p, role:developer, applications, sync, base/*, deny
+              p, role:developer, applications, action/*, base/*, deny
               g, ClusterAdmin, role:admin
               g, Developer, role:developer
               g, Viewer, role:readonly
