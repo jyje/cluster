@@ -25,6 +25,34 @@ spec:
           htmlTemplate:
             # Dark theme, matches Homer's dashboard theme.
             name: l7
+
+        extraResources:
+          # Exposes the error-pages service directly for browsing/testing,
+          # separate from its role as ingress-nginx's default backend.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: error-pages
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            spec:
+              ingressClassName: nginx
+              tls:
+                - secretName: error.app.jyje.online
+                  hosts:
+                    - error.app.jyje.online
+              rules:
+                - host: error.app.jyje.online
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: error-pages
+                            port:
+                              number: 8080
   destination:
     server: https://kubernetes.default.svc
     namespace: error-pages
