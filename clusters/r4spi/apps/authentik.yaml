@@ -21,6 +21,13 @@ spec:
             # unused AUTHENTIK_POSTGRESQL__USER key.
             user: ""
 
+        blueprints:
+          # Declares the Google OAuth Source (client ID/secret + Blueprint
+          # YAML live together in the authentik-google-source SealedSecret
+          # below). Only keys ending in .yaml are picked up.
+          secrets:
+            - authentik-google-source
+
         server:
           env:
             - name: AUTHENTIK_SECRET_KEY
@@ -123,6 +130,18 @@ spec:
               template:
                 metadata:
                   name: authentik-creds
+                type: Opaque
+
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-google-source
+            spec:
+              encryptedData:
+                google-source.yaml: AgAYNUW2uNuM7OmE5AZPJyUsoaibdhY5KNm+bk/hovuZIvT1PrGQnighhkuHLA9GATYJwCGwp7Q66VQk0HKJ+8C8fqtV5ohwYO1vlKXFGxgCtIb59Uo5E/kvE+uuumajJ3899w6LUPfBWeHhhNWbS+WiN2FrVd3jJFPqhv4L/N5Oc3eketXGqMEn+IlHSEt/iMEc6F0XGk0OadgQRQQ4qgmMZYN8u2fo1TvUf/KopYL7WLkY5suZZC1JfEUFx5sjIZeD07oiOCYAPQ7J92aIPb1Qb/ITFPP533gnZ8BiQB+0rT6jskN+VcFn5LhJ5Aez/Lqp6R7I3LClzninu03RFjUVauk5XwPMC9uRjsquBEty8tJgUahC2+I0cMqSUIKXxdyX9rslwO4uXsSTtYvet8PO6m+Pq5NaB0oV9syleYulCxF/HX+PLPrLngt1wczoc/777CzOvzhNidW9lhaQMJYCCFj6rzRuE9twkWUmswZQzZvMUDcAj1tXOrBbQhu5A2yIFZF5i7n/XoYUitqsqfVkp3gwVy3l8m7VHeapgeP/FyJxfuegMU91jX4iBj0C61Xjy00Aqjn/2pN8IviGKmslZzZaIVC/FbMRATcGwlMLBnD73IMcMi/Tp6v68BUaH4LUmHOQPPdI+Yo6GiDswM9UFXj3/v2iCVDxuKVOpaH4bX+UK8QH6xFFzaOXkzJKFRmylnNR47ZW/eg2PekqvDdl97QTc+0pwKIuDbG/xPnCjfAtRZ6tsABp/gZsz1ydLPdfyz89mXwHB+FmNuy2G+ygxZpGPHuQTD3Ythd05hlYrfm6L8RO03pZvcNlNlxPg2l+z9nvdhW+xlm4yhPvnIdRmsA3sAUN/vcAAoahdJ+hOLRHJUzRTMY0BS1sBCfSpzLfWPzXfrx4tnug8G+vfS6fOtHjP/0v8ZqHE8QfvciMMc+KD8S/OVEt/ZEB9tQ/mCZWmNYAcbmH2LRIv69RruQJgv1N8M90K43POUWFQ4Z6qpoeC1CWFtLV2JOs9WACMamKc1Y+LYT8rH4HA4FpLDL8I/769DK7ZAukJp7lEDgm9mKsJI+BzoM+eMscE2n0zs6PsrrU2PH5rUD1wcQSnvSftg2QKBEAMvpMXqP1zBpilN/+l65pSl/vDvUGYoys+1uu4YZLwKFv8geELgJWNs0n38Mw6NVU0goTzJ93fCUP8r3ZmbpJXBdWLkFo7lym8rZg1AJAQgHD3hbgCfWP/EkHGsG0nRTIgVnTNpzC7qzhRYWM8/bzjb/Lhk4qDymNZM310ky5I4KKzfLQqEWw043B1WmEXoff3SOqCltvaBZy+CzS32AFL9AJCIsCF1zm+3j4UINTwRJXdFerZdfRB0xHqjdYe5qtVu6+i75E3OuhTxiE6Fl4mrRwkzQQ5kPKvKKSKutbjKSE8Xih8Lq6DqYCO5nOSsxdjNiDQ3mmtrdgWcfMAlOLU/hzUov34q5ehLKatvbJoA6gKcUIRMt/EZk=
+              template:
+                metadata:
+                  name: authentik-google-source
                 type: Opaque
 
   destination:
