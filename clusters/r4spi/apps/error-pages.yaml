@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: error-pages
+  annotations:
+    # Must exist before ingress-nginx's default-backend-service extraArg
+    # points at it, so keep it in an earlier sync-wave (ingress-nginx has
+    # no wave set, i.e. the default "0").
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/error-pages/error-pages-4.2.4
+    helm:
+      valuesObject:
+        config:
+          # error-pages must echo back the real HTTP status code (503, 404, ...)
+          # instead of 200, or the original error is lost through the proxy.
+          sendSameHttpCode: true
+          # Reads ingress-nginx's X-Original-URI/X-Namespace/X-Ingress-Name/
+          # X-Service-Name/X-Service-Port headers for richer error context.
+          showDetails: true
+          htmlTemplate:
+            # Dark theme, matches Homer's dashboard theme.
+            name: l7
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: error-pages
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -18,6 +18,13 @@ spec:
           config:
             # Required for configuration-snippet annotation (risk level Critical in ingress-nginx 1.11+)
             annotations-risk-level: Critical
+            # Route these status codes to the error-pages default backend
+            # instead of nginx's bare error text.
+            custom-http-errors: "400,401,403,404,405,408,409,410,429,500,502,503,504"
+          extraArgs:
+            # Themed error pages (see error-pages.yaml) instead of the
+            # built-in defaultBackend.
+            default-backend-service: "error-pages/error-pages"
           # hostNetwork DaemonSet: bind node IP 80/443 directly (same as the old microk8s addon).
           # Avoids MetalLB L2 ARP conflict — node IPs and the MetalLB pool share 10.0.4.40-51,
           # so a LoadBalancer VIP would collide with a node's own IP. Router port-forwards to node IPs.

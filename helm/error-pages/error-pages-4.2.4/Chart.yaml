@@ -1,0 +1,33 @@
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: GitHub
+      url: https://github.com/tarampampam/error-pages
+    - name: Container Registry
+      url: https://ghcr.io/tarampampam/error-pages
+  artifacthub.io/maintainers: |
+    - name: tarampampam
+      email: 7326800+tarampampam@users.noreply.github.com
+apiVersion: v2
+appVersion: 4.2.4
+description: 'Tiny, zero-dep HTTP server that serves clean, themeable, and localized
+  HTTP error pages - designed as a drop-in solution for Traefik, Nginx, Kubernetes,
+  and more '
+home: https://github.com/tarampampam/error-pages
+icon: https://hsto.org/webt/rm/9y/ww/rm9ywwx3gjv9agwkcmllhsuyo7k.png
+keywords:
+- error-pages
+- http
+- errors
+- ingress-nginx
+- traefik
+- envoy
+- haproxy
+- kubernetes
+- nginx
+- "404"
+name: error-pages
+sources:
+- https://github.com/tarampampam/error-pages
+type: application
+version: 4.2.4
