@@ -190,7 +190,7 @@ spec:
               homerConfig:
                 title: "jyje's Kubernetes"
                 subtitle: "app.jyje.online"
-                logo: "https://raw.githubusercontent.com/jyje/homer/jyje/public/assets/icons/pwa-192x192.png"
+                # No custom logo: falls back to Homer's built-in donut logo.
                 connectivityCheck: true
                 defaults:
                   layout: columns
@@ -233,7 +233,7 @@ spec:
                   title: "NOTICE"
                   icon: "fas fa-info"
                   content: |
-                    This is a collection of applications for my demo cluster. It is not intended for production use.
+                    This isn't a demo — it's my personal infrastructure. A GitOps-driven Kubernetes platform showcasing my work in DevOps and AI platform engineering.
                 links:
                   - name: "Dashboard"
                     icon: "fas fa-file-alt"
@@ -272,6 +272,27 @@ spec:
                           subtitle: "Multi-provider LLM Discord agent"
                           tag: "hermes-agent #discord #llm #agent"
                           url: "https://github.com/jyje/hermes-agent-helm"
+                  # Fully manual group (no Ingress backing these) for personal
+                  # branding links. Declared last here, but the operator's
+                  # merge order between manual and auto-discovered groups
+                  # (Dashboards, Management) is not documented — verify actual
+                  # rendered position after deploy and reorder if needed.
+                  - parameters:
+                      name: "External Links"
+                      icon: "fas fa-link"
+                    items:
+                      - parameters:
+                          name: "jyje"
+                          logo: "https://jyje.online/assets/icons/icon-192x192.png"
+                          subtitle: "Personal profile"
+                          url: "https://jyje.online"
+                          target: "_blank"
+                      - parameters:
+                          name: "LinkedIn"
+                          icon: "fab fa-linkedin"
+                          subtitle: "Professional profile"
+                          url: "https://www.linkedin.com/in/jyje"
+                          target: "_blank"
 
           # Chart has no built-in ingress template; the operator names the
           # generated Service "<dashboard-name>-homer" (confirmed post-deploy).
