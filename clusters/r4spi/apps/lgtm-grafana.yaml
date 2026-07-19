@@ -120,26 +120,6 @@ spec:
         # This chart is left otherwise untouched; the migration is purely a
         # values-level change to avoid two mechanisms managing the same
         # dashboards.
-        #
-        # TEMPORARY: re-provisioning the same "default" file provider with no
-        # dashboards forces Grafana to auto-delete the two dashboards it still
-        # has marked provisioned=true from before the migration (kubernetes-
-        # cluster uid os6Bh8Omk, node-exporter uid rYdddlPWk). Their stale
-        # provisioned flag blocks grafana-operator's delete-then-recreate sync
-        # (HTTP 400 on DELETE /dashboards/uid/{uid}). Revert this block once
-        # grafana-operator reports DashboardSynchronized=True for both.
-        dashboardProviders:
-          dashboardproviders.yaml:
-            apiVersion: 1
-            providers:
-              - name: default
-                orgId: 1
-                folder: ""
-                type: file
-                disableDeletion: false
-                editable: true
-                options:
-                  path: /var/lib/grafana/dashboards/default
 
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
