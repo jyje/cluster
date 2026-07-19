@@ -34,7 +34,7 @@ spec:
             item.homer.rajsingh.info/logo: "https://avatars.githubusercontent.com/u/45487711"
             item.homer.rajsingh.info/tag: "n8n #workflow #automation #cicd"
             item.homer.rajsingh.info/type: "Ping"
-            service.homer.rajsingh.info/name: "Applications"
+            service.homer.rajsingh.info/name: "1. Applications"
             service.homer.rajsingh.info/icon: "fas fa-rocket"
           hosts:
             - host: n8n.app.jyje.online

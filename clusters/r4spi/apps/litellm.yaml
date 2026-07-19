@@ -57,7 +57,7 @@ spec:
             item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/googlefonts/noto-emoji/main/svg/emoji_u1f684.svg"
             item.homer.rajsingh.info/tag: "litellm #llm #proxy #gateway #openai"
             item.homer.rajsingh.info/type: "Ping"
-            service.homer.rajsingh.info/name: "Applications"
+            service.homer.rajsingh.info/name: "1. Applications"
             service.homer.rajsingh.info/icon: "fas fa-rocket"
           hosts:
             - host: litellm.app.jyje.online

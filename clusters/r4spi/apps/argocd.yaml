@@ -89,7 +89,7 @@ spec:
               item.homer.rajsingh.info/logo: "https://argo-cd.readthedocs.io/en/stable/assets/logo.png"
               item.homer.rajsingh.info/tag: "argocd #argo #gitops #cicd"
               item.homer.rajsingh.info/type: "Ping"
-              service.homer.rajsingh.info/name: "Management"
+              service.homer.rajsingh.info/name: "3. Management"
               service.homer.rajsingh.info/icon: "fas fa-microchip"
             ingressClassName: nginx
             tls: true

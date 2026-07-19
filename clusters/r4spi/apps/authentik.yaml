@@ -88,7 +88,7 @@ spec:
               item.homer.rajsingh.info/type: "Ping"
               # Grouped with Argo CD/Portainer — occasionally-visited admin
               # tools, not daily-use apps.
-              service.homer.rajsingh.info/name: "Management"
+              service.homer.rajsingh.info/name: "3. Management"
               service.homer.rajsingh.info/icon: "fas fa-key"
             hosts:
               - authentik.app.jyje.online

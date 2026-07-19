@@ -34,7 +34,7 @@ spec:
             item.homer.rajsingh.info/logo: "https://avatars.githubusercontent.com/u/22225832"
             item.homer.rajsingh.info/tag: "portainer #admin #catalog"
             item.homer.rajsingh.info/type: "Ping"
-            service.homer.rajsingh.info/name: "Management"
+            service.homer.rajsingh.info/name: "3. Management"
             service.homer.rajsingh.info/icon: "fas fa-microchip"
           hosts:
             - host: portainer.app.jyje.online
