@@ -71,7 +71,7 @@ spec:
 
         image:
           repository: ghcr.io/berriai/litellm
-          tag: v1.87.1
+          tag: v1.89.4
         proxy_config:
           model_list:
             # Text Models
