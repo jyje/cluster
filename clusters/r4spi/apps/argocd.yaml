@@ -16,7 +16,7 @@ spec:
           domain: cd.app.jyje.online
           image:
             repository: quay.io/argoproj/argocd
-            tag: "v3.3.9"
+            tag: "v3.4.5"
         configs:
           params:
             server.insecure: true
