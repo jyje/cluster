@@ -12,8 +12,6 @@ spec:
       valueFiles:
         - values.yaml
       valuesObject:
-        image:
-          tag: 2.39.4
         service:
           type: ClusterIP
         ingress:
