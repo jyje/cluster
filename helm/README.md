@@ -42,6 +42,6 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | open-webui | open-webui | https://helm.openwebui.com/ |
 | portainer | portainer | https://portainer.github.io/k8s/ |
 | qdrant | qdrant | https://qdrant.github.io/qdrant-helm |
-| sealed-secrets | sealed-secrets | https://bitnami-labs.github.io/sealed-secrets |
+| sealed-secrets | sealed-secrets | https://bitnami.github.io/sealed-secrets |
 | seaweedfs | seaweedfs | https://seaweedfs.github.io/seaweedfs/helm |
 | seaweedfs | seaweedfs-csi-driver | https://seaweedfs.github.io/seaweedfs-csi-driver/helm |
