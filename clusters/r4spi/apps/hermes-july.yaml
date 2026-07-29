@@ -6,8 +6,10 @@ metadata:
 spec:
   project: ai
   source:
+    # Exception: this multi-agent deployment intentionally consumes its
+    # versioned OCI release directly rather than a vendored chart copy.
     repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
-    targetRevision: 0.5.1
+    targetRevision: 0.12.0
     path: .
     helm:
       valuesObject:
