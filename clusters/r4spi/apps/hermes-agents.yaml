@@ -84,10 +84,11 @@ spec:
         helm:
           valuesObject:
             fullnameOverride: "{{.name}}"
-            # Start scaled to zero: land the SealedSecrets/PVC/namespace via
-            # GitOps first, confirm they look right, then scale each instance
-            # up once ready to run the openai-codex device-login for real.
-            replicaCount: 0
+            # replicaCount: 0 is not possible — the chart's values.schema.json
+            # enforces a minimum of 1 (filed as jyje/hermes-agent-helm#150).
+            # So this deploys at replica 1 immediately; each Pod crash-loops
+            # on the openai-codex device-login step until it's completed via
+            # the Discord-delivered verification code.
             config:
               model:
                 provider: openai-codex
