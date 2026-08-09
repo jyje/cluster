@@ -1,0 +1,67 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: coredns-config
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/jyje/manifest-group-0.1.0
+    helm:
+      valuesObject:
+        manifests:
+          # MicroK8s' built-in CoreDNS addon (EnsureExists mode: the addon
+          # manager only creates this if missing, never reverts our edits —
+          # safe to manage declaratively). Not previously tracked in git at
+          # all; this is the first GitOps-managed version of it.
+          #
+          # Adds one thing on top of the MicroK8s default Corefile: a
+          # `template` block that answers external AAAA (IPv6) queries with
+          # NXDOMAIN instead of forwarding them. This cluster's nodes have no
+          # IPv6 route out (IPv4-only network), so any client that resolves
+          # both A and AAAA for a dual-stack host (e.g. chatgpt.com) and
+          # tries the AAAA address first will hang/fail before falling back
+          # to IPv4 — this is what caused hermes-agent's stuck "typing..."
+          # responses. Hiding AAAA at the resolver means every pod always
+          # gets IPv4-only answers for external names, with no per-app
+          # config needed. `reload` (already in the Corefile) picks this up
+          # without a CoreDNS pod restart.
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: coredns
+              namespace: kube-system
+              labels:
+                addonmanager.kubernetes.io/mode: EnsureExists
+                k8s-app: kube-dns
+            data:
+              Corefile: |
+                .:53 {
+                    errors
+                    health {
+                      lameduck 5s
+                    }
+                    ready
+                    log . {
+                      class error
+                    }
+                    kubernetes cluster.local in-addr.arpa ip6.arpa {
+                      pods insecure
+                      fallthrough in-addr.arpa ip6.arpa
+                    }
+                    template IN AAAA . {
+                      rcode NXDOMAIN
+                    }
+                    prometheus :9153
+                    forward . /etc/resolv.conf
+                    cache 30
+                    loop
+                    reload
+                    loadbalance
+                }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated: {}
