@@ -8,34 +8,17 @@ spec:
     # Same exception as the ApplicationSet below: consume the versioned OCI
     # release directly rather than a vendored chart copy.
     repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
-    targetRevision: 1.3.0
+    targetRevision: 1.4.0
     path: .
     helm:
       valuesObject:
         fullnameOverride: hermes-agent
-        # replicaCount: 0 is not possible — the chart's values.schema.json
-        # enforces a minimum of 1 (filed as jyje/hermes-agent-helm#150). So
-        # this deploys at replica 1 immediately; the Pod crash-loops on the
-        # openai-codex device-login step until it's completed via the
-        # Discord-delivered verification code.
         config:
           model:
             provider: openai-codex
             default: gpt-5.6-terra
           terminal:
             backend: local
-          agent:
-            environment_hint: |
-              You are "hermes-agent", a Hermes agent living in this Discord
-              server as part of the hermes-team-01 team.
-          # Points Hermes' own skill-discovery mechanism at the shared
-          # knowledge-base PVC (mounted below at /knowledge), in addition to
-          # this agent's own private ~/.hermes/skills/. The team-roster skill
-          # seeded there (extraInitContainers below) is what teaches every
-          # agent the team composition and mention IDs.
-          skills:
-            external_dirs:
-              - /knowledge/skills
         # OpenAI Codex device-code login (v1.3.0+): the auth init container
         # sends a verification URL + code to Discord, waits for approval,
         # and persists the refreshable credential in $HERMES_HOME/auth.json
@@ -52,53 +35,41 @@ spec:
           OPENAI_API_KEY: "unused"
         nodeSelector:
           app.jyje.online/raspi.type: 5b
-        # Multi-agent collaboration knobs, kept uniform with hermes-june/july
-        # (harmless here — no one currently @mentions hermes-agent).
-        extraEnv:
-          - name: DISCORD_ALLOW_BOTS
-            value: "mentions"
-          - name: DISCORD_THREAD_REQUIRE_MENTION
-            value: "true"
-          - name: DISCORD_REPLY_TO_MODE
-            value: "off"
-          - name: DISCORD_ALLOW_MENTION_REPLIED_USER
-            value: "false"
-        # Leader instance: owns the shared knowledge base PVC (extraResources
-        # below) that hermes-june/hermes-july only mount. Keeping ownership
-        # on one hand-written Application (rather than in the ApplicationSet)
-        # avoids the "shared resource" warning that came from all three
-        # generated Applications declaring the identical PVC.
-        extraVolumes:
-          - name: knowledge-base
-            persistentVolumeClaim:
-              claimName: hermes-knowledge-base
-          - name: team-skill-src
-            configMap:
-              name: hermes-team-01-skill
-        extraVolumeMounts:
-          - name: knowledge-base
+        team:
+          enabled: true
+          name: hermes-team-01
+          role: leader
+          identity: hermes-agent
+          leader:
+            name: hermes-agent
+            mentionEnv: HERMES_AGENT_BOT_USER_ID
+          members:
+            - name: hermes-june
+              role: Research and evidence gathering
+              mentionEnv: HERMES_JUNE_BOT_USER_ID
+              capabilities: [research, source-review]
+            - name: hermes-july
+              role: Implementation and verification
+              mentionEnv: HERMES_JULY_BOT_USER_ID
+              capabilities: [implementation, testing]
+          protocol:
+            maxHandoffs: 6
+          skill:
+            create: true
+            configMapName: hermes-team-01-skill
+          sharedVolume:
+            create: true
+            claimName: hermes-knowledge-base
             mountPath: /knowledge
+            storageClass: subdir-usb
+            accessModes: [ReadWriteMany]
+            size: 10Gi
+            retain: true
         extraEnvFrom:
           - secretRef:
               name: hermes-agent-creds
-        # One-time seed of the team-roster skill onto the shared PVC (only
-        # the leader does this — hermes-june/hermes-july just read it back
-        # via config.skills.external_dirs). Idempotent: overwrites the same
-        # file every startup, so it self-heals if ever edited/removed live.
-        extraInitContainers:
-          - name: seed-team-skill
-            image: busybox:1.37
-            command:
-              - sh
-              - -c
-              - |
-                mkdir -p /knowledge/skills/team/hermes-team-01-roster
-                cp /skill-src/SKILL.md /knowledge/skills/team/hermes-team-01-roster/SKILL.md
-            volumeMounts:
-              - name: team-skill-src
-                mountPath: /skill-src
-              - name: knowledge-base
-                mountPath: /knowledge
+          - secretRef:
+              name: hermes-team-routing
         extraResources:
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
@@ -109,52 +80,20 @@ spec:
                 DISCORD_ALLOWED_USERS: AgCOWzSb+jjdRLj6IklsOwdDzIWBn5NVLVQKKE3yfYVb8xIbDQNmh+RuAatUinn1poV4hi7HFHuInLKIwSDJ4DdpPnW/FTErczVen/89iPpKKaY/ihL9bFhcR2x0fls4vt3ioEceEn7rqlqDzy11oaWN5bQ4AWOdov8/ysJL4YbxfK5/N5LSuVNzxRFFD+RXcIhPS55cfDb+MLZtyX47uGR5CwXKHX11lw8jkr5ATOZH0b/+AuSrt4J2LYaUe7e+QJY/PK2TVuH/P4DXl/4A+LV5a6Gtvg3It6rsA0qbYhO6N5S4dL1XVAFFiV/BwCR1KY92Jf7TdjA59RWbp9EKePN0hR1cb0S4/w9KLEV/sGNONxyxLOBM0FBFd7TnhhPjc/mQabKPd7dMgeB2h6H8ByhqC0qt1LRw58er6HjDUwrhTZWmYRFWot1Smqd26YqT1Al0/+DFHHRHIksxx0RQQihYFyPB/fmmCVXt/tNxAmkTN5QAGpomhPGfRFoKk7IYszjLve1nSGLrr+l8u2xIrtg5MA4l/KyyMNHS/t8TaY2T9IuIOtGP84sAqJkWm4Bxz7s/o6eW84sHEFbE9yfecR09MC7zEQ3w9+J2BfR9YdzlFWv4VRxKujaEkiLAWw80H4Mv08wfgfYqQObckTELHKmrsuy79oWegEWRYJe01XgOM96zCuC2sxy/wkyVMjBPq2SSfgIrsHIxOrucf3Tom8CPeJyBdPuMgGqkqF0gQrVDUJf5nMRw
                 DISCORD_BOT_TOKEN: AgBHDuJs4LxJsLli07MjLqEbkJfKo3cKv9HR5S6YScFvq6yK0nlQM0ayYTu7V8NmpfGv6g54I40lCDoDox8mIwK6Vd62HffRjBBUaM3pY/pnWhufRgVtasC73ykmUIv+sxUF9cfkwM2YR47bXzfHevHzj4EPEGwwV0pdewvxsHu2I4BgcJVaVKEqVAjyu9N0W5wRLF1+Qa9cFiH2jEAonzHxQ/qGyYKOFs0rd3p0iXmGYZfBuWuMbpMSnQCPVG2/RbhcIc37zTbgYb+XByUOc4rFvzWGvJg9PSbvCGQElHZRjZCwHMTdSa8DrQJhjy77cNfoUPPuQh30u5+StkSNP5jskTW04aWwOM8nq7djs2Y3byFiGwmV1lfpCJYI8NTF+OfyUnQczHPK1pszQtbBpCWr9G37C/5UQvA643Av/+wuZJHMgQqedv96b4esnj/B5UNDdBWyfobA56qSHMSg/YIQrLDi7htV/++7v53L8bZeP//e2iHxh6I0A6KtcBzrxTOzB0HDFdFhuJftFDEmNWj48zNYPrGFc/+vHR8UypSOZsFoubvaWarXMgykxcMSa/ODI4vL5JjMtbW3y2yiIZdG/xjSAXudbPxmLbWxPNvOEzVcRjduPhnTZLvGUhahzS1qe0PKrOQras3mxMbO/TcTKRWo8s//v1LHOIgmnwpRm2YB0bH8c4DV1C78UpYMTcimUYZ+2sO9t0HlX9kOuQ3NHa/MzBhAaGIAWqPm/N8UVed03bNL6XSnwc6MSPK+azpce+BILRVmRgax/WbJVkHbSvJV7hQlGeg=
                 DISCORD_HOME_CHANNEL: AgAQtzB6NaepUeK5qi7E0fCXYUNDW0kpA/tJc1JUPLgYa1kxuvInK6bwHQe2dr7q7+F9Th4F18OXviggVrQxV6v70StIo22COFkPnvepJftf4aIo2Mmj9S6/0TJv/IaknbnhWIxMrd/+qGApm+n2M/u2vBYIHW0SafrwkY3QmpgcaM/Q7ZAjxpgko1c8K6L+UQzYnLGiQRd26H18mA7Aj6i/MiRkSIpzWoH959VIMWuUTZLBXax7ai98D9ej+rdciwVzL8ZHLcGLwZMtIYwS9IagD6YpK+vQ85DkZcYdc8DHj2S1D8ogUdRhhXjsEwmwRHLK2nglUrT6+shhZPXhyMU0RvO27wdKaimpRFPtuzoWPCEoda+kcP08znPHhDBLhgZiOuuUHrQdNAFPrKt3ZfCw/vtrDIMWYXIJLNTK7x+OOB59oZrLi3e2QkaQdOO9FB2ksqBDpgYhagKB+21LAzYI/IZCWOdCaYIocU07ZN9e6ku6EvFndtB7rIVFhxa6xmJCNoASimS8s3FjF9F9qys6Y4tBxRFe4jEMHpKsSmoTW+8mp75L9oHAfu+zd5geZ0DAPNG/rF91H5D7nIPRSiIWe4Rgrlsp+AtE2vQWr65RX7vYuNN1q8A/bg8cPLXqzhbiN+qeHYYuzJ6CbReh+m3FWFUV41oxygvEqzvItOs2fuNZZTKtPjOo0C+43tGFhfNRSvb2Y9Z+xDQYBsLqvOQ3JTZe
-          - apiVersion: v1
-            kind: PersistentVolumeClaim
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
             metadata:
-              name: hermes-knowledge-base
+              name: hermes-team-routing
             spec:
-              accessModes:
-                - ReadWriteMany
-              storageClassName: subdir-usb
-              resources:
-                requests:
-                  storage: 10Gi
-          - apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: hermes-team-01-skill
-            data:
-              SKILL.md: |
-                ---
-                name: hermes-team-01-roster
-                description: Team composition, Discord mention IDs, and collaboration guidelines for the hermes-team-01 multi-agent team. Use when asked who's on the team, who's the leader, or how to hand off a conversation to a teammate.
-                ---
-
-                # hermes-team-01 roster
-
-                Three Hermes agents share this Discord server as a team:
-
-                | Agent | Discord mention | Role |
-                |---|---|---|
-                | hermes-agent | <@1516407080225865758> | Infrastructure leader — owns the team's shared Kubernetes volume. This is a deployment-ownership detail only; it does not grant hermes-agent any special runtime authority over the other two. |
-                | hermes-june | <@1520295553768882246> | Paired with hermes-july for collaborative handoffs. |
-                | hermes-july | <@1520304612316286986> | Paired with hermes-june for collaborative handoffs. |
-
-                ## Collaboration guidelines
-
-                - Only @mention a teammate when you genuinely need their input or
-                  have something substantive to hand off — not as a courtesy.
-                - When a topic reaches a natural conclusion, address the human
-                  instead of a teammate, and stop. Do not send filler,
-                  acknowledgement, or "let me know if you need anything"
-                  messages that mention a teammate — that only restarts a loop.
-                - hermes-june and hermes-july are the only pair wired for
-                  bot-to-bot handoff right now; hermes-agent operates
-                  independently unless a human directs otherwise.
-                - "Leader" here refers only to which Kubernetes Application
-                  owns the shared storage this file lives on — it has no
-                  bearing on conversation authority.
+              encryptedData:
+                HERMES_AGENT_BOT_USER_ID: AgBDJZ6C56woixnNqu7rrc0FQRwE7UogcnfZ+LcuZSBZxpHartYFYch0qdzMrHiKrTI6bWuxdfdYIzSL4EbCpUUSNoxcvjUw6O+3ygEpufXGK42IUtsRf/DaOLpie5Q4+vQb5ORcS1xkoCUSh9fJXrbtfuyAmwNm7G6uU4HrVnaFZDuR8o9pYTdbiurHNyKDsnqa36z+AJvTyPgVbkwsUriEczaBQPGg8eGyMX70LtZkDCJ40lxiIy6t/RDmYjTD1pFEyxXoRXLvRoJT/K0PI+Gx+YFONFyBOa0q631b4EkEvHouPZzRRTmYDq5dYkyIZRLK6ba8IQLeE6gb2IcyQdtc5u/Z0Ye6YRrLeQQWYORJudPx1iL9E0HvUj52ga+wELPQHsKZjyg5tTYV1/dsh2CDXX5KHpgX91BsBYNv/e3XVuawETLIixL17WnusnUCxNeskZBOj0M/Uqr+TKnpL1QKV6T75weuKtQGAsucehddetThje4vhpyCCVJv5WVmG17o3hMUqJLeL8hYl06zl8deD158GEWZ3pOp0fJSzqwVdfOaimMWb6j6ej7lhTVH87sDMGBlPjY+n9oVoBN/N+sEY1UPwGIohGbMAzxG93hg6JLZMfgSPK3/4Of1QKlRw/DG7MZkaPuRpyeTJqq6i/EQ9GHU2/i9Y9mzhkioLMVaBBJSANg+YeUaW8Ns2c0HCr0lP0Ar48H82rQcu3o1fHvZQ6ws
+                HERMES_JULY_BOT_USER_ID: AgBYse5dFw4Tn8neSl9kPWLNcL90zWil5auMJB0z3iedr17B9PprOm70tbDVtGx9peYIA0i2uWCMhRUw0E5nzP04X/khQZdVmPDYKpBOvSm+1redN55WeyoWNZtY4z7itikYL9ROypo0elblqhMhYhjfJgatZ7erOGp7F+ADfcfPJeqXDivE9e5W/7/8xKnXwLAv0Uu81ufpHPkVo/WLYdHwTmHQNcSHyx7AyfhGKR7/ibognLr2PQX47KMGb8pAXxYGE00YpRsTQct44F4njjxx28u7BoDVVLQkDejy/TE+vrJujdnZo3wc/0+ExchxciVzbxKK3aztz0rBYrZHtntqTXj5OWLcRM0OAzMaXdexwLdY5wPi6AJYw54eQez01G2yabnYw2EmtGAYxCel93MsfyHNv78HSQ/ETIB1SwcTcE0USQ6csi+6EIyFJlSkQsxehIS3drZapnlSgV0eYn19KLQHcLLFWC5wQauwVUeuKlBy0INy3lof5XawUrnCOiO07KbeI6zYiworrv5+2Fm0FPEFXWMv+55LbQTzQQ6ZfoFORyyXsdGH+k+vpSaghYQDmbuChwLXRn9qXIl8pvBlp9lTi8XqMJZLj8+UOdPlJYnKGXjVnT9D1DakEuckglpMezMltYZ+xRH5A0U5hTGQ8nRTSqi0zoWn+XQcyBdU2KwH8Igdxy0+0FjzU2B2av1lbdVICX8v4/RbX2KLyugwaAGH
+                HERMES_JUNE_BOT_USER_ID: AgCrZszNqBno7npYIokngB0fzRmqMSsI9ciUi+IKShbD1kydVRa64uhe/gaZm5h8PiIaFr60K9l4bLjHrY6si7OhLnsELbjuWwG0c7t3tk7RGvojZlnXFBX3PKBSbp3Aa7r2PhhzQ8ABbi19XMsIKsB0Fx2cCur5/CU9sXcGFs4WpUpw7T74mMuRdZcGyD+I5sgnhhcpTbjpwvsYz46x11307LDx27kV0vEjDXomKZK4dvtbsqN+3JniAQQcjjPUN+/fbAJOvHQg+7qV7oQBK+dDYEE3w2WnznlX2B1seaaye/8eClsnlWFgSDpwoufGCh0aiyET730nDFDqkWcacRZW8oh/gfSLmFV9YCqTSjPxPJJCKfOcifMWkyefljDeAhHboTJBQPhMh1X453LY9cI0i/OKQ4ecceCDt2NiTCdRGsHwB8im2mXoxxt6KTc28S5wd8G9y5ABRvooomCFzRMPQi61Ai5bXr8wnHjMNVJ5sjgkrKeWjBGPN1h49b+XEI29sOrFoFWCELvZwhmHAL1tgUC3Drpbs/x1P58EFj9HqIdomePdaSYXxXb32N4qa3xD6QFhAEIP8BkiPOmPUxnhUwcCF1eio/E49ILIuH045W49s/VuDNVG++hPwoSguokRtWa4u5Eqloo8ma54H52RSgZz2vGlq6SUaDm/akExQyujfQa3dC1d4Z27XglyF0BdmzXDWb2lc3lmdgRcjeLqlwSk
+              template:
+                metadata:
+                  name: hermes-team-routing
+                  namespace: hermes-team-01
+                type: Opaque
   destination:
     server: https://kubernetes.default.svc
     namespace: hermes-team-01
@@ -183,19 +122,6 @@ spec:
         elements:
           - name: hermes-june
             model: gpt-5.6-terra
-            environmentHint: |
-              You are "hermes-june", one of the collaborating Hermes agents
-              living in this Discord server. Your partner agent is
-              "hermes-july", whose Discord user ID is 1520304612316286986. To
-              hand the conversation to hermes-july, put an explicit
-              <@1520304612316286986> mention in the BODY of your message.
-              Only mention hermes-july when you have something substantive to
-              say or genuinely need their input. When a topic reaches a
-              natural conclusion, do NOT mention hermes-july at all — address
-              the human instead and end your turn — so the exchange stops.
-              Never send a filler, acknowledgement, or "let me know if you
-              need anything" message that mentions hermes-july; that only
-              restarts the loop.
             secretName: hermes-june-creds
             encryptedData:
               DISCORD_ALLOWED_USERS: AgB+3ORx1LL2PBMd9dcXyaoCO9gnK4Sd4ddhxcC8cuw2fAE81LalQ/KfgA2QrODsqVAtjUvzYqb7sRD3NnxlkkRRsPZg/yWBR1cRL8THJAGaDgIZVWT1/+XRlIy97BqI0APcpRNXH07ztoHIeE8AMTYdKjJtSAXy6IyzcZmk2/Hh/q+ZvI9BnCVEQXvrKfGF85bzJsh+G7qPxWDRLfFZ3kZknOJOvIqfFUbdZwp4MUpZMiz/o6+fMW8zt6hJU0dwkKsU7NjqpRcx+m86u9P106XNScRGrNcADp6t3kLRgg0wak9Rr4YxgoObm0R6H4s2rcXCZJXa/R1C/gPg3L7qNUda8vJczQQ9/2If6LQi2WWSUYMpAbF0dLGxl247Qug9dt/C3nq5hu5tDMoe5el6U/zeEwxINhMip3ClwNq0LBtYwBzQrWFpKCTcKT1CZahxG1EjhCGC2f20YI/f4fzAktkQHguwIyRpuY5TpQANKCQYCWdyHheSyaUzvcuhtJyV28vukVeqAfizZxxc47rEsgcZDr2wSf6E3LJXHUbGQtNFz3G3FUAECRPzGRp+GJ+3IgWHWEu2na/qEjE6EDAUXU0Do6M37wAaTCV0NTKS1oiC3djzc36PPwZ+mYJJGxB6NXqFa2ixmK3qQA/N+RTZC2kXc/6LFpTN2t6JgPCvY/1oaLBj4UPzFJ9PgMNYwz9JN6GIFg1GmwPS7Ype0lwAXHHJ01IYd86q+Phk055XXj7Tt1g/q4jX
@@ -204,19 +130,6 @@ spec:
 
           - name: hermes-july
             model: gpt-5.6-terra
-            environmentHint: |
-              You are "hermes-july", one of the collaborating Hermes agents
-              living in this Discord server. Your partner agent is
-              "hermes-june", whose Discord user ID is 1520295553768882246. To
-              hand the conversation to hermes-june, put an explicit
-              <@1520295553768882246> mention in the BODY of your message.
-              Only mention hermes-june when you have something substantive to
-              say or genuinely need their input. When a topic reaches a
-              natural conclusion, do NOT mention hermes-june at all — address
-              the human instead and end your turn — so the exchange stops.
-              Never send a filler, acknowledgement, or "let me know if you
-              need anything" message that mentions hermes-june; that only
-              restarts the loop.
             secretName: hermes-july-creds
             encryptedData:
               DISCORD_ALLOWED_USERS: AgAbHZ8RbWF8CN2ARBc08N0+FPeVMoE2s/r8giGNeWfmSDT0TxjMsYHx+30c6dXMwbFnJaSx8TvkqNX5rg5xK2C0DrqGWp9JGj7Vrca7PzuOTqMyp9FVgYe3J8m7SotzukYsw1IZDQCVx3fjMt63d1z/p1wj4s3Hm1ISe3RnjijpvoViuPuOWKfZGinHsj3uE9LCSHJnl4OP7+1n8bCexRwr/0imLz3o3s583C2DuQFQY4u1cT4ie7viqFPvz+qysT1G4jhVdYgdx98SEulogDPBq0AoGWC/DTN2hSDETG01GoWxl1tqmIva2mQCAYwGRBKU2CVGDLSoLKuEV20lXRYW0mzbbyITFEEzTKwdoKwgF4ojSR9JDcj0koRuBg8tF30DTv4/0mGrCwncG2kwyqyol5Ot/xqWYwjjGXhA5GO1xX5IzH8r5j/rkDHeR9wdQZ/RrsuVhqC87jnWT6A1N+PB4ihbJw2tJLg/4xIuWWjBn14txywX6OJz1+8ZgpUtD08945/7NRIbXczOxxW1+3JUaulhQFZJQynzESV2MoqeQ9pJw5Ee8BL+o1tWKpoWDxk6X6i7XoPScxLiWFCkonvZt3tM/IkiT3rX+AkM8d517s63QkVQUbpLD66AYUJc8kJtOa7extlQ/WKk4JjesdtOqo2fx3akh3NnUp7tiHsSInEhBAl2zda2lOF/L/U0VQ4izPbYRNkcXn2E5P5H/AqPc6pfmlYCsDugUE8wAZ2ubfY6xPFU
@@ -231,28 +144,17 @@ spec:
         # Same exception as the leader Application above: consume the
         # versioned OCI release directly rather than a vendored chart copy.
         repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
-        targetRevision: 1.3.0
+        targetRevision: 1.4.0
         path: .
         helm:
           valuesObject:
             fullnameOverride: "{{.name}}"
-            # replicaCount: 0 is not possible — see the leader Application's
-            # comment above (jyje/hermes-agent-helm#150).
             config:
               model:
                 provider: openai-codex
                 default: "{{.model}}"
               terminal:
                 backend: local
-              agent:
-                environment_hint: |
-                  {{.environmentHint}}
-              # See the leader Application's comment above — the team-roster
-              # skill actually lives on /knowledge/skills, seeded by
-              # hermes-agent; this just points the follower at it too.
-              skills:
-                external_dirs:
-                  - /knowledge/skills
             auth:
               deviceFlow:
                 enabled: true
@@ -262,29 +164,37 @@ spec:
               OPENAI_API_KEY: "unused"
             nodeSelector:
               app.jyje.online/raspi.type: 5b
-            extraEnv:
-              - name: DISCORD_ALLOW_BOTS
-                value: "mentions"
-              - name: DISCORD_THREAD_REQUIRE_MENTION
-                value: "true"
-              - name: DISCORD_REPLY_TO_MODE
-                value: "off"
-              - name: DISCORD_ALLOW_MENTION_REPLIED_USER
-                value: "false"
-            # Follower: mounts the shared knowledge base PVC owned by the
-            # hermes-agent leader Application above. No extraResources entry
-            # for it here — declaring it again is what caused the "shared
-            # resource" warning.
-            extraVolumes:
-              - name: knowledge-base
-                persistentVolumeClaim:
-                  claimName: hermes-knowledge-base
-            extraVolumeMounts:
-              - name: knowledge-base
+            team:
+              enabled: true
+              name: hermes-team-01
+              role: member
+              identity: "{{.name}}"
+              leader:
+                name: hermes-agent
+                mentionEnv: HERMES_AGENT_BOT_USER_ID
+              members:
+                - name: hermes-june
+                  role: Research and evidence gathering
+                  mentionEnv: HERMES_JUNE_BOT_USER_ID
+                  capabilities: [research, source-review]
+                - name: hermes-july
+                  role: Implementation and verification
+                  mentionEnv: HERMES_JULY_BOT_USER_ID
+                  capabilities: [implementation, testing]
+              protocol:
+                maxHandoffs: 6
+              skill:
+                create: false
+                configMapName: hermes-team-01-skill
+              sharedVolume:
+                create: false
+                claimName: hermes-knowledge-base
                 mountPath: /knowledge
             extraEnvFrom:
               - secretRef:
                   name: "{{.secretName}}"
+              - secretRef:
+                  name: hermes-team-routing
             extraResources:
               - apiVersion: bitnami.com/v1alpha1
                 kind: SealedSecret
