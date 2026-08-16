@@ -100,6 +100,12 @@ spec:
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
             -
+              model_name: "meta/muse-glimmer-30b"
+              litellm_params:
+                model: "nvidia_nim/meta/muse-glimmer-30b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+            -
               model_name: "minimaxai/minimax-m2.7"
               litellm_params:
                 model: "nvidia_nim/minimaxai/minimax-m2.7"
@@ -134,6 +140,15 @@ spec:
                 model: "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+            -
+              model_name: "nvidia/nemotron-3.5-lightning-30b-a3b"
+              litellm_params:
+                model: "nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  chat_template_kwargs:
+                    enable_thinking: true
             -
               model_name: "openai/gpt-oss-120b"
               litellm_params:
