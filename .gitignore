@@ -6,12 +6,13 @@
 # vscode
 .vscode/
 
-
 ## extra.
 temp/
-
 
 ## Python
 .python-version
 .venv/
 __pycache__/
+
+## Secrets
+.env
