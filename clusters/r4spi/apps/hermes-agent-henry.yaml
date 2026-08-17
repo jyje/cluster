@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-agent-henry
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/hermes-agent/hermes-agent-1.6.0
+    helm:
+      valuesObject:
+        fullnameOverride: hermes-agent-henry
+        config:
+          # Register the in-cluster LiteLLM proxy as a custom OpenAI-compatible
+          # provider, then point the model at its NVIDIA NIM-backed GLM-5.2
+          # entry (see clusters/r4spi/apps/litellm.yaml's nvidia_nim models).
+          providers:
+            litellm:
+              base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
+              key_env: OPENAI_API_KEY
+              discover_models: true
+          model:
+            provider: litellm
+            default: z-ai/glm-5.2
+          terminal:
+            backend: local
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-agent-henry-creds
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: hermes-agent-henry-creds
+            spec:
+              encryptedData:
+                OPENAI_API_KEY: AgA/f+KmrSHpuw77aB4RFTk4Hmpasa/TtKMKVrfTe7Z5GETNbneT6AeUbyJXdx0K1K+3GFkuY5m2qocldojVWR1oAfVEggHCh3vsRWGhd9W4rQIGJQ2QxQeSsavMSyMG1LiEVQxCn+9Km6eew99syjMjLubYyEryc0rvZxURdiZFdmzZgrR92G074E7nklho2/WTOmwNsaSKr6dn6kSUKEpttTKu+QbJusLk3OA1fMkrZXv60NDh76/QLOH7c8PBjTc6nvxVzjL4WUk2UFLiZJtYUbJTRwtKgk6cQ/QUhiGW3IbtU7Ar2hgX7q3V8YR1QGJ8DO5V14EVPHNJESRZJM+On0kngItoSyZNGdey63Ci+ARUyzutMbo51Hy0f7gCxGJ1NbLxRfCAG//Lw1zQkSLAzLqyxpK7d+eleDT9+uFGq6qtGxq/mT2wjy3yfuVi5Eo8Zs/0H8fVdTTCMgWPnIMo6t5CnzhQ4PgxfrpMQbxYFvbxRk7nBHr+Fx9/l2g5ZI2NN36GLaOkfKxH806aL96OQ9D6OfLn5pnIsC5D3DSVb9J3qSs0YAFVWLTKTxQgyyObTjVttKsrzGF9pYBulchDBT0Tq0VxAcpYq6kngrem2d8lJYiAHSCsURNGYgYKz8RluLYXTAEztwLNNlcCmVlHAzXjmGiUSwYyMHorMa+3xTvghTKiD/R3xb7xqezBQVrKHwV6qNR+O7FY5zGOWTuJf0xpnZV7ZHPJ1LpA/ymPvT8ZevZZy0N/A8Ol1CI=
+                TELEGRAM_ALLOWED_USERS: AgC4kWMVftcwe2jpz8NQc5PLvW0OM9sP3Gt1sgEXWz9l2BjXiJh+LNInirS7UkZUUGMVx2KrpOHKi9KjInkKzXqe79AD04uapNNfkiNfWaWkiiWoOCerUqN87Br3BhS07hjRT0K/742lTtFaxaRoeTBDswJs065PpV4xrIObXnWpA7V/51cZun3oCczeAUk58n/0lAxlKXxFYOslmugxCydEBWY1P8JB0R0Kp5EDv6AeDlNEtQMEiN2fCS2zj8vnsxNfguRchXJqIWIcBDI1SUCJX0e2Q2tSWQY0aPnCuPsBYWoySm2/UF+aqtTtOhxMupZo8rLVPttPlPgvDGMQ382RtRPW4z8V328EQxpeNLC8SapyXEeRlTiE4xQB1WDjFwG/pNjB5RbsCS5PZqOk8WacoJMfoaxub8sso3pTAexlQGuhq2tICd7XuVijuovH+co+hi/YrcwWRuWeJl6KiidVB2LU4VRuZ953tjmspRrCGp0gFFn5jImPfikDAbH/MOcWtvD6wcHKci9L9DgdhsnBEltOVgwr4snvZ9pkb8blrzGaDaxgeu/VN/VAniQYF06gr//X0tyN/6yHauEllwTmiiKZpCuVffUvDmUhq/0EcxD2n+3evjL1OkppopStxExqdUO/4785Fhw17z6tL/HApwD/mIwsREYEJ6eWRHe9ccC+q7/+MSXGmixS2u4ZEQwzKxgbQmt9Y2068o4=
+                TELEGRAM_BOT_TOKEN: AgCFndVSafl5Yqik/+yZjjtgljRaVYJyfLanQ4/8YD0O5aphfxC2M2tFOJ4K7ZdAjM9FbrSY1mpYAzA2033xLKcM5zNd0p8SMJd+jegpVCH521jvmI9+oAbEyhKRddnCrqHHlM3Wfl2qh4WMQaKgNz7CbyxnIHCGNJc5UqrVykv4XXCLvqtSW7E9SdzdxFITblE2F+9+JKrIjqUPjETuo7VBksCI0hDMG+A+oPcS/a9Sf8EAQKmBv7+3h5aBx6/dA26AJ92m2skgSWJPYm15+svC7IW5pTj/lwr7mJeeCSUTjAXGHwSDd12L46un1dco6uBJ6LxCrdbXUTvKZ0OaLPC97dUctab1U89WQPUdiqSiVo6hNQaDYLrlW2tkPUSqWhgn+Y2Pfx3AqBKjPm7UUExBB1OWS8DYwEFR/01Ax7RVtbh1Tce0QaarVHSbUqyXaJ/lEwAcM/bov8aAn41v7g2U0i5u8NRH5a1tlnc1a+C3kLs4yxRFGTZuL9cldP7AeFRQkAhSfs9s0o9exKoOxO+QZq/8Mf1QUPli5ap4lqs/6roB3ksOcG2q1Pz6kkxLaB9loQBNJ7oZRiu85qdolDH95P5omJRbEDzTemKLViywqFjSFFMZ1mim2u6YM5OZ0PBuy5Ej5cBmPXDePzJd0kdamQqYYa5Q2x4+2F2o4f76PjTb8j2A3lKh0AxHhCJ2E5+u+MvgrUw+yFHxkQURDXGpl3JZqOnW8oDEAkWmmAbQgnIp3aoeDKQsDZbjGL24uYE=
+                TELEGRAM_HOME_CHANNEL: AgDMiEQgY1IIRNiKzSwWricWpWPlmXy5kDttwaebIxRKfBgjiqBt3QyoACd11PtEZcgwC9LMZ3J4hXCcx1pcqVqFVDrZ2rQj+o7l1xRDWLKaU0Jvz1/2X6BCJqCtLZeSwveaSdqZsyHtCAiRsOCPVx1+OabrMvdilmhvfkdRVY3MroG30sMWDNo/LeEkdoF/MZN35tRBsos9iTSYaxfAkGDGOFBq4VKCtath49Wo5/7S3N8SqFiTngmHmIXDjK4C0FhYAQTXHxnhnoEvqQ9Efcteu0K3w5EnWjmxnhT0gkYsu0DFUpuFuH1osedNIs/Jwkw6A35Tp00dRFZTtaKTrGd+92d5eOOmP/TRA9N9FR2VI4CZhJ7s5b1FkobZwjII0VWGyqmtAke1v7vWCx2QYLwH+cS1bc8iOd5NVHvIJV4txBjyihLaMGdBhxVHll8M9X592rJkR701WW0zRilCYZ7C7JkyicQE+5jlHLZFdtyRLvtJulfbIUP+CvUFYhFKBS4ygrmZPEHTcRT2k00Dn9bLDx+LVnRNlLwCMCHpCXFP0TfZG1vjh32PF+yPg/iFdtb0AtD5Rh8ozeD+8PKppg+c+OHjqsRH5vnTYNg6tUEtJOJUQB1w+o2qsYOsJQpybQHJm3KLRPQtXhZwfa+88n06rrfNy7y2HCNqrzeAMaFlJI8BO539yNayp8rjZmKlz5g/zN8+pTSkZgW3dfUTRDE=
+              template:
+                metadata:
+                  name: hermes-agent-henry-creds
+                  namespace: hermes-agent-henry
+                type: Opaque
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-agent-henry
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
