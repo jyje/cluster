@@ -5,11 +5,9 @@ metadata:
 spec:
   project: ai
   source:
-    # Same exception as the ApplicationSet below: consume the versioned OCI
-    # release directly rather than a vendored chart copy.
-    repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
-    targetRevision: 1.4.0
-    path: .
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/hermes-agent/hermes-agent-1.6.0
     helm:
       valuesObject:
         fullnameOverride: hermes-agent
@@ -141,11 +139,9 @@ spec:
     spec:
       project: ai
       source:
-        # Same exception as the leader Application above: consume the
-        # versioned OCI release directly rather than a vendored chart copy.
-        repoURL: oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent
-        targetRevision: 1.4.0
-        path: .
+        repoURL: https://github.com/jyje/cluster
+        targetRevision: main
+        path: helm/hermes-agent/hermes-agent-1.6.0
         helm:
           valuesObject:
             fullnameOverride: "{{.name}}"

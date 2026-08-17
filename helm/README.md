@@ -27,6 +27,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | cert-manager | adfinis | https://charts.adfinis.com |
 | cnpg | cnpg | https://cloudnative-pg.github.io/charts |
 | grafana | grafana | https://grafana.github.io/helm-charts |
+| hermes-agent | jyje | oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent |
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
 | ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
