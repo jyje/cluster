@@ -149,6 +149,16 @@ spec:
                 extra_body:
                   chat_template_kwargs:
                     enable_thinking: true
+              # The NVIDIA model card (build.nvidia.com/nvidia/nemotron-3.5-lightning-30b-a3b)
+              # says "Context Length: Up to 1M tokens", but the API's own error
+              # message is the authoritative source: a direct request at
+              # 1,000,045 tokens was rejected with "maximum context length is
+              # 1000000 tokens" (decimal million, not 1,048,576 / 2^20), and a
+              # request at 999,545 tokens succeeded (HTTP 200). Without this,
+              # litellm reports max_input_tokens: null and Hermes silently
+              # falls back to its own 128K default.
+              model_info:
+                max_input_tokens: 1000000
             -
               model_name: "openai/gpt-oss-120b"
               litellm_params:
