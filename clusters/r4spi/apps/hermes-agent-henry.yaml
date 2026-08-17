@@ -26,6 +26,15 @@ spec:
             # rate limit (confirmed via litellm logs, not a config issue).
             # Switch back once that clears up.
             default: nvidia/nemotron-3.5-lightning-30b-a3b
+            # discover_models only calls the generic /v1/models list (names
+            # only, no context field) — Hermes never sees litellm's own
+            # /v1/model/info, so it can't learn the real window on its own
+            # and falls back to a 131,072 default. Declare it explicitly
+            # here instead; verified against the model's real NIM-enforced
+            # limit (see clusters/r4spi/apps/litellm.yaml's model_info for
+            # this model). Hot-reloads without a pod restart per Hermes'
+            # docs (config.yaml > model.context_length).
+            context_length: 1000000
           terminal:
             backend: local
         nodeSelector:
