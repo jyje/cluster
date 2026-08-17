@@ -82,64 +82,48 @@ spec:
                 api_base: "https://api.upstage.ai/v1"
                 api_key: "os.environ/UPSTAGE_API_KEY"
             -
-              model_name: "deepseek-ai/deepseek-v4-flash"
-              litellm_params:
-                model: "nvidia_nim/deepseek-ai/deepseek-v4-flash"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "deepseek-ai/deepseek-v4-pro"
-              litellm_params:
-                model: "nvidia_nim/deepseek-ai/deepseek-v4-pro"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-            -
               model_name: "google/gemma-4-31b-it"
               litellm_params:
                 model: "nvidia_nim/google/gemma-4-31b-it"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+              # Verified via direct API test: the server silently truncates
+              # oversized input to exactly 131,066 tokens rather than erroring
+              # (reproduced twice, at two different oversized prompt sizes).
+              model_info:
+                max_input_tokens: 131072
             -
               model_name: "meta/muse-glimmer-30b"
               litellm_params:
                 model: "nvidia_nim/meta/muse-glimmer-30b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "minimaxai/minimax-m2.7"
-              litellm_params:
-                model: "nvidia_nim/minimaxai/minimax-m2.7"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
+              # Verified via direct API test: "VLLMValidationError: maximum
+              # context length is 131072 tokens".
+              model_info:
+                max_input_tokens: 131072
             -
               model_name: "minimaxai/minimax-m3"
               litellm_params:
                 model: "nvidia_nim/minimaxai/minimax-m3"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "mistralai/mistral-small-4-119b-2603"
-              litellm_params:
-                model: "nvidia_nim/mistralai/mistral-small-4-119b-2603"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-                extra_body:
-                  reasoning_effort: "high"
-            -
-              model_name: "moonshotai/kimi-k2.6"
-              litellm_params:
-                model: "nvidia_nim/moonshotai/kimi-k2.6"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-                extra_body:
-                  chat_template_kwargs:
-                    thinking: true
+              # Verified via direct API test: "maximum context length is
+              # 262144 tokens".
+              model_info:
+                max_input_tokens: 262144
             -
               model_name: "nvidia/nemotron-3-ultra-550b-a55b"
               litellm_params:
                 model: "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+              # Verified via direct API test: "maximum context length is
+              # 1048576 tokens" (2^20 — unlike the sibling nemotron-3.5-lightning
+              # model, whose real limit is the decimal 1,000,000; don't assume
+              # these match across models even within the same vendor family).
+              model_info:
+                max_input_tokens: 1048576
             -
               model_name: "nvidia/nemotron-3.5-lightning-30b-a3b"
               litellm_params:
@@ -165,30 +149,43 @@ spec:
                 model: "nvidia_nim/openai/gpt-oss-120b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+              # Verified via direct API test: bracketed the boundary (130,331
+              # tokens succeeded; ~131,894 tokens failed), consistent with the
+              # publicly documented 131,072-token window for gpt-oss.
+              model_info:
+                max_input_tokens: 131072
             -
               model_name: "openai/gpt-oss-20b"
               litellm_params:
                 model: "nvidia_nim/openai/gpt-oss-20b"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
-            -
-              model_name: "qwen/qwen3.5-122b-a10b"
-              litellm_params:
-                model: "nvidia_nim/qwen/qwen3.5-122b-a10b"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
+              # Inferred from gpt-oss-120b's verified boundary (identical
+              # failure signature observed at the same prompt size), not
+              # independently bracketed — lower confidence than the other
+              # entries here. Re-verify if this model's behavior diverges.
+              model_info:
+                max_input_tokens: 131072
             -
               model_name: "stepfun-ai/step-3.7-flash"
               litellm_params:
                 model: "nvidia_nim/stepfun-ai/step-3.7-flash"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+              # Verified via direct API test: "maximum context length is
+              # 262144 tokens".
+              model_info:
+                max_input_tokens: 262144
             -
               model_name: "z-ai/glm-5.2"
               litellm_params:
                 model: "nvidia_nim/z-ai/glm-5.2"
                 api_base: "https://integrate.api.nvidia.com/v1"
                 api_key: "os.environ/NIM_API_KEY"
+              # Not yet verified: NVIDIA NIM returned 429 (rate-limited) on
+              # every verification attempt this session. Leave unset rather
+              # than guess; re-verify and add model_info.max_input_tokens once
+              # the rate limit clears.
 
             # GitHub Copilot Models (June)
             # Auth is FILE-based: LiteLLM's github_copilot provider reads the
