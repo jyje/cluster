@@ -15,26 +15,51 @@ spec:
           # Register the in-cluster LiteLLM proxy as a custom OpenAI-compatible
           # provider, then point the model at one of its NVIDIA NIM-backed
           # entries (see clusters/r4spi/apps/litellm.yaml's nvidia_nim models).
+          #
+          # discover_models only calls the generic /v1/models list (names
+          # only, no context field) — Hermes never sees litellm's own
+          # /v1/model/info, so it falls back to its own 131,072 default for
+          # any model it can't otherwise identify. model.context_length (a
+          # single top-level override) isn't the right tool for a multi-model
+          # provider like this one: it only affects whichever model is
+          # config.model.default and doesn't follow a live /model switch to a
+          # different model. The documented mechanism for a custom provider
+          # with several selectable models is a per-model map:
+          # providers.<name>.models.<id>.context_length. Values below are
+          # verified against each model's real NIM-enforced limit — same
+          # numbers as clusters/r4spi/apps/litellm.yaml's model_info, kept in
+          # sync manually since Hermes and litellm each read their own copy.
           providers:
             litellm:
               base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
               key_env: OPENAI_API_KEY
               discover_models: true
+              models:
+                google/gemma-4-31b-it:
+                  context_length: 131072
+                meta/muse-glimmer-30b:
+                  context_length: 131072
+                minimaxai/minimax-m3:
+                  context_length: 262144
+                nvidia/nemotron-3-ultra-550b-a55b:
+                  context_length: 1048576
+                nvidia/nemotron-3.5-lightning-30b-a3b:
+                  context_length: 1000000
+                openai/gpt-oss-120b:
+                  context_length: 131072
+                openai/gpt-oss-20b:
+                  context_length: 131072
+                stepfun-ai/step-3.7-flash:
+                  context_length: 262144
+                # z-ai/glm-5.2 intentionally omitted: NIM returned 429 on
+                # every verification attempt, so its real limit is still
+                # unconfirmed. Add it once verified — don't guess.
           model:
             provider: litellm
             # Temporary: z-ai/glm-5.2 was hitting NVIDIA NIM's own 429
             # rate limit (confirmed via litellm logs, not a config issue).
             # Switch back once that clears up.
             default: nvidia/nemotron-3.5-lightning-30b-a3b
-            # discover_models only calls the generic /v1/models list (names
-            # only, no context field) — Hermes never sees litellm's own
-            # /v1/model/info, so it can't learn the real window on its own
-            # and falls back to a 131,072 default. Declare it explicitly
-            # here instead; verified against the model's real NIM-enforced
-            # limit (see clusters/r4spi/apps/litellm.yaml's model_info for
-            # this model). Hot-reloads without a pod restart per Hermes'
-            # docs (config.yaml > model.context_length).
-            context_length: 1000000
           terminal:
             backend: local
         nodeSelector:
