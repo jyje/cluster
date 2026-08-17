@@ -13,8 +13,8 @@ spec:
         fullnameOverride: hermes-agent-henry
         config:
           # Register the in-cluster LiteLLM proxy as a custom OpenAI-compatible
-          # provider, then point the model at its NVIDIA NIM-backed GLM-5.2
-          # entry (see clusters/r4spi/apps/litellm.yaml's nvidia_nim models).
+          # provider, then point the model at one of its NVIDIA NIM-backed
+          # entries (see clusters/r4spi/apps/litellm.yaml's nvidia_nim models).
           providers:
             litellm:
               base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
@@ -22,7 +22,10 @@ spec:
               discover_models: true
           model:
             provider: litellm
-            default: z-ai/glm-5.2
+            # Temporary: z-ai/glm-5.2 was hitting NVIDIA NIM's own 429
+            # rate limit (confirmed via litellm logs, not a config issue).
+            # Switch back once that clears up.
+            default: nvidia/nemotron-3.5-lightning-30b-a3b
           terminal:
             backend: local
         nodeSelector:
