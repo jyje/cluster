@@ -183,6 +183,15 @@ helm template <name> oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent \
 
 ## Troubleshooting
 
+> [!WARNING]
+> **Known Discord display issue (observed with Hermes Agent 0.20.0):** Discord
+> may continue to show an agent as typing after its final response has been
+> delivered. The indicator alone is not evidence of ongoing model inference or
+> token consumption; confirm activity using the provider/API and token counters.
+> Restarting the affected Pod clears the in-memory state temporarily. For a
+> conservative workaround, disable the Discord `typing_indicator` in the
+> agent's GitOps configuration until the issue is resolved upstream.
+
 | Symptom | Check |
 |---------|-------|
 | Pod stuck in `Init` | `kubectl logs <pod> -c auth-device-login -n <ns>` — look for the device code / Discord post |
