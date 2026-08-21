@@ -15,6 +15,26 @@ spec:
           # ghcr.io/jyje/mungchilog:<sha> and :latest on every push to main;
           # bump this to a pinned sha once M1+ work starts landing.
           tag: latest
+        extraResources:
+          # Gate the whole app behind Basic Auth: this is a personal
+          # travel itinerary (real names, dates, locations), not
+          # something to leave reachable by anyone who guesses the
+          # subdomain. Password was generated once and shared with jyje
+          # out of band (not in this repo, not in chat history a bot
+          # would index) — rotate by re-sealing if it ever needs to
+          # change.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-basic-auth
+            spec:
+              encryptedData:
+                auth: AgC4MlZRUxGiq7HpzMSJdw554dPNbup+N6mfohpxSOT/Ej/QBfVXDNcEGViEVNwgUXoM6aIxcyfftf9H8UiVbFxJqMRS7rGFBm0AXxzXnNAcTCVncGxwlc/GlPy+9qtRjfawHyadDH+RcrSER2XPNcPw7kvVSTUlGIE1/I+IC9GBhioCeHotGMLlWEw3Ma9M+91RG5f5t4PZAyejidYKWyth/bCVJm/uVvh1RBfPbRkRDbKALZe0a9O4f4LDqSb4WfriujoeTtTD7i3gq/p4MQVol72sQykb/duvO/a1hU3+5nyuhgjJ3wrXjejGAAS+JSdE7pZ1lzQ67Jt/lriUe76WrYtGkjUXl//HExNqA2J4/Kg7KoLQRV+rbnG/JQJxUunCNRHBsvz3IyLP6ZNRqxsMP06JA1tXGDgCdCQ40cJB8AE72j3wvjCmBHuUnhVGhOJGde/Ja7X8Lvl57ejCmNZgIYKh1lUxElK8GezOjGhphhwiU6AYGfiKFRdNcQcZwLB6wDJGRj0iiUscVrLUMu58txxoTkDwngmIVG5SlHV0SoOEz5vByu+n2IbED/ISfFmcITmulzpAdCEVzXPI2Rh91EPVq3usw5kFUxwf5R6tTao6K6aYFOUNJEwuk22ZY0c3YXdmIcx5WLGX1O0U4dX3YAZt6ZUP5IaMhdXXP1YXPrpkL6veQvESQV7HY47Ad2IQaafB5K7XyzubrtObSpZByCea+T31ZHCHPETT0pimeRFtZqZeQujW0RYfc198yz1eSLcfUj8IUT6cw/J61eAtiGsG
+              template:
+                metadata:
+                  name: mungchilog-basic-auth
+                  namespace: mungchilog
+                type: Opaque
   destination:
     server: https://kubernetes.default.svc
     namespace: mungchilog
