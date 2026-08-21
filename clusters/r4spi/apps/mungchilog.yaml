@@ -12,7 +12,7 @@ spec:
       valuesObject:
         image:
           # Pinned to jyje/mungchilog@2e0135d (M0-M3-skeleton, verified
-          # Synced+Healthy+200). Not :latest — two arm64/QEMU builds were
+          # Synced+Healthy+200). Not :latest: two arm64/QEMU builds were
           # racing in CI on 2026-08-21 (10+ min each, no concurrency
           # guard yet), so whichever finished last would've won :latest
           # regardless of which commit was actually newest. Bump this by
@@ -25,7 +25,7 @@ spec:
           # something to leave reachable by anyone who guesses the
           # subdomain. Password was generated once and shared with jyje
           # out of band (not in this repo, not in chat history a bot
-          # would index) — rotate by re-sealing if it ever needs to
+          # would index): rotate by re-sealing if it ever needs to
           # change.
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
