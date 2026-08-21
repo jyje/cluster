@@ -11,13 +11,11 @@ spec:
     helm:
       valuesObject:
         image:
-          # jyje/mungchilog@17563a2 (M0-M5, including M3/M4 client
-          # wiring - LegInfo/OpeningHours components that render a
-          # placeholder until GOOGLE_MAPS_SERVER_KEY exists, then need
-          # no further code changes to go live). Supersedes 85667f7:
-          # codex caught LegInfo omitting the itinerary day/time from
-          # its route request (would've defaulted to "now" once a key
-          # existed, wrong for any day but today).
+          # jyje/mungchilog@48a99e6: both Maps keys are now live
+          # (client key baked into this build, server key wired via
+          # extraEnvFrom below), plus a create-via-web UI and removal
+          # of the app's remaining Japan/Asia-Tokyo hardcoding (any
+          # IANA timezone + currency now works, not just JP/JPY).
           #
           # Staying pinned to a sha, not :latest - codex caught a second,
           # independent reason beyond the CI race this repo hit once:
@@ -27,7 +25,7 @@ spec:
           # Argo CD sees no diff and does nothing - :latest silently
           # stops deploying anything new. Bump this string on every
           # release; that's what actually gives Argo CD a diff to act on.
-          tag: "17563a25028f90c7d41a602baad5f1639595a58b"
+          tag: "48a99e61610b783c56605cb3161dea5c07671ca2"
         extraEnvFrom:
           - secretRef:
               name: mungchilog-server-key
