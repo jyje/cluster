@@ -25,7 +25,7 @@ ingress:
     # This app holds a personal travel itinerary (real names, dates,
     # locations), so it isn't left unauthenticated even in v1. Authentik
     # forward-auth isn't wired up for any app yet on this cluster (still
-    # in progress) — rather than pilot that here, gate access with
+    # in progress): rather than pilot that here, gate access with
     # ingress-nginx's built-in Basic Auth, which is already proven.
     nginx.ingress.kubernetes.io/auth-type: basic
     nginx.ingress.kubernetes.io/auth-secret: mungchilog-basic-auth
@@ -36,7 +36,7 @@ ingress:
 persistence:
   enabled: true
   # No block-storage StorageClass exists on this cluster (verified via
-  # `kubectl get sc` — only the NFS-backed default `subdir-usb`; Longhorn
+  # `kubectl get sc` — only the NFS-backed default `subdir-usb`, and Longhorn
   # is vendored under helm/longhorn but was never deployed as an
   # Application, so a values.yaml referencing "longhorn" was wrong and
   # left the PVC stuck Pending). Deploying Longhorn now, days before a
@@ -49,7 +49,7 @@ persistence:
   mountPath: /app/data
   # NOTE (2026-08-21): PersistentVolumeClaim.spec.storageClassName is
   # immutable, so this change alone cannot repair a PVC that Argo CD
-  # already created against the (nonexistent) "longhorn" class — it
+  # already created against the (nonexistent) "longhorn" class, so it
   # would stay Pending forever. The one pre-existing "mungchilog-data"
   # claim from the initial M0 rollout was manually deleted via
   # `kubectl delete pvc mungchilog-data -n mungchilog` before this PR

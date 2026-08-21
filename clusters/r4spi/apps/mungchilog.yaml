@@ -11,17 +11,21 @@ spec:
     helm:
       valuesObject:
         image:
-          # M0: pass-through deploy. jyje/mungchilog's build.yml pushes
-          # ghcr.io/jyje/mungchilog:<sha> and :latest on every push to main;
-          # bump this to a pinned sha once M1+ work starts landing.
-          tag: latest
+          # Pinned to jyje/mungchilog@2e0135d (M0-M3-skeleton, verified
+          # Synced+Healthy+200). Not :latest: two arm64/QEMU builds were
+          # racing in CI on 2026-08-21 (10+ min each, no concurrency
+          # guard yet), so whichever finished last would've won :latest
+          # regardless of which commit was actually newest. Bump this by
+          # hand (or re-adopt :latest now that build.yml has a
+          # concurrency group preventing that race) as new commits land.
+          tag: "2e0135d39803bb94ad6ca6f6ee6b5a39902b3289"
         extraResources:
           # Gate the whole app behind Basic Auth: this is a personal
           # travel itinerary (real names, dates, locations), not
           # something to leave reachable by anyone who guesses the
           # subdomain. Password was generated once and shared with jyje
           # out of band (not in this repo, not in chat history a bot
-          # would index) — rotate by re-sealing if it ever needs to
+          # would index): rotate by re-sealing if it ever needs to
           # change.
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
