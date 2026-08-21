@@ -37,18 +37,23 @@ ingress:
   # in front of the manifest/sw.js is a known trap for PWA installability
   # (cached HTTP-auth credentials don't reliably reach a service worker's
   # own registration/update fetches, especially once launched standalone
-  # from the home screen) — verified locally: both 401 without
+  # from the home screen): verified locally, both 401 without
   # credentials. Carving these out into a second, unauthenticated Ingress
   # is what actually makes the M5 "install to home screen, view offline"
   # requirement work.
+  #
+  # Two entries, not one-per-file: Argo CD's UI renders one "external
+  # link" per Ingress path by pasting host+path together, and a raw
+  # regex fragment (`/pwa-(192|512)\.png`) reads as a garbled URL there.
+  # /assets is a real prefix and reads fine on its own; everything else
+  # is one alternation so the noise stays at 2 entries instead of 7.
+  # (Not folding sw.js itself into /assets: its default PWA scope is
+  # the directory it's served from, so moving it would need a
+  # Service-Worker-Allowed response header to claw scope back to "/" -
+  # not worth it for a cosmetic fix.)
   publicPaths:
     - /assets
-    - /sw\.js
-    - /workbox-.*\.js
-    - /registerSW\.js
-    - /manifest\.webmanifest
-    - /favicon\.svg
-    - /pwa-(192|512)\.png
+    - /(sw\.js|workbox-.*\.js|registerSW\.js|manifest\.webmanifest|favicon\.svg|pwa-(192|512)\.png)
 
 persistence:
   enabled: true
