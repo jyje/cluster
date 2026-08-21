@@ -42,18 +42,35 @@ ingress:
   # is what actually makes the M5 "install to home screen, view offline"
   # requirement work.
   #
-  # Two entries, not one-per-file: Argo CD's UI renders one "external
-  # link" per Ingress path by pasting host+path together, and a raw
-  # regex fragment (`/pwa-(192|512)\.png`) reads as a garbled URL there.
-  # /assets is a real prefix and reads fine on its own; everything else
-  # is one alternation so the noise stays at 2 entries instead of 7.
-  # (Not folding sw.js itself into /assets: its default PWA scope is
-  # the directory it's served from, so moving it would need a
-  # Service-Worker-Allowed response header to claw scope back to "/" -
-  # not worth it for a cosmetic fix.)
+  # No regex, no use-regex annotation: that annotation turned out to be
+  # cluster-scoped in effect, not just for this Ingress. Once it was set
+  # anywhere for this host, nginx compiled *every* location for the host
+  # (including the unrelated, other Ingress's protected "/" prefix) as a
+  # regex location, and every POST/PUT/DELETE to any path stopped
+  # reaching this app entirely (fell through to the default backend,
+  # 405 Method Not Allowed) - only discovered by testing DELETE and
+  # POST against a live deploy; GET-only smoke tests never caught it.
+  # Exact filenames use pathType Exact; the one filename we can't fully
+  # predict (workbox's build hash) uses a plain string-prefix match via
+  # ImplementationSpecific, which is nginx's ordinary non-regex
+  # behavior when use-regex isn't set - no cross-Ingress side effects.
   publicPaths:
-    - /assets
-    - /(sw\.js|workbox-.*\.js|registerSW\.js|manifest\.webmanifest|favicon\.svg|pwa-(192|512)\.png)
+    - path: /assets
+      pathType: Prefix
+    - path: /workbox-
+      pathType: ImplementationSpecific
+    - path: /sw.js
+      pathType: Exact
+    - path: /registerSW.js
+      pathType: Exact
+    - path: /manifest.webmanifest
+      pathType: Exact
+    - path: /favicon.svg
+      pathType: Exact
+    - path: /pwa-192.png
+      pathType: Exact
+    - path: /pwa-512.png
+      pathType: Exact
 
 persistence:
   enabled: true

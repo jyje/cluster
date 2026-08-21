@@ -3,8 +3,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: mungchilog-public
-  annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   tls:
@@ -16,8 +14,8 @@ spec:
       http:
         paths:
           {{- range .Values.ingress.publicPaths }}
-          - path: {{ . }}
-            pathType: ImplementationSpecific
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
             backend:
               service:
                 name: mungchilog
