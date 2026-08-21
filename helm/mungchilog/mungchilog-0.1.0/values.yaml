@@ -47,6 +47,15 @@ persistence:
   storageClassName: subdir-usb
   size: 1Gi
   mountPath: /app/data
+  # NOTE (2026-08-21): PersistentVolumeClaim.spec.storageClassName is
+  # immutable, so this change alone cannot repair a PVC that Argo CD
+  # already created against the (nonexistent) "longhorn" class — it
+  # would stay Pending forever. The one pre-existing "mungchilog-data"
+  # claim from the initial M0 rollout was manually deleted via
+  # `kubectl delete pvc mungchilog-data -n mungchilog` before this PR
+  # merged (it had never bound, so there was no data to lose). A fresh
+  # install of this chart hits this path directly and needs no
+  # migration; this note only explains the one historical exception.
 
 extraEnv: []
 extraResources: []
