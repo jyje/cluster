@@ -32,6 +32,23 @@ ingress:
     nginx.ingress.kubernetes.io/auth-realm: "mungchilog"
   host: mungchilog.app.jyje.online
   tlsSecretName: mungchilog.app.jyje.online
+  # The static build (JS/CSS bundle, service worker, manifest, icons)
+  # carries no personal data, only the document and /api/* do. Basic Auth
+  # in front of the manifest/sw.js is a known trap for PWA installability
+  # (cached HTTP-auth credentials don't reliably reach a service worker's
+  # own registration/update fetches, especially once launched standalone
+  # from the home screen) — verified locally: both 401 without
+  # credentials. Carving these out into a second, unauthenticated Ingress
+  # is what actually makes the M5 "install to home screen, view offline"
+  # requirement work.
+  publicPaths:
+    - /assets
+    - /sw\.js
+    - /workbox-.*\.js
+    - /registerSW\.js
+    - /manifest\.webmanifest
+    - /favicon\.svg
+    - /pwa-(192|512)\.png
 
 persistence:
   enabled: true
