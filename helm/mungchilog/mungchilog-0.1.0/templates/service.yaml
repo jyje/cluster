@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mungchilog
+  labels:
+    app: mungchilog
+spec:
+  type: ClusterIP
+  selector:
+    app: mungchilog
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
