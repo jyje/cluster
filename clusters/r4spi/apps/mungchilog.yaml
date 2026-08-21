@@ -11,11 +11,13 @@ spec:
     helm:
       valuesObject:
         image:
-          # jyje/mungchilog@48a99e6: both Maps keys are now live
-          # (client key baked into this build, server key wired via
-          # extraEnvFrom below), plus a create-via-web UI and removal
-          # of the app's remaining Japan/Asia-Tokyo hardcoding (any
-          # IANA timezone + currency now works, not just JP/JPY).
+          # jyje/mungchilog@656d987: fixes outbound HTTPS from the pod,
+          # which was failing for every external host (not just Google)
+          # because Alpine's musl getaddrinfo() aborts a dual-stack
+          # lookup entirely when this cluster's CoreDNS answers AAAA
+          # with NXDOMAIN - the app now forces IPv4-only DNS for its
+          # own outbound calls (dns.resolve4, not a CoreDNS change).
+          # Also adds route polylines/arrows on the map.
           #
           # Staying pinned to a sha, not :latest - codex caught a second,
           # independent reason beyond the CI race this repo hit once:
@@ -25,7 +27,7 @@ spec:
           # Argo CD sees no diff and does nothing - :latest silently
           # stops deploying anything new. Bump this string on every
           # release; that's what actually gives Argo CD a diff to act on.
-          tag: "48a99e61610b783c56605cb3161dea5c07671ca2"
+          tag: "656d987f30d8e7cf12bd4beb725474022bf28c71"
         extraEnvFrom:
           - secretRef:
               name: mungchilog-server-key
