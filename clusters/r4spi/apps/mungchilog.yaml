@@ -11,8 +11,10 @@ spec:
     helm:
       valuesObject:
         image:
-          # jyje/mungchilog@3fe7ba3 (M0-M5 + delete-trip UI + taste-skill
-          # touch-target pass), pending live verification.
+          # jyje/mungchilog@85667f7 (M0-M5, including M3/M4 client
+          # wiring - LegInfo/OpeningHours components that render a
+          # placeholder until GOOGLE_MAPS_SERVER_KEY exists, then need
+          # no further code changes to go live).
           #
           # Staying pinned to a sha, not :latest - codex caught a second,
           # independent reason beyond the CI race this repo hit once:
@@ -22,7 +24,7 @@ spec:
           # Argo CD sees no diff and does nothing - :latest silently
           # stops deploying anything new. Bump this string on every
           # release; that's what actually gives Argo CD a diff to act on.
-          tag: "3fe7ba3955e8538140346e24f2e1a11c303efaad"
+          tag: "85667f71a06a9fcf387747fd82a5bcc30da30d4d"
         extraResources:
           # Gate the whole app behind Basic Auth: this is a personal
           # travel itinerary (real names, dates, locations), not
