@@ -11,14 +11,18 @@ spec:
     helm:
       valuesObject:
         image:
-          # Pinned to jyje/mungchilog@2e0135d (M0-M3-skeleton, verified
-          # Synced+Healthy+200). Not :latest: two arm64/QEMU builds were
-          # racing in CI on 2026-08-21 (10+ min each, no concurrency
-          # guard yet), so whichever finished last would've won :latest
-          # regardless of which commit was actually newest. Bump this by
-          # hand (or re-adopt :latest now that build.yml has a
-          # concurrency group preventing that race) as new commits land.
-          tag: "2e0135d39803bb94ad6ca6f6ee6b5a39902b3289"
+          # jyje/mungchilog@093aeec (M0-M5, IndexedDB persister added),
+          # verified Synced+Healthy+200 via Playwright.
+          #
+          # Staying pinned to a sha, not :latest - codex caught a second,
+          # independent reason beyond the CI race this repo hit once:
+          # imagePullPolicy is IfNotPresent, so once a node has cached
+          # ghcr.io/jyje/mungchilog:latest, a Deployment spec that still
+          # reads ":latest" is byte-for-byte unchanged after a new push.
+          # Argo CD sees no diff and does nothing - :latest silently
+          # stops deploying anything new. Bump this string on every
+          # release; that's what actually gives Argo CD a diff to act on.
+          tag: "093aeecabdaf36ca9ac88be14ee9513712537093"
         extraResources:
           # Gate the whole app behind Basic Auth: this is a personal
           # travel itinerary (real names, dates, locations), not
