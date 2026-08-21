@@ -22,16 +22,31 @@ ingress:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+    # This app holds a personal travel itinerary (real names, dates,
+    # locations), so it isn't left unauthenticated even in v1. Authentik
+    # forward-auth isn't wired up for any app yet on this cluster (still
+    # in progress) — rather than pilot that here, gate access with
+    # ingress-nginx's built-in Basic Auth, which is already proven.
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: mungchilog-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "mungchilog"
   host: mungchilog.app.jyje.online
   tlsSecretName: mungchilog.app.jyje.online
 
 persistence:
   enabled: true
-  # SQLite (WAL mode) needs real POSIX file locking, which the cluster's
-  # default NFS-backed StorageClass (subdir-usb) does not reliably provide.
-  # Use Longhorn's block storage instead.
-  storageClassName: longhorn
+  # No block-storage StorageClass exists on this cluster (verified via
+  # `kubectl get sc` — only the NFS-backed default `subdir-usb`; Longhorn
+  # is vendored under helm/longhorn but was never deployed as an
+  # Application, so a values.yaml referencing "longhorn" was wrong and
+  # left the PVC stuck Pending). Deploying Longhorn now, days before a
+  # trip deadline, on a shared cluster other apps depend on, is out of
+  # scope for this app. Using subdir-usb instead; the app mitigates the
+  # known SQLite-over-NFS risk by running a single replica and forcing a
+  # non-WAL journal mode (see apps/server/src/db.ts in jyje/mungchilog).
+  storageClassName: subdir-usb
   size: 1Gi
   mountPath: /app/data
 
 extraEnv: []
+extraResources: []
