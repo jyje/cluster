@@ -28,6 +28,9 @@ spec:
           # stops deploying anything new. Bump this string on every
           # release; that's what actually gives Argo CD a diff to act on.
           tag: "17563a25028f90c7d41a602baad5f1639595a58b"
+        extraEnvFrom:
+          - secretRef:
+              name: mungchilog-server-key
         extraResources:
           # Gate the whole app behind Basic Auth: this is a personal
           # travel itinerary (real names, dates, locations), not
@@ -46,6 +49,22 @@ spec:
               template:
                 metadata:
                   name: mungchilog-basic-auth
+                  namespace: mungchilog
+                type: Opaque
+          # Google Maps Routes/Places server key (never exposed
+          # client-side). Value came from jyje's local .env, piped
+          # straight through kubectl+kubeseal without the agent ever
+          # printing or reading it, per jyje's explicit instruction.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-server-key
+            spec:
+              encryptedData:
+                GOOGLE_MAPS_SERVER_API_KEY: AgB4VmetbHdoaW+sIAdgc0lK+4gPCaqOVcdo9sdhflPsOJ9zWbA/vvUujyPD4q8itILfaykWcqeR9EKGGU2zfjoVhBl3846hDunnxxxuIPZLal8jx24zwnfV2ulQCEA7J6ro1zKqdox/F/ugjN1rag5pDuaippp1KXnn7bYwFCKMrmsq6uXcxobUP7hyjwsq8EZzMrewcVuoDF7oul2pEI63b9q8OyFAbBzlR8R5ruM9L5EbN8EKNaqh9S2P9kNzslZ+MCIiOKuFD8WGodD0wSAX2QlMdm3ELRwgRp3k5mRxbXJPa0yKo2q8vuniO91dqO6f04h6XpLu+hfvyOMiiM2/WGbL1F/DDVb+yFPK9De1cy5ty5rTYkDadzWHUXroEiDMsP2BdxBS14zx/uRsaP6TF+PtXRgVmLs71yzmH4dt67wRCf0Ax2a/L9Vt0TjThVvQzpUzm+CtvpOW01V4/yOiMfKV4k4edMAgx5niNQ7HfdiqNwdDkBFp2lBXTIGkQCNjvLkJpgPhyXNbeJ7W/5XIlEw1wDK9p/FXvgBksm+DbDastu6wIsTuPhDZMSHU3AqDUVLz8GvP1ZEzzXOJrk3mycpwG1BGqNbWS7AOGIo4eczOxD2vG60vie+5fYSq3WynqmI2RkE05pcvzud8H4J/JuOM8vy562PCDBb4Cwl5QsG1vY7hWeV2R0VZVy2nN88q/Mc0KmLRAxpsj40XnYn6c0/5D2r4fRJArYJAb5Jaro2JtcbuAXM=
+              template:
+                metadata:
+                  name: mungchilog-server-key
                   namespace: mungchilog
                 type: Opaque
   destination:
