@@ -11,8 +11,8 @@ spec:
     helm:
       valuesObject:
         image:
-          # jyje/mungchilog@093aeec (M0-M5, IndexedDB persister added),
-          # verified Synced+Healthy+200 via Playwright.
+          # jyje/mungchilog@3fe7ba3 (M0-M5 + delete-trip UI + taste-skill
+          # touch-target pass), pending live verification.
           #
           # Staying pinned to a sha, not :latest - codex caught a second,
           # independent reason beyond the CI race this repo hit once:
@@ -22,7 +22,7 @@ spec:
           # Argo CD sees no diff and does nothing - :latest silently
           # stops deploying anything new. Bump this string on every
           # release; that's what actually gives Argo CD a diff to act on.
-          tag: "093aeecabdaf36ca9ac88be14ee9513712537093"
+          tag: "3fe7ba3955e8538140346e24f2e1a11c303efaad"
         extraResources:
           # Gate the whole app behind Basic Auth: this is a personal
           # travel itinerary (real names, dates, locations), not
