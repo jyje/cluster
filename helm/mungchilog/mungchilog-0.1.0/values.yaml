@@ -75,4 +75,5 @@ persistence:
   # migration; this note only explains the one historical exception.
 
 extraEnv: []
+extraEnvFrom: []
 extraResources: []
