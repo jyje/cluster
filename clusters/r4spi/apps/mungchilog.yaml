@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mungchilog
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/mungchilog/mungchilog-0.1.0
+    helm:
+      valuesObject:
+        image:
+          # M0: pass-through deploy. jyje/mungchilog's build.yml pushes
+          # ghcr.io/jyje/mungchilog:<sha> and :latest on every push to main;
+          # bump this to a pinned sha once M1+ work starts landing.
+          tag: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mungchilog
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

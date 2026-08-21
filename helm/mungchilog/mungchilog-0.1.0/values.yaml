@@ -1,0 +1,37 @@
+image:
+  repository: ghcr.io/jyje/mungchilog
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+service:
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+  host: mungchilog.app.jyje.online
+  tlsSecretName: mungchilog.app.jyje.online
+
+persistence:
+  enabled: true
+  # SQLite (WAL mode) needs real POSIX file locking, which the cluster's
+  # default NFS-backed StorageClass (subdir-usb) does not reliably provide.
+  # Use Longhorn's block storage instead.
+  storageClassName: longhorn
+  size: 1Gi
+  mountPath: /app/data
+
+extraEnv: []
