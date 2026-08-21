@@ -1,0 +1,27 @@
+{{- if and .Values.ingress.enabled .Values.ingress.publicPaths }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mungchilog-public
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - secretName: {{ .Values.ingress.tlsSecretName }}
+      hosts:
+        - {{ .Values.ingress.host }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          {{- range .Values.ingress.publicPaths }}
+          - path: {{ . }}
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mungchilog
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+{{- end }}
