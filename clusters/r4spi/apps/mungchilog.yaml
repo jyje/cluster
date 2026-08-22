@@ -22,15 +22,13 @@ spec:
           # self-heal race. No image update is written back to Git.
           tag: managed
         # Upstream keeps safe, portable defaults. This production ingress is
-        # cluster-owned because its hostname, TLS issuer, Basic Auth secret,
-        # and public PWA assets are infrastructure policy rather than chart
-        # defaults.
+        # cluster-owned because its hostname, TLS issuer, and public PWA
+        # assets are infrastructure policy rather than chart defaults. OIDC
+        # sessions now protect application requests, so no Basic Auth
+        # annotation remains here.
         ingress:
           annotations:
             cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
-            nginx.ingress.kubernetes.io/auth-type: basic
-            nginx.ingress.kubernetes.io/auth-secret: mungchilog-basic-auth
-            nginx.ingress.kubernetes.io/auth-realm: mungchilog
           host: mungchilog.app.jyje.online
           tlsSecretName: mungchilog.app.jyje.online
           publicPaths:
@@ -55,27 +53,32 @@ spec:
         # that default ever changes.
         persistence:
           storageClassName: subdir-usb
+        extraEnv:
+          - name: OIDC_ISSUER_URL
+            value: https://authentik.app.jyje.online/application/o/mungchilog/
+          - name: OIDC_CLIENT_ID
+            value: mungchilog
+          - name: OIDC_REDIRECT_URI
+            value: https://mungchilog.app.jyje.online/auth/callback
+          - name: ADMIN_EMAIL
+            value: jyjeon@outlook.com
         extraEnvFrom:
           - secretRef:
               name: mungchilog-server-key
+          - secretRef:
+              name: mungchilog-server-oidc
         extraResources:
-          # Gate the whole app behind Basic Auth: this is a personal
-          # travel itinerary (real names, dates, locations), not
-          # something to leave reachable by anyone who guesses the
-          # subdomain. Password was generated once and shared with jyje
-          # out of band (not in this repo, not in chat history a bot
-          # would index): rotate by re-sealing if it ever needs to
-          # change.
+          # Authentik client secret encrypted for this namespace.
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:
-              name: mungchilog-basic-auth
+              name: mungchilog-server-oidc
             spec:
               encryptedData:
-                auth: AgC4MlZRUxGiq7HpzMSJdw554dPNbup+N6mfohpxSOT/Ej/QBfVXDNcEGViEVNwgUXoM6aIxcyfftf9H8UiVbFxJqMRS7rGFBm0AXxzXnNAcTCVncGxwlc/GlPy+9qtRjfawHyadDH+RcrSER2XPNcPw7kvVSTUlGIE1/I+IC9GBhioCeHotGMLlWEw3Ma9M+91RG5f5t4PZAyejidYKWyth/bCVJm/uVvh1RBfPbRkRDbKALZe0a9O4f4LDqSb4WfriujoeTtTD7i3gq/p4MQVol72sQykb/duvO/a1hU3+5nyuhgjJ3wrXjejGAAS+JSdE7pZ1lzQ67Jt/lriUe76WrYtGkjUXl//HExNqA2J4/Kg7KoLQRV+rbnG/JQJxUunCNRHBsvz3IyLP6ZNRqxsMP06JA1tXGDgCdCQ40cJB8AE72j3wvjCmBHuUnhVGhOJGde/Ja7X8Lvl57ejCmNZgIYKh1lUxElK8GezOjGhphhwiU6AYGfiKFRdNcQcZwLB6wDJGRj0iiUscVrLUMu58txxoTkDwngmIVG5SlHV0SoOEz5vByu+n2IbED/ISfFmcITmulzpAdCEVzXPI2Rh91EPVq3usw5kFUxwf5R6tTao6K6aYFOUNJEwuk22ZY0c3YXdmIcx5WLGX1O0U4dX3YAZt6ZUP5IaMhdXXP1YXPrpkL6veQvESQV7HY47Ad2IQaafB5K7XyzubrtObSpZByCea+T31ZHCHPETT0pimeRFtZqZeQujW0RYfc198yz1eSLcfUj8IUT6cw/J61eAtiGsG
+                OIDC_CLIENT_SECRET: AgB2hfE4SGVO+vo1O7oAoiX5ZHiiZvLs9xejQd20z8f3PTxcxJxJdu2xBVSjE8e5nw6HLq4jcyztqLoMDTAH6ainphlyX/aczKbIMFL8BHp2hpaCVrd2by6bAxaZpvx+4DhMwO207q3XRCrQkWjsvXm3Nn/KtSbrjc+divacgWhDOOCZSanjGtnZH7ftEcyMcZHiTz7uSRGR6Orfi739ZTJ20A1NybWFQFnqVe0tFnjyhHd3fcDE0NL2cJ3cAnyiBmgGbxF47CzIbsILOtbNtf0MGGYQkPXQ+T9jBT0TTizyP9CO/FjH2us/6vWTfMkf57+yXOXGm+zY9ZhGQqzYoGEuhq81nwY8IleNJuvEwY3CU6VVcO/VT1DAjWE1c/UAiubcRMnmDgfM02TbRBW4exsMcXzxIiTlEzHi/zt5XDzStBZtV6sMT4AgZ3CmJfDVTpq35BX2VZrOgZAJsFDN+Cimc2jlh/8AA8pKHvuTPVmCTo4vS+kKuN5Nt+PAYe2/53OO95E0bMBdgwMAiEx6FAOtXg+q3NcVsTpTseFn90Tna4Vh0kgOeSpHhOiJJkvoL3aLIk+vtTWtsHWCFhZpeqksMr6P6SK7jfNxhNUdfXbObILZsttR9m7FZh0F+jDPVpzp+4xHCKexd8ReDPM4uvKWfl4qGFjK1YvNYGc27ZBgQcFz/Qzxe0fy5tPKLRd6wdnI4G6oS2K2mCC+gky9OasAh4nUKy7M2cwjBmcChq9IDyCYuiStgyLtbT6bQ2/McYx+HqrofJbc8ByZDoAqFyqB
               template:
                 metadata:
-                  name: mungchilog-basic-auth
+                  name: mungchilog-server-oidc
                   namespace: mungchilog
                 type: Opaque
           # Google Maps Routes/Places server key (never exposed
