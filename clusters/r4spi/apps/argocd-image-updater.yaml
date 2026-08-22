@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-image-updater
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/argo/argocd-image-updater-1.2.4
+    helm:
+      valuesObject:
+        # Applications and ImageUpdater CRs both live in argocd. Keeping RBAC
+        # namespace-scoped prevents this controller from changing Applications
+        # elsewhere in the cluster.
+        namespaceOverride: argocd
+        createClusterRoles: false
+        config:
+          log.level: info
+          # Polling is sufficient for the initial, public-GHCR-only rollout.
+          # No webhook ingress or registry/Git credentials are required.
+          interval: 5m
+          watch.namespaces: argocd
+          argocd.namespace: argocd
+        extraObjects:
+          - apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+            kind: ImageUpdater
+            metadata:
+              name: mungchilog
+              namespace: argocd
+            spec:
+              applicationRefs:
+                - namePattern: mungchilog
+                  # The API write-back changes only the live Application's
+                  # Helm parameter. It never needs GitHub credentials.
+                  writeBackConfig:
+                    method: argocd
+                  images:
+                    - alias: mungchilog
+                      imageName: ghcr.io/jyje/mungchilog:managed
+                      commonUpdateSettings:
+                        # GitHub Actions publishes immutable commit-SHA tags.
+                        # Excluding managed ensures it can only bootstrap, not
+                        # become a Deployment's long-lived mutable tag.
+                        updateStrategy: newest-build
+                        allowTags: "^[0-9a-f]{40}$"
+                        forceUpdate: true
+                        platforms:
+                          - linux/arm64
+                      manifestTargets:
+                        helm:
+                          name: image.repository
+                          tag: image.tag
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
