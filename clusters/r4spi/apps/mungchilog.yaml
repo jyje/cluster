@@ -21,6 +21,40 @@ spec:
           # The root apps Application preserves only that parameter to avoid a
           # self-heal race. No image update is written back to Git.
           tag: managed
+        # Upstream keeps safe, portable defaults. This production ingress is
+        # cluster-owned because its hostname, TLS issuer, Basic Auth secret,
+        # and public PWA assets are infrastructure policy rather than chart
+        # defaults.
+        ingress:
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            nginx.ingress.kubernetes.io/auth-type: basic
+            nginx.ingress.kubernetes.io/auth-secret: mungchilog-basic-auth
+            nginx.ingress.kubernetes.io/auth-realm: mungchilog
+          host: mungchilog.app.jyje.online
+          tlsSecretName: mungchilog.app.jyje.online
+          publicPaths:
+            - path: /assets
+              pathType: Prefix
+            - path: /workbox-
+              pathType: ImplementationSpecific
+            - path: /sw.js
+              pathType: Exact
+            - path: /registerSW.js
+              pathType: Exact
+            - path: /manifest.webmanifest
+              pathType: Exact
+            - path: /favicon.svg
+              pathType: Exact
+            - path: /pwa-192.png
+              pathType: Exact
+            - path: /pwa-512.png
+              pathType: Exact
+        # Keep the current PVC's NFS storage class explicit. An empty value
+        # would depend on a cluster-wide default and breaks fresh installs if
+        # that default ever changes.
+        persistence:
+          storageClassName: subdir-usb
         extraEnvFrom:
           - secretRef:
               name: mungchilog-server-key
