@@ -5,9 +5,12 @@ metadata:
 spec:
   project: base
   source:
-    repoURL: https://github.com/jyje/cluster
+    # Application ownership and production-only overrides remain in this
+    # repository. The chart itself follows Mungchilog's main branch until a
+    # release pinning policy is introduced.
+    repoURL: https://github.com/jyje/mungchilog.git
     targetRevision: main
-    path: helm/mungchilog/mungchilog-0.1.0
+    path: charts/mungchilog
     helm:
       valuesObject:
         image:
@@ -18,6 +21,38 @@ spec:
           # The root apps Application preserves only that parameter to avoid a
           # self-heal race. No image update is written back to Git.
           tag: managed
+        # Upstream keeps safe, portable defaults. This production ingress is
+        # cluster-owned because its hostname, TLS issuer, and public PWA
+        # assets are infrastructure policy rather than chart defaults. OIDC
+        # sessions now protect application requests, so no Basic Auth
+        # annotation remains here.
+        ingress:
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+          host: mungchilog.app.jyje.online
+          tlsSecretName: mungchilog.app.jyje.online
+          publicPaths:
+            - path: /assets
+              pathType: Prefix
+            - path: /workbox-
+              pathType: ImplementationSpecific
+            - path: /sw.js
+              pathType: Exact
+            - path: /registerSW.js
+              pathType: Exact
+            - path: /manifest.webmanifest
+              pathType: Exact
+            - path: /favicon.svg
+              pathType: Exact
+            - path: /pwa-192.png
+              pathType: Exact
+            - path: /pwa-512.png
+              pathType: Exact
+        # Keep the current PVC's NFS storage class explicit. An empty value
+        # would depend on a cluster-wide default and breaks fresh installs if
+        # that default ever changes.
+        persistence:
+          storageClassName: subdir-usb
         extraEnv:
           - name: OIDC_ISSUER_URL
             value: https://authentik.app.jyje.online/application/o/mungchilog/
