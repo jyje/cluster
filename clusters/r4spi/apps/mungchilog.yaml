@@ -53,21 +53,26 @@ spec:
         # that default ever changes.
         persistence:
           storageClassName: subdir-usb
-        extraEnv:
-          - name: OIDC_ISSUER_URL
-            value: https://authentik.app.jyje.online/application/o/mungchilog/
-          - name: OIDC_CLIENT_ID
-            value: mungchilog
-          - name: OIDC_REDIRECT_URI
-            value: https://mungchilog.app.jyje.online/auth/callback
-          - name: ADMIN_EMAIL
-            value: jyjeon@outlook.com
         extraEnvFrom:
+          # Public provider settings are configuration, not credentials.
+          # Keep them separate from the sealed client secret so rollout and
+          # rotation are visible without ever exposing secret material.
+          - configMapRef:
+              name: mungchilog-oidc-config
           - secretRef:
               name: mungchilog-server-key
           - secretRef:
               name: mungchilog-server-oidc
         extraResources:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: mungchilog-oidc-config
+            data:
+              OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
+              OIDC_CLIENT_ID: mungchilog
+              OIDC_REDIRECT_URI: https://mungchilog.app.jyje.online/auth/callback
+              ADMIN_EMAIL: jyjeon@outlook.com
           # Authentik client secret encrypted for this namespace.
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
