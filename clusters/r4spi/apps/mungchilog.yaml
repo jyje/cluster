@@ -120,7 +120,7 @@ spec:
                         # GitHub Actions publishes tags such as 22-a1b2c3d.
                         # The managed sentinel never matches this pattern.
                         updateStrategy: newest-build
-                        allowTags: "^[0-9]+-[0-9a-f]{7}$"
+                        allowTags: "regexp:^[0-9]+-[0-9a-f]{7}$"
                         forceUpdate: true
                         platforms:
                           - linux/arm64
