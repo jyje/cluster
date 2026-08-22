@@ -5,9 +5,12 @@ metadata:
 spec:
   project: base
   source:
-    repoURL: https://github.com/jyje/cluster
+    # Application ownership and production-only overrides remain in this
+    # repository. The chart itself follows Mungchilog's main branch until a
+    # release pinning policy is introduced.
+    repoURL: https://github.com/jyje/mungchilog.git
     targetRevision: main
-    path: helm/mungchilog/mungchilog-0.1.0
+    path: charts/mungchilog
     helm:
       valuesObject:
         image:
