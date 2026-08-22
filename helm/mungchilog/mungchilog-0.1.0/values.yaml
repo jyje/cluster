@@ -22,14 +22,6 @@ ingress:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
-    # This app holds a personal travel itinerary (real names, dates,
-    # locations), so it isn't left unauthenticated even in v1. Authentik
-    # forward-auth isn't wired up for any app yet on this cluster (still
-    # in progress): rather than pilot that here, gate access with
-    # ingress-nginx's built-in Basic Auth, which is already proven.
-    nginx.ingress.kubernetes.io/auth-type: basic
-    nginx.ingress.kubernetes.io/auth-secret: mungchilog-basic-auth
-    nginx.ingress.kubernetes.io/auth-realm: "mungchilog"
   host: mungchilog.app.jyje.online
   tlsSecretName: mungchilog.app.jyje.online
   # The static build (JS/CSS bundle, service worker, manifest, icons)
