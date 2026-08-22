@@ -29,9 +29,42 @@ spec:
           # release; that's what actually gives Argo CD a diff to act on.
           tag: "656d987f30d8e7cf12bd4beb725474022bf28c71"
         extraEnvFrom:
+          # Public OIDC settings are intentionally separate from the client
+          # secret so the deployment spec never contains credential material.
+          - configMapRef:
+              name: mungchilog-oidc-config
           - secretRef:
               name: mungchilog-server-key
+          # This Secret must be created as a SealedSecret before the image is
+          # advanced to an OIDC-enabled release. It holds only
+          # OIDC_CLIENT_SECRET and is never committed in plaintext.
+          - secretRef:
+              name: mungchilog-oidc
         extraResources:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: mungchilog-oidc-config
+            data:
+              OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
+              OIDC_CLIENT_ID: mungchilog
+              OIDC_REDIRECT_URI: https://mungchilog.app.jyje.online/auth/callback
+              ADMIN_EMAIL: jyjeon@outlook.com
+          # Generated through the Authentik API and immediately sealed with
+          # the live sealed-secrets controller public certificate. The
+          # plaintext client secret was never written to this repository.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-oidc
+            spec:
+              encryptedData:
+                OIDC_CLIENT_SECRET: AgCizugVgTaGqoQjRuB6E8v5l6jlIA/jufem5Ze/lrT53MxA7l4ei3WXL+Vf9uS5B4C73Qbdxki20cyHTVLTzX+5QhHQ8PbQNmBmUaKFAUXFsBEa1toV5tAMzHNit2YqDGkxS2Tu5nxMb7cB98fSFSQ0C54H7o+/fENQRO/aQMLpLjEkcybPdDFrl6wV332guJEqEbdP+xuklu1ua15ciOuCGof5O/UXInSpiSkfeVUY8sO8tsPvoonl9+kw42P9jzbsPIH0S7kTGyCp00NbJTK8nPdhKbAc3poOIoEkeBVquFzltAPUmBwdEaWukIxnxCag8mU8A2x+3RFqY5x+2ysq082wuIGAU2TjUmcHFZQvXD59+e2Jn8iTjw6aquoYoKiXKSXA1CLGF9f80Tm8j/HBJCJgzg7H9H/GEN9oYUJ05YnwIgyUDsCvi4cQ1MIxKPiQzEjAcLDKAq6WDHW/FjdzxjPxNFRgjggy0f6Jf8aI2pbppiKzwkSLw21U9E89duBCMFHHM2l3YUAcRRLr8zfo+PDzuRY+F78xyL6S3VTVoGnH+UoFCFUZGOn3IRw+bJJPsDfdYNz/lMmouXlaVr68MKKQp7ppKcjziHm+RLIq6nxnbUVFVyhFFRYkOEZVmfhmjTcE9JXOsj+aCSWTjsUopCT+WpvmrcFTvCM6jXhO3xDWq3Kxia+EDzvTbelY76juByiQvNUdAF9hOC/a1bMhGCJbpqJB/Dxtck/wvULYYg2WyxGgxvE9dqTwbcybgpIxzv6/2gG6SM5X8eTIFvxK
+              template:
+                metadata:
+                  name: mungchilog-oidc
+                  namespace: mungchilog
+                type: Opaque
           # Gate the whole app behind Basic Auth: this is a personal
           # travel itinerary (real names, dates, locations), not
           # something to leave reachable by anyone who guesses the

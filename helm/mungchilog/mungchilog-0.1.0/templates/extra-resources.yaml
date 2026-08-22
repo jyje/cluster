@@ -1,8 +1,8 @@
 {{- range .Values.extraResources }}
 ---
-{{- if typeIs "string" . }}
-  {{- tpl . $ }}
+{{ if typeIs "string" . }}
+{{ tpl . $ }}
 {{- else }}
-  {{- tpl (toYaml .) $ }}
+{{ tpl (toYaml .) $ }}
 {{- end }}
 {{- end }}
