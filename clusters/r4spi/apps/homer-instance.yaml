@@ -173,6 +173,7 @@ spec:
                     operator: In
                     values:
                       - n8n
+                      - mungchilog
                       - open-webui
                       - litellm
                       - portainer

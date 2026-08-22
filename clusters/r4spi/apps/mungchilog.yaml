@@ -27,8 +27,20 @@ spec:
         # sessions now protect application requests, so no Basic Auth
         # annotation remains here.
         ingress:
+          # Homer discovers only Ingresses selected by this standard label.
+          labels:
+            app.kubernetes.io/name: mungchilog
           annotations:
             cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            # Discovered by Homer's Dashboard CR via ingressSelector
+            # (matchExpressions: app.kubernetes.io/name in [...]).
+            item.homer.rajsingh.info/name: "Mungchilog"
+            item.homer.rajsingh.info/subtitle: "Personal travel itinerary"
+            item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/jyje/mungchilog/main/apps/web/public/pwa-512.png"
+            item.homer.rajsingh.info/tag: "mungchilog #travel #maps #itinerary"
+            item.homer.rajsingh.info/type: "Ping"
+            service.homer.rajsingh.info/name: "1. Applications"
+            service.homer.rajsingh.info/icon: "fas fa-rocket"
           host: mungchilog.app.jyje.online
           tlsSecretName: mungchilog.app.jyje.online
           publicPaths:
