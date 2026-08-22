@@ -38,7 +38,9 @@ spec:
             item.homer.rajsingh.info/subtitle: "Personal travel itinerary"
             item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/jyje/mungchilog/main/apps/web/public/pwa-512.png"
             item.homer.rajsingh.info/tag: "mungchilog #travel #maps #itinerary"
-            item.homer.rajsingh.info/type: "Ping"
+            # The application entrypoint is protected by OIDC. Do not use it
+            # as Homer's unauthenticated Ping probe, which would report the
+            # expected login redirect as offline.
             service.homer.rajsingh.info/name: "1. Applications"
             service.homer.rajsingh.info/icon: "fas fa-rocket"
           host: mungchilog.app.jyje.online
