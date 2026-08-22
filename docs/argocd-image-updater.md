@@ -1,7 +1,14 @@
 # Argo CD Image Updater
 
-This cluster runs Argo CD Image Updater in the `argocd` namespace. Its first
-and only managed workload is the `mungchilog` Argo CD Application.
+This cluster runs the Argo CD Image Updater controller in the `argocd`
+namespace. Its first and only managed workload is the `mungchilog` Argo CD
+Application.
+
+The Mungchilog Helm chart owns its `ImageUpdater` CR through
+`extraResources`. The CR explicitly uses the `argocd` namespace because the
+Argo CD `Application` resource it updates also lives there. This preserves
+per-application ownership without enabling Argo CD Applications in arbitrary
+workload namespaces.
 
 ## Release flow
 
@@ -31,6 +38,10 @@ the normal app-of-apps self-heal loop from resetting Image Updater's live Helm
 parameter. Git keeps `image.tag: managed`; the selected SHA remains cluster
 state and is observable through the Mungchilog Application and ImageUpdater
 status.
+
+The Mungchilog Application currently does not enable automated pruning. If its
+`ImageUpdater` entry is removed from `extraResources`, delete the existing CR
+explicitly after the Application has synced; it is not pruned automatically.
 
 ## Operations
 

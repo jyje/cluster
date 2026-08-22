@@ -57,6 +57,38 @@ spec:
                   name: mungchilog-server-key
                   namespace: mungchilog
                 type: Opaque
+          # The Mungchilog chart owns its image update policy. The Argo CD
+          # Application CR itself lives in argocd, so ImageUpdater must be
+          # created there as well even though this Helm release targets the
+          # mungchilog workload namespace.
+          - apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+            kind: ImageUpdater
+            metadata:
+              name: mungchilog
+              namespace: argocd
+            spec:
+              applicationRefs:
+                - namePattern: mungchilog
+                  # The API write-back changes only the live Application's
+                  # Helm parameter. It never needs GitHub credentials.
+                  writeBackConfig:
+                    method: argocd
+                  images:
+                    - alias: mungchilog
+                      imageName: ghcr.io/jyje/mungchilog:managed
+                      commonUpdateSettings:
+                        # GitHub Actions publishes immutable commit-SHA tags.
+                        # Excluding managed ensures it can only bootstrap, not
+                        # become a Deployment's long-lived mutable tag.
+                        updateStrategy: newest-build
+                        allowTags: "^[0-9a-f]{40}$"
+                        forceUpdate: true
+                        platforms:
+                          - linux/arm64
+                      manifestTargets:
+                        helm:
+                          name: image.repository
+                          tag: image.tag
   destination:
     server: https://kubernetes.default.svc
     namespace: mungchilog
