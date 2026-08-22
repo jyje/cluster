@@ -13,18 +13,18 @@ workload namespaces.
 ## Release flow
 
 1. Merge an application change to `jyje/mungchilog` `main`.
-2. The `Build and push app image` workflow publishes two public GHCR tags:
-   the immutable 40-character commit SHA and the mutable `managed` bootstrap
-   tag.
+2. The `Build and push app image` workflow publishes one immutable public GHCR
+   tag in the form `<GitHub run number>-<7-character commit SHA>`, such as
+   `22-a1b2c3d`.
 3. Image Updater polls GHCR every five minutes, selects the newest tag that
-   matches `^[0-9a-f]{40}$`, and sets `image.tag` directly on the live
+   matches `^[0-9]+-[0-9a-f]{7}$`, and sets `image.tag` directly on the live
    Mungchilog Argo CD Application.
 4. Argo CD sees the immutable tag change and deploys it.
 
-The `managed` tag is never selected for a running deployment. It only makes a
-fresh Application manifest pullable before Image Updater chooses its first SHA.
-Merge the Mungchilog workflow change and wait for its successful image-push job
-before merging the cluster change that changes the Helm value to `managed`.
+`managed` is intentionally a nonexistent Helm sentinel, not a registry tag.
+`forceUpdate: true` makes Image Updater replace it with the first matching
+workflow tag. Merge the Mungchilog workflow change and wait for its successful
+image-push job before merging the cluster change that declares `managed`.
 
 ## Deliberate non-Git write-back design
 
@@ -35,9 +35,9 @@ no registry pull secret.
 The root `apps` Application ignores and preserves only
 `/spec/source/helm/parameters` on the Mungchilog child Application. That avoids
 the normal app-of-apps self-heal loop from resetting Image Updater's live Helm
-parameter. Git keeps `image.tag: managed`; the selected SHA remains cluster
-state and is observable through the Mungchilog Application and ImageUpdater
-status.
+parameter. Git keeps `image.tag: managed`; the selected workflow tag remains
+cluster state and is observable through the Mungchilog Application and
+ImageUpdater status.
 
 The Mungchilog Application currently does not enable automated pruning. If its
 `ImageUpdater` entry is removed from `extraResources`, delete the existing CR

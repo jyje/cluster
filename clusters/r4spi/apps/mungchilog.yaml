@@ -11,10 +11,10 @@ spec:
     helm:
       valuesObject:
         image:
-          # :managed is an existing mutable bootstrap tag published by the
-          # Mungchilog build workflow. Image Updater immediately replaces it
-          # with a permitted immutable 40-character Git SHA through an Argo CD
-          # Helm parameter, so every deployed revision has a real spec diff.
+          # :managed intentionally does not exist in GHCR. Image Updater
+          # immediately replaces it through an Argo CD Helm parameter with a
+          # permitted immutable GitHub workflow-run and short-SHA tag, so every
+          # deployed revision has a real spec diff.
           # The root apps Application preserves only that parameter to avoid a
           # self-heal race. No image update is written back to Git.
           tag: managed
@@ -77,11 +77,10 @@ spec:
                     - alias: mungchilog
                       imageName: ghcr.io/jyje/mungchilog:managed
                       commonUpdateSettings:
-                        # GitHub Actions publishes immutable commit-SHA tags.
-                        # Excluding managed ensures it can only bootstrap, not
-                        # become a Deployment's long-lived mutable tag.
+                        # GitHub Actions publishes tags such as 22-a1b2c3d.
+                        # The managed sentinel never matches this pattern.
                         updateStrategy: newest-build
-                        allowTags: "^[0-9a-f]{40}$"
+                        allowTags: "^[0-9]+-[0-9a-f]{7}$"
                         forceUpdate: true
                         platforms:
                           - linux/arm64
