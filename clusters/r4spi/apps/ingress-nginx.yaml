@@ -48,5 +48,4 @@ spec:
     namespace: kube-system
     server: 'https://kubernetes.default.svc'
   syncPolicy:
-    syncOptions: []
     automated: {}
