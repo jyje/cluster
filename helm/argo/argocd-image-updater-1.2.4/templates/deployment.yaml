@@ -1,0 +1,315 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "argocd-image-updater.fullname" . }}-controller
+  namespace: {{ include "argocd-image-updater.namespace" . | quote }}
+  labels:
+    {{- include "argocd-image-updater.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "argocd-image-updater.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- .Values.updateStrategy | toYaml | nindent 4 }}
+  template:
+    metadata:
+      annotations:
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+      {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        {{- include "argocd-image-updater.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "argocd-image-updater.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "argocd-image-updater.fullname" . }}-controller
+          args:
+            - --metrics-bind-address=:{{ .Values.containerPorts.metrics }}
+            - run
+            {{- with .Values.extraArgs }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+          - name: ARGOCD_NAMESPACE
+            valueFrom:
+              configMapKeyRef:
+                key: argocd.namespace
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: IMAGE_UPDATER_WATCH_NAMESPACES
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: watch.namespaces
+                optional: true
+          - name: IMAGE_UPDATER_INTERVAL
+            valueFrom:
+              configMapKeyRef:
+                key: interval
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: IMAGE_UPDATER_LOGLEVEL
+            valueFrom:
+              configMapKeyRef:
+                key: log.level
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: IMAGE_UPDATER_LOGFORMAT
+            valueFrom:
+              configMapKeyRef:
+                key: log.format
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: MAX_CONCURRENT_APPS
+            valueFrom:
+              configMapKeyRef:
+                key: max_concurrent_apps
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: MAX_CONCURRENT_RECONCILES
+            valueFrom:
+              configMapKeyRef:
+                key: max_concurrent_reconciles
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: GIT_COMMIT_USER
+            valueFrom:
+              configMapKeyRef:
+                key: git.user
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: GIT_COMMIT_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                key: git.email
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: GIT_COMMIT_SIGNING_KEY
+            valueFrom:
+              configMapKeyRef:
+                key: git.commit-signing-key
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: GIT_COMMIT_SIGNING_METHOD
+            valueFrom:
+              configMapKeyRef:
+                key: git.commit-signing-method
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: GIT_COMMIT_SIGN_OFF
+            valueFrom:
+              configMapKeyRef:
+                key: git.commit-sign-off
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: IMAGE_UPDATER_KUBE_EVENTS
+            valueFrom:
+              configMapKeyRef:
+                key: kube.events
+                name: {{ .Values.config.name }}
+                optional: true
+          - name: ENABLE_WEBHOOK
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: webhook.enable
+                optional: true
+          - name: WEBHOOK_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: webhook.port
+                optional: true
+          - name: QUAY_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: argocd-image-updater-secret
+                key: webhook.quay-secret
+                optional: true
+          - name: DOCKER_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: argocd-image-updater-secret
+                key: webhook.docker-secret
+                optional: true
+          - name: GHCR_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: argocd-image-updater-secret
+                key: webhook.ghcr-secret
+                optional: true
+          - name: HARBOR_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: argocd-image-updater-secret
+                key: webhook.harbor-secret
+                optional: true
+          - name: ALIYUN_ACR_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: argocd-image-updater-secret
+                key: webhook.aliyun-acr-secret
+                optional: true
+          - name: WEBHOOK_RATELIMIT_ALLOWED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: webhook.ratelimit-allowed
+                optional: true
+          - name: DISABLE_TLS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: disable-tls
+                optional: true
+          - name: TLS_MIN_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: tls.min-version
+                optional: true
+          - name: TLS_MAX_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: tls.max-version
+                optional: true
+          - name: TLS_CIPHERS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.config.name }}
+                key: tls.ciphers
+                optional: true
+          {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: health
+              containerPort: {{ .Values.containerPorts.health }}
+              protocol: TCP
+            - name: webhook
+              containerPort: {{ .Values.containerPorts.webhook }}
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.containerPorts.metrics }}
+              protocol: TCP
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.containerPorts.health }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.containerPorts.health }}
+            initialDelaySeconds: 3
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - mountPath: /app/config
+            name: image-updater-conf
+          - mountPath: /app/config/ssh
+            name: ssh-known-hosts
+          - mountPath: /app/.ssh
+            name: ssh-config
+          - mountPath: /tmp
+            name: tmp
+          - name: ssh-signing-key
+            mountPath: /app/ssh-keys/id_rsa
+            readOnly: true
+            subPath: sshPrivateKey
+          - name: argocd-image-updater-tls
+            mountPath: /app/config/tls
+            readOnly: true
+          {{- if .Values.authScripts.enabled }}
+          - mountPath: /scripts
+            name: authscripts
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 10}}
+          {{- end }}
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - configMap:
+          items:
+          - key: registries.conf
+            path: registries.conf
+          - key: git.commit-message-template
+            path: commit.template
+          name: {{ .Values.config.name }}
+          optional: true
+        name: image-updater-conf
+      {{- if .Values.authScripts.enabled }}
+      - configMap:
+          defaultMode: 0777
+          name: {{ .Values.authScripts.name }}
+        name: authscripts
+      {{- end }}
+      - configMap:
+          name: argocd-ssh-known-hosts-cm
+          optional: true
+        name: ssh-known-hosts
+      - configMap:
+          name: {{ .Values.config.sshConfig.name }}
+          optional: true
+        name: ssh-config
+      - name: ssh-signing-key
+        secret:
+          secretName: ssh-git-creds
+          optional: true
+      - name: argocd-image-updater-tls
+        secret:
+          secretName: argocd-image-updater-tls
+          optional: true
+          items:
+            - key: tls.crt
+              path: tls.crt
+            - key: tls.key
+              path: tls.key
+      - emptyDir: {}
+        name: tmp
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 6}}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}

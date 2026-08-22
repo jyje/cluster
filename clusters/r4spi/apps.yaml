@@ -15,8 +15,21 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
+  # Image Updater writes the selected immutable Mungchilog image as a Helm
+  # parameter on the child Application. This root app remains the source of
+  # truth for every other child field, while preserving that controller-owned
+  # parameter across its automated self-heal syncs. No Git write-back is used.
+  ignoreDifferences:
+  - group: argoproj.io
+    kind: Application
+    name: mungchilog
+    namespace: argocd
+    jsonPointers:
+    - /spec/source/helm/parameters
   syncPolicy:
     automated: {}
+    syncOptions:
+    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject

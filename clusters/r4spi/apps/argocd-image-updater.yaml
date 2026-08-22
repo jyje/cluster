@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-image-updater
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/argo/argocd-image-updater-1.2.4
+    helm:
+      valuesObject:
+        # The controller and the Argo CD Application CRs live in argocd.
+        # Each application's chart owns its ImageUpdater CR separately.
+        # Keeping this controller namespace-scoped prevents it from changing
+        # Applications elsewhere in the cluster.
+        namespaceOverride: argocd
+        createClusterRoles: false
+        config:
+          log.level: info
+          # Polling is sufficient for the initial, public-GHCR-only rollout.
+          # No webhook ingress or registry/Git credentials are required.
+          interval: 5m
+          watch.namespaces: argocd
+          argocd.namespace: argocd
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
