@@ -1,0 +1,73 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: mungchilog
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: mungchilog-prd
+      writeBackConfig:
+        method: argocd
+      images:
+        - alias: mungchilog
+          imageName: ghcr.io/jyje/mungchilog:managed
+          commonUpdateSettings:
+            # Existing numeric tags are accepted during the migration. New
+            # production tags only arrive through stg-to-prd promotion.
+            updateStrategy: newest-build
+            allowTags: "regexp:^(?:[0-9]+-[0-9a-f]{7}|prd-[0-9]+-[0-9a-f]{7})$"
+            forceUpdate: true
+            platforms:
+              - linux/arm64
+          manifestTargets:
+            helm:
+              name: image.repository
+              tag: image.tag
+---
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: mungchilog-dev
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: mungchilog-dev
+      writeBackConfig:
+        method: argocd
+      images:
+        - alias: mungchilog
+          imageName: ghcr.io/jyje/mungchilog:managed
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^dev-[0-9]+-[0-9a-f]{7}$"
+            forceUpdate: true
+            platforms:
+              - linux/arm64
+          manifestTargets:
+            helm:
+              name: image.repository
+              tag: image.tag
+---
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: mungchilog-stg
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: mungchilog-stg
+      writeBackConfig:
+        method: argocd
+      images:
+        - alias: mungchilog
+          imageName: ghcr.io/jyje/mungchilog:managed
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^stg-[0-9]+-[0-9a-f]{7}$"
+            forceUpdate: true
+            platforms:
+              - linux/arm64
+          manifestTargets:
+            helm:
+              name: image.repository
+              tag: image.tag
