@@ -1,15 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mungchilog
+  name: mungchilog-prd
 spec:
   project: base
   source:
     # Application ownership and production-only overrides remain in this
-    # repository. The chart itself follows Mungchilog's main branch until a
-    # release pinning policy is introduced.
+    # repository. Production follows Mungchilog's protected prd branch.
     repoURL: https://github.com/jyje/mungchilog.git
-    targetRevision: main
+    targetRevision: prd
     path: charts/mungchilog
     helm:
       valuesObject:
@@ -20,12 +19,17 @@ spec:
           # deployed revision has a real spec diff.
           # The root apps Application preserves only that parameter to avoid a
           # self-heal race. No image update is written back to Git.
-          tag: managed
+          # Seed the replacement Application with the image that is already
+          # running. Image Updater subsequently owns this Helm parameter.
+          tag: 38-6b00f49
+        auth:
+          initialAdmin:
+            existingSecret: mungchilog-initial-admin
         # Upstream keeps safe, portable defaults. This production ingress is
-        # cluster-owned because its hostname, TLS issuer, and public PWA
-        # assets are infrastructure policy rather than chart defaults. OIDC
-        # sessions now protect application requests, so no Basic Auth
-        # annotation remains here.
+        # cluster-owned because its hostname and TLS issuer are infrastructure
+        # policy rather than chart defaults. One Ingress owns this host: do
+        # not configure publicPaths, which would create a conflicting second
+        # same-host Ingress for static assets.
         ingress:
           # Homer discovers only Ingresses selected by this standard label.
           labels:
@@ -45,23 +49,6 @@ spec:
             service.homer.rajsingh.info/icon: "fas fa-rocket"
           host: mungchilog.app.jyje.online
           tlsSecretName: mungchilog.app.jyje.online
-          publicPaths:
-            - path: /assets
-              pathType: Prefix
-            - path: /workbox-
-              pathType: ImplementationSpecific
-            - path: /sw.js
-              pathType: Exact
-            - path: /registerSW.js
-              pathType: Exact
-            - path: /manifest.webmanifest
-              pathType: Exact
-            - path: /favicon.svg
-              pathType: Exact
-            - path: /pwa-192.png
-              pathType: Exact
-            - path: /pwa-512.png
-              pathType: Exact
         # Keep the current PVC's NFS storage class explicit. An empty value
         # would depend on a cluster-wide default and breaks fresh installs if
         # that default ever changes.
@@ -86,7 +73,6 @@ spec:
               OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
               OIDC_CLIENT_ID: mungchilog
               OIDC_REDIRECT_URI: https://mungchilog.app.jyje.online/auth/callback
-              ADMIN_EMAIL: jyjeon@outlook.com
           # Authentik client secret encrypted for this namespace.
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
@@ -116,37 +102,6 @@ spec:
                   name: mungchilog-server-key
                   namespace: mungchilog
                 type: Opaque
-          # The Mungchilog chart owns its image update policy. The Argo CD
-          # Application CR itself lives in argocd, so ImageUpdater must be
-          # created there as well even though this Helm release targets the
-          # mungchilog workload namespace.
-          - apiVersion: argocd-image-updater.argoproj.io/v1alpha1
-            kind: ImageUpdater
-            metadata:
-              name: mungchilog
-              namespace: argocd
-            spec:
-              applicationRefs:
-                - namePattern: mungchilog
-                  # The API write-back changes only the live Application's
-                  # Helm parameter. It never needs GitHub credentials.
-                  writeBackConfig:
-                    method: argocd
-                  images:
-                    - alias: mungchilog
-                      imageName: ghcr.io/jyje/mungchilog:managed
-                      commonUpdateSettings:
-                        # GitHub Actions publishes tags such as 22-a1b2c3d.
-                        # The managed sentinel never matches this pattern.
-                        updateStrategy: newest-build
-                        allowTags: "regexp:^[0-9]+-[0-9a-f]{7}$"
-                        forceUpdate: true
-                        platforms:
-                          - linux/arm64
-                      manifestTargets:
-                        helm:
-                          name: image.repository
-                          tag: image.tag
   destination:
     server: https://kubernetes.default.svc
     namespace: mungchilog

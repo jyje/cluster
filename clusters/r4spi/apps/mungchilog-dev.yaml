@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mungchilog-dev
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/mungchilog.git
+    targetRevision: dev
+    path: charts/mungchilog
+    helm:
+      valuesObject:
+        image:
+          # Image Updater replaces this sentinel after a dev build publishes
+          # the first immutable dev image.
+          tag: managed
+        ingress:
+          labels:
+            app.kubernetes.io/name: mungchilog
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+          host: mungchilog.dev.jyje.online
+          tlsSecretName: mungchilog.dev.jyje.online
+        persistence:
+          storageClassName: subdir-usb
+        auth:
+          initialAdmin:
+            existingSecret: mungchilog-initial-admin
+        extraEnvFrom:
+          - configMapRef:
+              name: mungchilog-oidc-config
+          - secretRef:
+              name: mungchilog-server-key
+          - secretRef:
+              name: mungchilog-server-oidc
+        extraResources:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: mungchilog-oidc-config
+            data:
+              OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
+              OIDC_CLIENT_ID: mungchilog
+              OIDC_REDIRECT_URI: https://mungchilog.dev.jyje.online/auth/callback
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mungchilog-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
