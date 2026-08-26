@@ -13,9 +13,10 @@ spec:
           imageName: ghcr.io/jyje/mungchilog:managed
           commonUpdateSettings:
             # Existing numeric tags are accepted during the migration. New
-            # production tags only arrive through stg-to-prd promotion.
+            # production deployment tags are traced semantic releases. The
+            # shorter vMAJOR.MINOR.PATCH alias is intentionally not selected.
             updateStrategy: newest-build
-            allowTags: "regexp:^(?:[0-9]+-[0-9a-f]{7}|prd-[0-9]+-[0-9a-f]{7})$"
+            allowTags: "regexp:^(?:[0-9]+-[0-9a-f]{7}|v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-r[0-9]+-[0-9a-f]{7})$"
             forceUpdate: true
             platforms:
               - linux/arm64
@@ -39,7 +40,7 @@ spec:
           imageName: ghcr.io/jyje/mungchilog:managed
           commonUpdateSettings:
             updateStrategy: newest-build
-            allowTags: "regexp:^dev-[0-9]+-[0-9a-f]{7}$"
+            allowTags: "regexp:^dev-r[0-9]+-[0-9a-f]{7}$"
             forceUpdate: true
             platforms:
               - linux/arm64
@@ -63,7 +64,7 @@ spec:
           imageName: ghcr.io/jyje/mungchilog:managed
           commonUpdateSettings:
             updateStrategy: newest-build
-            allowTags: "regexp:^stg-[0-9]+-[0-9a-f]{7}$"
+            allowTags: "regexp:^stg-r[0-9]+-[0-9a-f]{7}$"
             forceUpdate: true
             platforms:
               - linux/arm64
