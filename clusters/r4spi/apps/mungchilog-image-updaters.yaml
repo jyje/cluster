@@ -37,10 +37,10 @@ spec:
         method: argocd
       images:
         - alias: mungchilog
-          imageName: ghcr.io/jyje/mungchilog:managed
+          imageName: ghcr.io/jyje/mungchilog-dev:managed
           commonUpdateSettings:
             updateStrategy: newest-build
-            allowTags: "regexp:^dev-r[0-9]+-[0-9a-f]{7}$"
+            allowTags: "regexp:^r[0-9]+-[0-9a-f]{7}$"
             forceUpdate: true
             platforms:
               - linux/arm64
@@ -61,10 +61,10 @@ spec:
         method: argocd
       images:
         - alias: mungchilog
-          imageName: ghcr.io/jyje/mungchilog:managed
+          imageName: ghcr.io/jyje/mungchilog-stg:managed
           commonUpdateSettings:
             updateStrategy: newest-build
-            allowTags: "regexp:^stg-r[0-9]+-[0-9a-f]{7}$"
+            allowTags: "regexp:^r[0-9]+-[0-9a-f]{7}$"
             forceUpdate: true
             platforms:
               - linux/arm64
