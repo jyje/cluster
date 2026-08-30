@@ -1,0 +1,102 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-team-test-telegram
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/hermes-agent/hermes-agent-1.12.0
+    helm:
+      valuesObject:
+        fullnameOverride: hermes-team-test-telegram
+        config:
+          model:
+            provider: openai-codex
+            default: gpt-5.6-terra
+          terminal:
+            backend: local
+        # OpenAI Codex device-code login, same as hermes-team-01 (retired)
+        # and hermes-team-test-discord. IMPORTANT: this chart version
+        # (1.12.0) only supports `notify: discord` for delivering the
+        # verification URL/code -- there's no `telegram` option, and this
+        # team has no Discord bot backing it. Until upstream adds one, the
+        # code only reaches the init container logs (documented fallback):
+        # `kubectl logs -n hermes-team-test-telegram deploy/hermes-team-test-telegram -c auth-device-login`
+        # to complete each bot's first login manually.
+        auth:
+          deviceFlow:
+            enabled: true
+            provider: openai-codex
+            notify: discord
+        env:
+          OPENAI_API_KEY: "unused"
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
+        team:
+          enabled: true
+          name: hermes-team-test-telegram
+          role: leader
+          identity: ivy
+          leader:
+            name: ivy
+            mentionEnv: IVY_BOT_USER_ID
+          members:
+            - name: remy
+              role: Research and evidence gathering
+              mentionEnv: REMY_BOT_USER_ID
+              capabilities: [research, source-review]
+            - name: finn
+              role: Implementation and verification
+              mentionEnv: FINN_BOT_USER_ID
+              capabilities: [implementation, testing]
+          protocol:
+            maxHandoffs: 6
+          skill:
+            create: true
+            configMapName: hermes-team-test-telegram-skill
+          sharedVolume:
+            create: true
+            claimName: hermes-team-test-telegram-knowledge
+            mountPath: /knowledge
+            storageClass: subdir-usb
+            accessModes: [ReadWriteMany]
+            size: 10Gi
+            retain: false
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-team-test-telegram-ivy-creds
+          - secretRef:
+              name: hermes-team-test-telegram-routing
+        # NOT YET DEPLOYABLE: the two SealedSecrets below need real Telegram
+        # bot tokens/IDs before this Application can sync successfully.
+        #
+        #   1. Create 3 bots via https://t.me/BotFather (Ivy, Remy, Finn).
+        #   2. For each bot, seal:
+        #        TELEGRAM_BOT_TOKEN, TELEGRAM_HOME_CHANNEL,
+        #        TELEGRAM_ALLOWED_USERS
+        #      into hermes-team-test-telegram-<name>-creds -- mirror
+        #      hermes-team-01's retired ApplicationSet (git history) but
+        #      with TELEGRAM_* env names instead of DISCORD_*, per
+        #      helm/hermes-agent/hermes-agent-1.12.0/README.md's messenger
+        #      integrations section.
+        #   3. Seal each bot's own Telegram user ID (IVY_BOT_USER_ID etc.)
+        #      into hermes-team-test-telegram-routing, alongside the other
+        #      two members' IDs -- every release in the team needs the full
+        #      roster to resolve @mentions.
+        #   4. Add a follower ApplicationSet (see the retired hermes-agents
+        #      one in git history, adapted to TELEGRAM_* secrets) once both
+        #      member secrets exist, so Remy and Finn deploy alongside Ivy.
+        #
+        # Until then, this Application will render successfully but pods
+        # will CrashLoopBackOff on the missing Secret references -- an
+        # expected, visible failure, not a silent one.
+        extraResources: []
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-team-test-telegram
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
