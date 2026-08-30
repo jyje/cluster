@@ -11,6 +11,8 @@ This directory holds those vendored charts. Each chart lives under **`helm/<grou
 
 When adding or upgrading a chart, use the table below to choose group and provider; then pull with `helm pull <provider>/<chart-name> --untar --version <version>` and place under `helm/<group>/<chart-name>-<version>/`.
 
+Run `./helm/setup-repos.sh` to point your local `helm repo` config at every provider in the table below (parsed straight from this file, so it can't drift from what's documented here). Safe to re-run any time, e.g. if a provider URL below changes or a local repo alias stops resolving.
+
 ## Group and provider (repo URL)
 
 Top-level groups vendored here (dependency charts excluded). Check each group folder for chart versions.
