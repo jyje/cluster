@@ -34,6 +34,17 @@ spec:
           rules:
             enabled: false
 
+        gateway:
+          nginxConfig:
+            # Chart default falls back to the kube-dns Service's FQDN
+            # (kube-dns.kube-system.svc.cluster.local), but nginx's resolver
+            # directive needs a literal IP -- it doesn't consult the pod's own
+            # /etc/resolv.conf, so it can't bootstrap DNS resolution from a
+            # hostname. Pin it to this cluster's kube-dns ClusterIP (microk8s
+            # default: `kubectl get svc -n kube-system kube-dns`), which is
+            # stable unless the Service itself is recreated.
+            resolver: "10.152.183.10"
+
         singleBinary:
           replicas: 1
           affinity:
