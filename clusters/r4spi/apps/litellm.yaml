@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/litellm/litellm-1.89.4
+    path: helm/litellm/litellm-1.98.0
     helm:
       valueFiles:
         - values.yaml
