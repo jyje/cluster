@@ -1,0 +1,17 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hermes-agent.fullname" . }}-config
+  labels:
+    {{- include "hermes-agent.labels" . | nindent 4 }}
+data:
+  # Partial config.yaml: only keys that override Hermes' built-in defaults.
+  config.yaml: |
+    {{- include "hermes-agent.effectiveConfig" . | nindent 4 }}
+  {{- with .Values.soul.text }}
+  # Persistent Hermes identity. The chart omits this file when text is empty.
+  SOUL.md: |
+    {{- . | nindent 4 }}
+  {{- end }}
+{{- end }}

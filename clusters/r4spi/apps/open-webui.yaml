@@ -7,13 +7,13 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/open-webui/open-webui-14.8.0
+    path: helm/open-webui/open-webui-16.1.0
     helm:
       valueFiles:
         - values.yaml
       valuesObject:
         image:
-          tag: "0.10"
+          tag: "0.11"
           pullPolicy: "Always"
         ollama:
           enabled: false

@@ -19,6 +19,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 |-------|----------|-----|
 | github-actions-runner-controller | actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller (legacy v1 `actions-runner-controller` chart only — does not serve the gha-runner-scale-set charts below) |
 | github-actions-runner-controller | actions | oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller and .../gha-runner-scale-set (OCI-only, no traditional Helm repo) |
+| authentik | goauthentik | https://charts.goauthentik.io/ |
 | gateway-api | kubernetes-sigs | https://github.com/kubernetes-sigs/gateway-api (custom Helm wrapper; no official Helm repo — CRDs vendored from release manifests) |
 | argo | argo | https://argoproj.github.io/argo-helm |
 | homer-k8s | bananaops | https://bananaops.github.io/homer-k8s |
@@ -29,6 +30,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | cnpg | cnpg | https://cloudnative-pg.github.io/charts |
 | error-pages | tarampampam | oci://ghcr.io/tarampampam/error-pages/charts/error-pages (OCI-only, no traditional Helm repo) |
 | grafana | grafana | https://grafana.github.io/helm-charts |
+| grafana | grafana | oci://ghcr.io/grafana/helm-charts/grafana-operator (grafana-operator only, published as OCI rather than to the Helm repo above) |
 | hermes-agent | jyje | oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent |
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
 | ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |

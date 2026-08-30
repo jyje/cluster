@@ -105,6 +105,9 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
 
    Do **not** proceed to update the ArgoCD Application manifest until the user explicitly confirms.
 
+8. **Sync any floating image tag (upgrade only)**
+   Run the `floating-image-tag-sync` skill against the Application manifest(s) being bumped. If it pins `image.tag` (or similar) to a bare `<major>.<minor>` floating tag, bump it to match the new chart's `appVersion` minor version in the same commit as the chart bump.
+
 ## Convention summary
 
 - **Storage path:** `helm/<group>/<chart-name>-<version>/`
