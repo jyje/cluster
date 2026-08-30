@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/authentik/authentik-2026.5.6
+    path: helm/authentik/authentik-2026.8.0
     helm:
       valuesObject:
         authentik:
