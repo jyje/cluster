@@ -27,6 +27,7 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
    ```bash
    helm repo update
    ```
+   If a `helm pull` fails or a repo alias seems stale/wrong, run `./helm/setup-repos.sh` first — it (re)configures every local repo alias to match `helm/README.md`'s Group | Provider | URL table, the single source of truth.
 
 2. **Determine group and provider**  
    **Group** = folder under `helm/` (e.g. app/family name; can aggregate multiple providers). **Provider** = Helm repo name for `helm pull`. **See `helm/README.md`** in this repo for the canonical list of groups and providers (Group | Provider | URL). Create `helm/<group>/` if it does not exist.
