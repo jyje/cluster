@@ -17,7 +17,8 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 
 | Group | Provider | URL |
 |-------|----------|-----|
-| actions-runner-controller | actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller |
+| github-actions-runner-controller | actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller (legacy v1 `actions-runner-controller` chart only — does not serve the gha-runner-scale-set charts below) |
+| github-actions-runner-controller | actions | oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller and .../gha-runner-scale-set (OCI-only, no traditional Helm repo) |
 | authentik | goauthentik | https://charts.goauthentik.io/ |
 | gateway-api | kubernetes-sigs | https://github.com/kubernetes-sigs/gateway-api (custom Helm wrapper; no official Helm repo — CRDs vendored from release manifests) |
 | argo | argo | https://argoproj.github.io/argo-helm |
@@ -27,6 +28,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | cert-manager | jetstack | https://charts.jetstack.io |
 | cert-manager | adfinis | https://charts.adfinis.com |
 | cnpg | cnpg | https://cloudnative-pg.github.io/charts |
+| error-pages | tarampampam | oci://ghcr.io/tarampampam/error-pages/charts/error-pages (OCI-only, no traditional Helm repo) |
 | grafana | grafana | https://grafana.github.io/helm-charts |
 | grafana | grafana | oci://ghcr.io/grafana/helm-charts/grafana-operator (grafana-operator only, published as OCI rather than to the Helm repo above) |
 | hermes-agent | jyje | oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent |
@@ -37,6 +39,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | litellm | berriai | oci://docker.litellm.ai/berriai/litellm-helm |
 | longhorn | longhorn | https://charts.longhorn.io |
 | metrics-server | metrics-server | https://kubernetes-sigs.github.io/metrics-server |
+| n8n | 8gears | oci://8gears.container-registry.com/library/n8n (OCI-only, no traditional Helm repo) |
 | prometheus | prometheus-community | https://prometheus-community.github.io/helm-charts |
 | milvus | milvus | https://zilliztech.github.io/milvus-helm/ |
 | nfs-subdir-external-provisioner | nfs-subdir-external-provisioner | https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/ |
