@@ -1,0 +1,98 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-team-test-discord
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/hermes-agent/hermes-agent-1.12.0
+    helm:
+      valuesObject:
+        fullnameOverride: hermes-team-test-discord
+        config:
+          model:
+            provider: openai-codex
+            default: gpt-5.6-terra
+          terminal:
+            backend: local
+        # See clusters/r4spi/apps/hermes-team-01.yaml (retired) for the
+        # precedent this mirrors: OpenAI Codex device-code login, verification
+        # URL/code delivered to Discord.
+        auth:
+          deviceFlow:
+            enabled: true
+            provider: openai-codex
+            notify: discord
+        env:
+          OPENAI_API_KEY: "unused"
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
+        team:
+          enabled: true
+          name: hermes-team-test-discord
+          role: leader
+          identity: milo
+          leader:
+            name: milo
+            mentionEnv: MILO_BOT_USER_ID
+          members:
+            - name: nora
+              role: Research and evidence gathering
+              mentionEnv: NORA_BOT_USER_ID
+              capabilities: [research, source-review]
+            - name: theo
+              role: Implementation and verification
+              mentionEnv: THEO_BOT_USER_ID
+              capabilities: [implementation, testing]
+          protocol:
+            maxHandoffs: 6
+          skill:
+            create: true
+            configMapName: hermes-team-test-discord-skill
+          sharedVolume:
+            create: true
+            claimName: hermes-team-test-discord-knowledge
+            mountPath: /knowledge
+            storageClass: subdir-usb
+            accessModes: [ReadWriteMany]
+            size: 10Gi
+            retain: false
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-team-test-discord-milo-creds
+          - secretRef:
+              name: hermes-team-test-discord-routing
+        # NOT YET DEPLOYABLE: the two SealedSecrets below need real Discord
+        # bot tokens/IDs before this Application can sync successfully.
+        #
+        #   1. Create 3 bots at https://discord.com/developers/applications
+        #      (Milo, Nora, Theo), enable the Message Content Intent, invite
+        #      each to the test server.
+        #   2. For each bot, seal:
+        #        DISCORD_BOT_TOKEN, DISCORD_HOME_CHANNEL,
+        #        DISCORD_ALLOWED_USERS (or DISCORD_ALLOW_ALL_USERS=true for a
+        #        throwaway test server)
+        #      into hermes-team-test-discord-<name>-creds -- see
+        #      hermes-team-01's retired ApplicationSet
+        #      (git history) for the exact SealedSecret shape per member.
+        #   3. Seal each bot's own Discord user ID (MILO_BOT_USER_ID etc.)
+        #      into hermes-team-test-discord-routing, alongside the other two
+        #      members' IDs -- every release in the team needs the full
+        #      roster to resolve @mentions.
+        #   4. Add a follower ApplicationSet (see the retired hermes-agents
+        #      one in git history) once both member secrets exist, so Nora
+        #      and Theo deploy alongside Milo.
+        #
+        # Until then, this Application will render successfully but pods
+        # will CrashLoopBackOff on the missing Secret references -- an
+        # expected, visible failure, not a silent one.
+        extraResources: []
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-team-test-discord
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
