@@ -22,6 +22,11 @@ spec:
           # Seed the replacement Application with the image that is already
           # running. Image Updater subsequently owns this Helm parameter.
           tag: 38-6b00f49
+        # Coordinates are intentionally held in one process. Keep this
+        # release single-replica while live location sharing is enabled.
+        replicaCount: 1
+        locationSharing:
+          enabled: true
         auth:
           initialAdmin:
             existingSecret: mungchilog-initial-admin
