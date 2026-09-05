@@ -1,0 +1,143 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # New production deployment for the mungchilog -> mungchilog-prd namespace
+  # migration. Starts empty (fresh PVC, no traffic) behind a temporary
+  # ingress host. Once verified and NFS data is copied over, the ingress
+  # host below is switched to the production domain and mungchilog.yaml
+  # (renamed to mungchilog-legacy) is deleted.
+  name: mungchilog-prd
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/mungchilog.git
+    targetRevision: prd
+    path: charts/mungchilog
+    helm:
+      valuesObject:
+        image:
+          # :managed intentionally does not exist in GHCR. Image Updater
+          # immediately replaces it through an Argo CD Helm parameter with a
+          # permitted immutable GitHub workflow-run and short-SHA tag.
+          tag: managed
+        auth:
+          initialAdmin:
+            existingSecret: mungchilog-initial-admin
+        # Temporary migration host. Switch to mungchilog.app.jyje.online at
+        # cutover, once mungchilog-legacy's Ingress has released that host
+        # (one Ingress owns a host at a time).
+        ingress:
+          labels:
+            app.kubernetes.io/name: mungchilog
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            item.homer.rajsingh.info/name: "Mungchilog"
+            item.homer.rajsingh.info/subtitle: "Personal travel itinerary"
+            item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/jyje/mungchilog/main/apps/web/public/pwa-512.png"
+            item.homer.rajsingh.info/tag: "mungchilog #travel #maps #itinerary"
+            service.homer.rajsingh.info/name: "1. Applications"
+            service.homer.rajsingh.info/icon: "fas fa-rocket"
+          host: mungchilog-prd.app.jyje.online
+          tlsSecretName: mungchilog-prd.app.jyje.online
+        persistence:
+          storageClassName: subdir-usb
+        extraEnvFrom:
+          - configMapRef:
+              name: mungchilog-oidc-config
+          - secretRef:
+              name: mungchilog-server-key
+          - secretRef:
+              name: mungchilog-server-oidc
+        extraResources:
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: mungchilog-oidc-config
+            data:
+              OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
+              OIDC_CLIENT_ID: mungchilog
+              # Temporary redirect URI for migration verification. Requires
+              # a matching redirect URI added on the Authentik application
+              # before login works here. Switch to the production callback
+              # at cutover and remove the temporary one from Authentik.
+              OIDC_REDIRECT_URI: https://mungchilog-prd.app.jyje.online/auth/callback
+          # Authentik client secret encrypted for the mungchilog-prd
+          # namespace. Re-sealed from the existing mungchilog-server-oidc
+          # secret via kubectl+kubeseal without the agent ever reading the
+          # plaintext, per jyje's explicit instruction.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-server-oidc
+            spec:
+              encryptedData:
+                OIDC_CLIENT_SECRET: AgBDG9W5mGNntAW0YIl1FxZqFwdUMG0HVFGwTsLgSDdT4bcXMh1FaYJ9P1MenLGEEhRYyUvmSsh0MnXSXxB7az+yhNkGOlP90Beig0BOP5J+uONr2xpSMvz82coDlYG2RdEFth+jsV6mtx6jB8UqN+lBPyZ233PJ16qSA4fz+95bU9uMz4wcEMh4jCbBLnYElFPwjv61wXdvnb6WJlsn0yjdziY9HWgwsSyx/Xt7a6AlLIe6lZiu6cmXRJ+n16q4kaPCDOO5ts/fmoyBOY30U2rg6+WZ8npeDK43aDfGL8/1qVpQOwxIvX7wlA2e6vtZ31pxOKzBfKYPBk7dqBOLjDKSTL1NPoL0fmFczefPvh7AIR3A0TlzbO1P90zq7G8aJ8tIDL4ud6+LWtD/v9FE3Ux6yeu+VJJmCYb/hjiwCaL3k56t9Xpq19uWIuoK0+8iSkYP+lod+ssTMwhI3G+GNsq1RpWKasdH/So87BbZxvvpzTEyTrfvEy3cSphQOKtZ6/yafRCHLJzCFJHQwTD5AllLv8vHoW8iMC9grtAMTAEpd6uQdM8d53YirVVjTMXxd2qpB/RyL4SluIvGcRl2JPCG03KVsEFcvT5uuMS9j53/R5lNUMEwVHjK8qJUet8gWKdNlXfBOJmiE1G7tkDZL+O0N3bU1fVVi+oFNTgAN/CFc5449jGj1kmN+/gY9bge97s9xOAT2RZ2LZ9aKseQcIiGb3AtYANwTp7k+oLc9iiiYxfX8fwG35A3dTGXWDjPOeasOe2BRh+IvRftqyIfqlks
+              template:
+                metadata:
+                  name: mungchilog-server-oidc
+                  namespace: mungchilog-prd
+                type: Opaque
+          # Google Maps Routes/Places server key. Re-sealed for
+          # mungchilog-prd the same way as above.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-server-key
+            spec:
+              encryptedData:
+                GOOGLE_MAPS_SERVER_API_KEY: AgBiCkP9TlQWe/uk4WB54YzEM/m/e3gxN2HISsg9fu9vhuLGMTSSQp1JQVadaG8Rx1sUxchwhLZ+M4IlJaBUhBp2MrhxpTl5gYAtN8Zlwx7PU2FWDQDQwXncIDJJW1lgOhaTrLM7SElb8bWjfuri5GkMKPmxlZwyW6RAoT5/vx22XZRgcNi9cNUXQRhXpnYkP8cprMkq8Ai0Sh9BsfjO0Rmdrz2JIcDJqIgWf/ppXaa6oT6TdcRsqg64XSy3DkQRW9SZ90aQrcdogWsr6ix3FkvjNmaMtYd/HmFyOA7uVkNnAy1JeCpv2ZuAWOxwCNeBZRXAK9QXab7xTqWeE/02yroVt2nwxWc3OM8D43ZCmF74lez+LAIJasEHKOjSj8B4xpshekVOOiM3rEFxbkBvCHLFdLuqMec38RKOo0Gs57gGIOmt3/y/UvrcWOLlCjsF54WmnJkgjLJJe20owWcee12++Q2vMJCoR661kejTis6WFVe8PeDTXUyoUHHnR5T9SyU7sZYxKSo5gfSX06ZDRCewI4C3RNgad8sZJCe+V4Uqh/DdE+ycu47B5lp2nhmC8SLDC+Ngg9qmprrqepbmWg7MRfOfNo0SP6Pju83kKy6cya+XwHnYx8yqUxK7sOUmLHNzWGk2vxdFVDxy5Lx08Q/1V+tZdcZSzA3am2r9MTlzITuel37PHGCEv53WWsmY+fC2r+oa1DMGeNYzKGV3+389FjmQ6n6YfS6cNmolUiSXm1LBvD38wnU=
+              template:
+                metadata:
+                  name: mungchilog-server-key
+                  namespace: mungchilog-prd
+                type: Opaque
+          # Initial admin bootstrap account. Re-sealed for mungchilog-prd
+          # the same way as above.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-initial-admin
+            spec:
+              encryptedData:
+                INITIAL_ADMIN_EMAIL: AgBbSURT+rvDJPtyx10TViGgrLQ97mUw7gyGvRICUW4DzgoP27DcvKtAb9BSCsoidglArPQnnqGqZyEveqGm/yBDmPhcH3U6hZmEJkntCB0N+oC6U1QyL7SytI3k4G7fGxbMYgWrWfTR2JoIS6StkKsr7Dqi7GZy1Z56jq2tIv+5iFCSd7tU3LcU/VwUKzHbSl5WOLrzNQC6mQPbg/tvC2UzWc0OISvyZx1TlsSxjgrpvIFcagkkoAjhjWto1LJKvhkYXgBXWnT22gRSyT+EaKAwe9W4Nkw/GGB3zovhptsIta2aDjwL5c8DPA1AuGBgQcbqhdKmJgOiZwHwuDfj0qrCh/dY1sylS2oTjfjxnSSEeYvcD3QFvS6qTb3Cn1YXD3t3ImFJcesUO7Ll4nOiRH6zPMFGiewAAsisZmjYdHcXXLJUaO5sEFCGQ+LtEuDwjqRSaGMXVm4VpgnyYD4oUb1UiCOAEM4kCZ1IJyy33FfgmSJmToU1Y0dKyPL1FPZG/U2asM4aQNPmLNUfYq9zrWKib72YA8pfYtAHowMddR/GKq0gdVLRWhaEJ06kYAbC8IbED8XBVM9DLDcm27S9O6fOBizqwvxtAdsyktS492vuHtthYkVNpVOuvRvdBujaKXeGx8lHYdu27ZPi/Z1tx4PiZNwylcgb5QyUZB6dTl/gvbie4qkh/RCqgiLm2Ip1lmB71XACK25YC3vkly24g4KodNE=
+              template:
+                metadata:
+                  name: mungchilog-initial-admin
+                  namespace: mungchilog-prd
+                type: Opaque
+          # Image Updater for the new deployment, tracking the same image
+          # repository as mungchilog-legacy. Applied here (destination
+          # namespace: argocd) rather than to this Application's own
+          # namespace, since ImageUpdater is an argocd-scoped CRD, not an
+          # app-namespace resource.
+          - apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+            kind: ImageUpdater
+            metadata:
+              name: mungchilog-prd
+              namespace: argocd
+            spec:
+              applicationRefs:
+                - namePattern: mungchilog-prd
+                  writeBackConfig:
+                    method: argocd
+                  images:
+                    - alias: mungchilog
+                      imageName: ghcr.io/jyje/mungchilog:managed
+                      commonUpdateSettings:
+                        updateStrategy: newest-build
+                        allowTags: "regexp:^(?:[0-9]+-[0-9a-f]{7}|v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-r[0-9]+-[0-9a-f]{7})$"
+                        forceUpdate: true
+                        platforms:
+                          - linux/arm64
+                      manifestTargets:
+                        helm:
+                          name: image.repository
+                          tag: image.tag
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mungchilog-prd
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

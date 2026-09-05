@@ -1,7 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mungchilog-prd
+  # Renamed from mungchilog-prd during the mungchilog -> mungchilog-prd
+  # namespace migration. This Application keeps serving the current
+  # mungchilog namespace under a non-colliding name until cutover; it will
+  # be deleted once mungchilog-prd.yaml takes over the production host.
+  name: mungchilog-legacy
 spec:
   project: base
   source:
@@ -102,6 +106,47 @@ spec:
                   name: mungchilog-server-key
                   namespace: mungchilog
                 type: Opaque
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-initial-admin
+            spec:
+              encryptedData:
+                INITIAL_ADMIN_EMAIL: AgDDCy7Ag1bDHSVhmIkVwnxw7oXjdyE5ufdFMQQnqOyyKWrDwFY8ytj+VbsWZC0UAXIOYsFHDf5F/obFDh5xevVhNi2w2EZfGZl3XwXctiDl8P0jGALFONj6VXTwUDeJINcXNUbM6UERRmBJeGOjfLmv9yXB4qCbEntT5vpj7qKTTkP8cuDsY8BoAfGvfssAjWSpxn5bJLXgQfu9xLAoL/fqKdvnXk9fjmWnMEiNx/GJ9wna1fmcaweymFvvfuPSTHvMyIK1Gr64BT5VddRLKWwyfqSczK+C8GtvvmTtTtP3C1+TRXWZDfA1jYwA9bmGvbBwAmsZmp2BjPTIYmEw/bXoEP18DlUboG0kU4djrx+gnEtyv+GP6005EI3BxUBWESJO5Cpj4MlaubqvXIQvLnd570DesopiMq/0kjUIKMsHeEfXWqacEFmIMI1QVPUtIaAFisRieB6Vfb0VJ0j3dST8hgoyyKHtmk9ox2YbOnwume3FalH3CixGDRDR2+YLCIeOV350WDTfo1ACHgZqWzX/sCdnRgU8N7W2soZfA4qeSB8yNzTDdtHOlW7l5N1t5QDYE5QDIliAATNz/oY3mDUay5nX/fcNsTFtPgQiAVNu9qr9Ktg+I4GQ5HUbLc2kS9jogoAbJrXD85JuCiK2unEp/Eevd6N8OCMVHHfjz9d6sBq0e7927gIB04HkrDeZs3RbtZF/wFtnlt2ryWHRcIaQqL8=
+              template:
+                metadata:
+                  name: mungchilog-initial-admin
+                  namespace: mungchilog
+          # Image Updater owns the running image tag Helm parameter above.
+          # Applied here (destination namespace: argocd) rather than to this
+          # Application's own namespace, since ImageUpdater is an
+          # argocd-scoped CRD, not an app-namespace resource.
+          - apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+            kind: ImageUpdater
+            metadata:
+              name: mungchilog
+              namespace: argocd
+            spec:
+              applicationRefs:
+                - namePattern: mungchilog-legacy
+                  writeBackConfig:
+                    method: argocd
+                  images:
+                    - alias: mungchilog
+                      imageName: ghcr.io/jyje/mungchilog:managed
+                      commonUpdateSettings:
+                        # Existing numeric tags are accepted during the migration. New
+                        # production deployment tags are traced semantic releases. The
+                        # shorter vMAJOR.MINOR.PATCH alias is intentionally not selected.
+                        updateStrategy: newest-build
+                        allowTags: "regexp:^(?:[0-9]+-[0-9a-f]{7}|v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-r[0-9]+-[0-9a-f]{7})$"
+                        forceUpdate: true
+                        platforms:
+                          - linux/arm64
+                      manifestTargets:
+                        helm:
+                          name: image.repository
+                          tag: image.tag
   destination:
     server: https://kubernetes.default.svc
     namespace: mungchilog
