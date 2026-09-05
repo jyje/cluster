@@ -47,6 +47,69 @@ spec:
               OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
               OIDC_CLIENT_ID: mungchilog
               OIDC_REDIRECT_URI: https://mungchilog.dev.jyje.online/auth/callback
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-server-oidc
+            spec:
+              encryptedData:
+                OIDC_CLIENT_SECRET: AgCwZEljj16dp1lYnmA16VI91fZDXrAvs/L5kXuUGVUldMmMsW2boakWnWv8gPIXPIO7M5kUJ0oGgo/GqUsk0+14V9xa24vPnwXz6bYdu6cIKocWtG0MgyYP45aIZrjgTzi3KEYbrem5fPJeqP9xVxxDWZy57Pc94/JpZRnRz+WN1acGD9qDTlj8obbZQX/ACyhWtsJWBT3ZHVlrtKsi/nZMVFBZAVoB9mohEJVjkxOCCoyWhD7+xUf1uGICFHiHRNjJr2Tj7cF50ubiFGO0Pg8iJs4+IW9bJ8j6873kMePfaQ9pyPcncQcIKt1EI8LR85Giq8t6n2nVcX0rp0M9xvuqrLuvhUF3yv57hHHZES87wBu0PtuAOpx3bSw3H24AU6VAn7zoCqNTOK4ezvjQWUjGe4SzmUNriYPyTt935MGcD173mj4sS46Ialzk2MTVjnbwCVuhRYJV/1K0zNny8s5/ZTxBKYJWIldgHDabLQ/DGsIQcbKSKCL3ELCIc33hfN6u1AU2e+I5E3cdLNHEv7Jw2bl7KL4JeJs8v3oWsMVS8RPr2jUserB5Ec7vSxxlQV+7Kfl52QiQr2HhYVR5MxWlF+fRvIfkovpnx5B4G5nrdcPSJaNjolJ1OMRKl4XUxSgBT1Ipf1Q+m8g2yHz6Xi8JINzysO214lsQoBNY4WFvco8ufKWlQxYVyWhYiIvfKBJjyXsCeWRcA3cUm87hE9XniJCaKs5ymiR5GDKl7riABUnH08sY0+d4+Idetmds5xbwWB7/8NHYeTVlTjrOJiNX
+              template:
+                metadata:
+                  name: mungchilog-server-oidc
+                  namespace: mungchilog-dev
+                type: Opaque
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-server-key
+            spec:
+              encryptedData:
+                GOOGLE_MAPS_SERVER_API_KEY: AgAJokloDbH8WgVGRoiW2qg0+WDq03sbbXUajk1YnpfHszLP4z4f3miZ/b7dYhFpUrd2cbdNYBJ2J4hTbdHo161FivsyYm45kg3jtmxF1qOF/KRDB/+uci0npgLZovlUKwX58y962XLh5To0OWPRGHpuwKkxKP06cSWDTNqaQGzOKohae2kxH182MS1tcC6hm8c4XsCSQhP+AoV/uJjMxcRHtnY68zD0NKogW1B1s+GQ6DiVerSXdhRUzcu/SHdNltItcd2zbU2O67UfF11BttlXJWYlLCjRm3FiHwRHjRHZsTIWUzuSL2kewhFjgIchYB4V+v5Ti8luvQLHqg66S8unhZrk6wFhwxZ+Tqs7uz6376FaDo7xBCfvI3csCk3LvT24hF/9LDT3YIMscH2kflezF6ixQIaq5f3ABd4SqaV0kQHEcg2mlvNG+1HoQluIYf3xN1GS0BktGrzW/WZtEZ/PS86VPsAxlvweDSbn0BxLcTPERowLzc+60qNN7AIMYcnuxz7xBL6upBXoSr68atG11GdXX9GS+G8YXAPVuktc89VkM8DqQ7Z9TuDmJDiAfYldMM25vq8qxeqycDjasORFcaWPH1qr7+InCeDRGkAoKPTkJ9zkGLyDVUMsZfULS8kmmdGNRGJIEFC+6Cl3emfXDPXV7iMwybdhv+rmvS9A2vSCSTAzmqgdvaTwF8PzwFGUL6R4+JdFOl8mJ1XEsLZCxj3FLqF8uAAf6gjG6YbIPak6kmuJqk4=
+              template:
+                metadata:
+                  name: mungchilog-server-key
+                  namespace: mungchilog-dev
+                type: Opaque
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: mungchilog-initial-admin
+            spec:
+              encryptedData:
+                INITIAL_ADMIN_EMAIL: AgARfhF0XE8dRqNcwIiZpGO3R7ZnqED7ifWe044z0n1NZ9TPnK3lqX72slOOuxNzjhXNSK/RgwrV5eMBJ158E2KQfDq3fPfDO9iXYDZPmjatjs6vDW0sB04wufYqbFpW+4n0RSfn5fv6o07grnoycyzzcESMhG6BgeGRrhfiWDHnfoTPghZx1FNXiU4eYQc2VghN94//42NphB6UX89sifTRyWoQHjdy3fsaAu6f1XW3xbLiprr5rVg6+eOdpMXWzVGcO0AGAjqQK0uSvRlILTCH4cAVh/xHvmoXPxKPNkvabgWSRU9ile3f0uZlxC0slV9QofkCNJUmHj+vPDtKvsvPXuJQLwVDT7DYbuQKEbiaJqynp9JcDayaKbZVahq9xTNZnGDlL/atfk4pkpLGqOpVpJM66OxZvG116hn8VtnZ1DfEss7kWES8bQSe0p3nvuW3V1aTU6IpQXnPuGefw5V+w41lR7f1QsO6vR/aPNH6gjJ+P5TkkJJCwvlnrD6Sbyt0SLCcs9TtVM2l+KD7Wpo8khe42RQZgXBkyQfpw/yTL8t1q+0GfXd87Y09kfvxGhWSvU4HXKtqR+tfXFdTA+MS+Fi4jwc5SRFpJSchxRlxUr+mF3yy3nbrzez3IgZT6mT7USHP/acRu1Uqs8eTRQodXh56lAYcCTy14TMPJSlbcSSAfg+/IYdz6+fsYUZ9M/cw9aexIN4Ht1yGM+wYzKSF85s=
+              template:
+                metadata:
+                  name: mungchilog-initial-admin
+                  namespace: mungchilog-dev
+                type: Opaque
+          # Image Updater owns the running image tag Helm parameter above.
+          # Applied here (destination namespace: argocd) rather than to this
+          # Application's own namespace, since ImageUpdater is an
+          # argocd-scoped CRD, not an app-namespace resource.
+          - apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+            kind: ImageUpdater
+            metadata:
+              name: mungchilog-dev
+              namespace: argocd
+            spec:
+              applicationRefs:
+                - namePattern: mungchilog-dev
+                  writeBackConfig:
+                    method: argocd
+                  images:
+                    - alias: mungchilog
+                      imageName: ghcr.io/jyje/mungchilog-dev:managed
+                      commonUpdateSettings:
+                        updateStrategy: newest-build
+                        allowTags: "regexp:^r[0-9]+-[0-9a-f]{7}$"
+                        forceUpdate: true
+                        platforms:
+                          - linux/arm64
+                      manifestTargets:
+                        helm:
+                          name: image.repository
+                          tag: image.tag
   destination:
     server: https://kubernetes.default.svc
     namespace: mungchilog-dev
