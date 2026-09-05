@@ -14,6 +14,11 @@ spec:
           # Image Updater replaces this sentinel after a dev build publishes
           # the first immutable dev image.
           tag: managed
+        # Coordinates are intentionally held in one process. Keep this
+        # release single-replica while live location sharing is enabled.
+        replicaCount: 1
+        locationSharing:
+          enabled: true
         ingress:
           labels:
             app.kubernetes.io/name: mungchilog

@@ -18,6 +18,11 @@ spec:
           # immediately replaces it through an Argo CD Helm parameter with a
           # permitted immutable GitHub workflow-run and short-SHA tag.
           tag: managed
+        # Coordinates are intentionally held in one process. Keep this
+        # release single-replica while live location sharing is enabled.
+        replicaCount: 1
+        locationSharing:
+          enabled: true
         auth:
           initialAdmin:
             existingSecret: mungchilog-initial-admin
