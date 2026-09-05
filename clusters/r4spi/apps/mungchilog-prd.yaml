@@ -1,11 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  # New production deployment for the mungchilog -> mungchilog-prd namespace
-  # migration. Starts empty (fresh PVC, no traffic) behind a temporary
-  # ingress host. Once verified and NFS data is copied over, the ingress
-  # host below is switched to the production domain and mungchilog.yaml
-  # (renamed to mungchilog-legacy) is deleted.
+  # Production deployment, migrated from the mungchilog namespace. The
+  # temporary migration host/redirect URI have been cut over to the
+  # production domain and mungchilog-legacy has been retired.
   name: mungchilog-prd
 spec:
   project: base
@@ -23,22 +21,28 @@ spec:
         auth:
           initialAdmin:
             existingSecret: mungchilog-initial-admin
-        # Temporary migration host. Switch to mungchilog.app.jyje.online at
-        # cutover, once mungchilog-legacy's Ingress has released that host
-        # (one Ingress owns a host at a time).
+        # One Ingress owns this host: do not configure publicPaths, which
+        # would create a conflicting second same-host Ingress for static
+        # assets.
         ingress:
+          # Homer discovers only Ingresses selected by this standard label.
           labels:
             app.kubernetes.io/name: mungchilog
           annotations:
             cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            # Discovered by Homer's Dashboard CR via ingressSelector
+            # (matchExpressions: app.kubernetes.io/name in [...]).
             item.homer.rajsingh.info/name: "Mungchilog"
             item.homer.rajsingh.info/subtitle: "Personal travel itinerary"
             item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/jyje/mungchilog/main/apps/web/public/pwa-512.png"
             item.homer.rajsingh.info/tag: "mungchilog #travel #maps #itinerary"
+            # The application entrypoint is protected by OIDC. Do not use it
+            # as Homer's unauthenticated Ping probe, which would report the
+            # expected login redirect as offline.
             service.homer.rajsingh.info/name: "1. Applications"
             service.homer.rajsingh.info/icon: "fas fa-rocket"
-          host: mungchilog-prd.app.jyje.online
-          tlsSecretName: mungchilog-prd.app.jyje.online
+          host: mungchilog.app.jyje.online
+          tlsSecretName: mungchilog.app.jyje.online
         persistence:
           storageClassName: subdir-usb
         extraEnvFrom:
@@ -56,11 +60,7 @@ spec:
             data:
               OIDC_ISSUER_URL: https://authentik.app.jyje.online/application/o/mungchilog/
               OIDC_CLIENT_ID: mungchilog
-              # Temporary redirect URI for migration verification. Requires
-              # a matching redirect URI added on the Authentik application
-              # before login works here. Switch to the production callback
-              # at cutover and remove the temporary one from Authentik.
-              OIDC_REDIRECT_URI: https://mungchilog-prd.app.jyje.online/auth/callback
+              OIDC_REDIRECT_URI: https://mungchilog.app.jyje.online/auth/callback
           # Authentik client secret encrypted for the mungchilog-prd
           # namespace. Re-sealed from the existing mungchilog-server-oidc
           # secret via kubectl+kubeseal without the agent ever reading the
