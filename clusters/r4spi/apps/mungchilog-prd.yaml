@@ -39,7 +39,7 @@ spec:
             # (matchExpressions: app.kubernetes.io/name in [...]).
             item.homer.rajsingh.info/name: "Mungchilog"
             item.homer.rajsingh.info/subtitle: "Personal travel itinerary"
-            item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/jyje/mungchilog/main/apps/web/public/pwa-512.png"
+            item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/jyje/mungchilog/master/apps/web/public/pwa-512.png"
             item.homer.rajsingh.info/tag: "mungchilog #travel #maps #itinerary"
             # The application entrypoint is protected by OIDC. Do not use it
             # as Homer's unauthenticated Ping probe, which would report the
