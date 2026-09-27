@@ -134,7 +134,7 @@ spec:
                     icon: fas fa-flask
                     items:
                       - name: LiteLLM
-                        logo: https://avatars.githubusercontent.com/BerriAI
+                        logo: https://docs.litellm.ai/img/favicon.ico
                         subtitle: LLM API gateway / proxy
                         tag: "litellm #llm #proxy #gateway #openai"
                         url: https://github.com/BerriAI/litellm
