@@ -2,8 +2,6 @@
 prometheus:
   url: http://thanos-query.monitoring:9090
 controllers:
-  # null removes the chart's default group.
-  default: null
   pi4:
     nodeSelector:
       pifanctl.jyje.online/fan: pi4

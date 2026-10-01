@@ -1,7 +1,7 @@
 {{- if .Values.monitoring.serviceMonitor.enabled }}
 {{- $sm := .Values.monitoring.serviceMonitor }}
 {{- range $component := list "agent" "controller" }}
-{{- if or (and (eq $component "agent") $.Values.agent.enabled) (and (eq $component "controller") $.Values.controllers) }}
+{{- if or (and (eq $component "agent") $.Values.agent.enabled) (eq $component "controller") }}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor

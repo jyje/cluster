@@ -67,7 +67,6 @@ agent:
 # Pi 5 on kernel PWM) can be declared side by side in one release.
 controllerDefaults:
   enabled: true
-  nodeSelector: {}
   tolerations:
     - key: node-role.kubernetes.io/control-plane
       operator: Exists
@@ -122,14 +121,18 @@ controllerDefaults:
   securityContext:
     privileged: true
 
-# Named controller groups. Label the nodes that have a fan and select them here:
+# Named controller groups. Each one needs its own nodeSelector, which is used
+# exactly as written (it is not merged with anything).
+#
+# Leave this empty to get one group named "default" on the nodes that carry the
+# label below:
 #   kubectl label node <node> pifanctl.jyje.online/fan=true
-# Add a group (with its own nodeSelector) for nodes with different hardware.
+# Declare groups to select nodes another way, or to mix hardware:
+#   controllers:
+#     fan-node:
+#       nodeSelector: {kubernetes.io/hostname: node-a}
 # A node must match at most one group, or two controllers will fight over a pin.
-controllers:
-  default:
-    nodeSelector:
-      pifanctl.jyje.online/fan: "true"
+controllers: {}
 
 monitoring:
   # Prometheus Operator ServiceMonitor for the agent and the controllers.
