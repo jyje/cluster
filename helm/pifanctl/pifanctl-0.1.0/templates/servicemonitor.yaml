@@ -1,0 +1,30 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+{{- $sm := .Values.monitoring.serviceMonitor }}
+{{- range $component := list "agent" "controller" }}
+{{- if or (and (eq $component "agent") $.Values.agent.enabled) (and (eq $component "controller") $.Values.controllers) }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "pifanctl.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "pifanctl.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with $sm.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "pifanctl.selectorLabels" (dict "root" $ "component" $component) | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ $.Release.Namespace }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ $sm.interval }}
+      scrapeTimeout: {{ $sm.scrapeTimeout }}
+{{- end }}
+{{- end }}
+{{- end }}

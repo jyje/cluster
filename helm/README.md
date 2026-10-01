@@ -21,6 +21,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 |-------|----------|-----|
 | github-actions-runner-controller | actions-runner-controller | https://actions-runner-controller.github.io/actions-runner-controller (legacy v1 `actions-runner-controller` chart only — does not serve the gha-runner-scale-set charts below) |
 | github-actions-runner-controller | actions | oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller and .../gha-runner-scale-set (OCI-only, no traditional Helm repo) |
+| pifanctl | jyje | oci://ghcr.io/jyje/charts/pifanctl (published by jyje/pifanctl's release-chart workflow) |
 | authentik | goauthentik | https://charts.goauthentik.io/ |
 | gateway-api | kubernetes-sigs | https://github.com/kubernetes-sigs/gateway-api (custom Helm wrapper; no official Helm repo — CRDs vendored from release manifests) |
 | argo | argo | https://argoproj.github.io/argo-helm |

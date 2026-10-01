@@ -1,0 +1,31 @@
+# Two controller groups: a Pi 4 on RPi.GPIO and a Pi 5 on kernel PWM.
+prometheus:
+  url: http://thanos-query.monitoring:9090
+controllers:
+  # null removes the chart's default group.
+  default: null
+  pi4:
+    nodeSelector:
+      pifanctl.jyje.online/fan: pi4
+    driver: rpigpio
+    pin: 18
+    curve:
+      tempLow: 55
+  pi5:
+    nodeSelector:
+      pifanctl.jyje.online/fan: pi5
+    driver: sysfs
+    pwmChannel: 2
+    prometheus:
+      query: max by (node) (pifanctl_temperature_celsius{node=~"raspi-5.*"})
+monitoring:
+  grafanaDashboard:
+    enabled: true
+    mode: configMap
+extraResources:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: extra
+    data:
+      key: value

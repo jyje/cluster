@@ -1,0 +1,155 @@
+{{- /*
+One DaemonSet per entry of .Values.controllers. Each entry is merged over
+controllerDefaults, so a group only states what differs.
+*/ -}}
+{{- range $group, $overrides := .Values.controllers }}
+{{- $c := mergeOverwrite (deepCopy $.Values.controllerDefaults) (default dict $overrides) }}
+{{- if $c.enabled }}
+{{- if not $c.nodeSelector }}
+{{- fail (printf "controllers.%s needs a nodeSelector: a controller without one would run on every node and fight over the fan pin" $group) }}
+{{- end }}
+{{- $prometheus := mergeOverwrite (deepCopy $.Values.prometheus) (default dict $c.prometheus) }}
+{{- $source := include "pifanctl.controllerSource" (dict "source" $c.source "prometheusUrl" $prometheus.url) }}
+{{- if and (eq $source "prometheus") (not $prometheus.url) }}
+{{- fail (printf "controllers.%s uses the prometheus source, so prometheus.url is required" $group) }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "pifanctl.fullname" $ }}-controller-{{ $group }}
+  labels:
+    {{- include "pifanctl.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: controller
+    pifanctl.jyje.online/group: {{ $group | quote }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "pifanctl.selectorLabels" (dict "root" $ "component" "controller") | nindent 6 }}
+      pifanctl.jyje.online/group: {{ $group | quote }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Never two controllers on one fan, so replace in place.
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        {{- include "pifanctl.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: controller
+        pifanctl.jyje.online/group: {{ $group | quote }}
+        {{- with $c.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with $c.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $c.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      # SIGTERM leaves the fan at exitDuty; give it time to do so.
+      terminationGracePeriodSeconds: 30
+      {{- with $c.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: controller
+          image: {{ include "pifanctl.image" $ | quote }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command: ["python", "main.py", "start"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: LOG_LEVEL
+              value: {{ $.Values.logLevel | quote }}
+            - name: DRIVER
+              value: {{ $c.driver | quote }}
+            - name: PIN
+              value: {{ $c.pin | quote }}
+            - name: PWM_CHIP
+              value: {{ $c.pwmChip | quote }}
+            - name: PWM_CHANNEL
+              value: {{ $c.pwmChannel | quote }}
+            - name: PWM_FREQUENCY
+              value: {{ $c.pwmFrequency | quote }}
+            - name: PWM_REFRESH_INTERVAL
+              value: {{ $c.refreshInterval | quote }}
+            - name: ALGORITHM
+              value: {{ $c.algorithm | quote }}
+            - name: SOURCE
+              value: {{ $source | quote }}
+            {{- if eq $source "prometheus" }}
+            - name: PROMETHEUS_URL
+              value: {{ $prometheus.url | quote }}
+            - name: PROMETHEUS_QUERY
+              value: {{ $prometheus.query | quote }}
+            - name: PROMETHEUS_TIMEOUT
+              value: {{ $prometheus.timeout | quote }}
+            {{- end }}
+            - name: TEMP_LOW
+              value: {{ $c.curve.tempLow | quote }}
+            - name: TEMP_HIGH
+              value: {{ $c.curve.tempHigh | quote }}
+            - name: DUTY_IDLE
+              value: {{ $c.curve.dutyIdle | quote }}
+            - name: DUTY_START
+              value: {{ $c.curve.dutyStart | quote }}
+            - name: DUTY_MAX
+              value: {{ $c.curve.dutyMax | quote }}
+            - name: DUTY_DOWN_STEP
+              value: {{ $c.curve.dutyDownStep | quote }}
+            - name: TARGET_TEMPERATURE
+              value: {{ $c.step.targetTemperature | quote }}
+            - name: DUTY_CYCLE_STEP
+              value: {{ $c.step.dutyCycleStep | quote }}
+            - name: DUTY_CYCLE_INITIAL
+              value: {{ $c.step.dutyCycleInitial | quote }}
+            - name: FAILSAFE_DUTY
+              value: {{ $c.failsafeDuty | quote }}
+            - name: EXIT_DUTY
+              value: {{ $c.exitDuty | quote }}
+            - name: METRICS_PORT
+              value: {{ $c.port | quote }}
+            {{- with $c.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ $c.port }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            periodSeconds: 10
+          resources:
+            {{- toYaml $c.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $c.securityContext | nindent 12 }}
+      nodeSelector:
+        {{- toYaml $c.nodeSelector | nindent 8 }}
+      {{- with $c.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $c.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

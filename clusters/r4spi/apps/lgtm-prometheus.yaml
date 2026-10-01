@@ -18,7 +18,13 @@ spec:
         prometheus:
           prometheusSpec:
             replicas: 1
-            retention: 7d
+            # Node temperatures (pifanctl) are only useful with history, so
+            # keep 30 days. The TSDB held about 4 GB for 7 days, so 30 days is
+            # around 17 GB. retentionSize is a hard cap just under the 20Gi
+            # volume request: if the data ever outgrows it, Prometheus drops
+            # the oldest blocks instead of filling the disk.
+            retention: 30d
+            retentionSize: 18GB
             storageSpec:
               volumeClaimTemplate:
                 spec:

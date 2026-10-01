@@ -1,0 +1,37 @@
+{{- /* Headless Services, so Prometheus can discover one endpoint per pod. */ -}}
+{{- $controllerPort := .Values.controllerDefaults.port }}
+{{- if .Values.agent.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pifanctl.fullname" . }}-agent
+  labels:
+    {{- include "pifanctl.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  clusterIP: None
+  selector:
+    {{- include "pifanctl.selectorLabels" (dict "root" . "component" "agent") | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ .Values.agent.port }}
+      targetPort: metrics
+{{- end }}
+{{- if .Values.controllers }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pifanctl.fullname" . }}-controller
+  labels:
+    {{- include "pifanctl.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+spec:
+  clusterIP: None
+  selector:
+    {{- include "pifanctl.selectorLabels" (dict "root" . "component" "controller") | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ $controllerPort }}
+      targetPort: metrics
+{{- end }}

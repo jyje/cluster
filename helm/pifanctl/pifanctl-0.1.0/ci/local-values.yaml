@@ -1,0 +1,10 @@
+# No Prometheus at all: a single node, controller on its own temperature.
+agent:
+  enabled: false
+controllers:
+  default:
+    nodeSelector:
+      kubernetes.io/hostname: raspi-40
+    algorithm: step
+    step:
+      targetTemperature: 55

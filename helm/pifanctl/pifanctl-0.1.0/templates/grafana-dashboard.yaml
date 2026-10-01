@@ -1,0 +1,40 @@
+{{- if .Values.monitoring.grafanaDashboard.enabled }}
+{{- $d := .Values.monitoring.grafanaDashboard }}
+{{- if eq $d.mode "grafanaOperator" }}
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: {{ include "pifanctl.fullname" . }}
+  namespace: {{ default .Release.Namespace $d.namespace }}
+  labels:
+    {{- include "pifanctl.labels" . | nindent 4 }}
+spec:
+  {{- with $d.folder }}
+  folder: {{ . | quote }}
+  {{- end }}
+  instanceSelector:
+    {{- toYaml $d.instanceSelector | nindent 4 }}
+  json: |
+    {{- .Files.Get "dashboards/pifanctl.json" | nindent 4 }}
+{{- else if eq $d.mode "configMap" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pifanctl.fullname" . }}-dashboard
+  namespace: {{ default .Release.Namespace $d.namespace }}
+  labels:
+    {{- include "pifanctl.labels" . | nindent 4 }}
+    {{- with $d.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $d.folder }}
+  annotations:
+    grafana_folder: {{ . | quote }}
+  {{- end }}
+data:
+  pifanctl.json: |
+    {{- .Files.Get "dashboards/pifanctl.json" | nindent 4 }}
+{{- else }}
+{{- fail "monitoring.grafanaDashboard.mode must be configMap or grafanaOperator" }}
+{{- end }}
+{{- end }}

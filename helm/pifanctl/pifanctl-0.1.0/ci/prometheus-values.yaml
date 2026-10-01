@@ -1,0 +1,21 @@
+# The documented cluster setup: the fan follows the hottest node, with alerts
+# and a dashboard.
+prometheus:
+  url: http://prometheus-operated.observability.svc:9090
+monitoring:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: prometheus
+  prometheusRule:
+    enabled: true
+    labels:
+      release: prometheus
+  grafanaDashboard:
+    enabled: true
+    mode: grafanaOperator
+    folder: Hardware
+    namespace: observability
+    instanceSelector:
+      matchLabels:
+        dashboards: r4spi

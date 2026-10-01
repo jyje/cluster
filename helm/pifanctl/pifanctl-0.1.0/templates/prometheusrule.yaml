@@ -1,0 +1,72 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+{{- $rule := .Values.monitoring.prometheusRule }}
+{{- $agentJob := printf "%s-agent" (include "pifanctl.fullname" .) }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "pifanctl.fullname" . }}
+  labels:
+    {{- include "pifanctl.labels" . | nindent 4 }}
+    {{- with $rule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: pifanctl.rules
+      rules:
+        # Cheap to chart over months, and the value the fan follows.
+        - record: pifanctl:node_temperature_max_celsius:max
+          expr: max(pifanctl_node_temperature_max_celsius)
+    - name: pifanctl.alerts
+      rules:
+        - alert: PifanctlNodeHot
+          expr: pifanctl_node_temperature_max_celsius > {{ $rule.warningTemperature }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ "{{ $labels.node }}" }} has been above {{ $rule.warningTemperature }}°C for 10 minutes"
+            description: '{{ "{{ $labels.node }}" }} is at {{ "{{ $value | printf \"%.1f\" }}" }}°C. Check the fan, airflow and workload placement.'
+        - alert: PifanctlNodeCritical
+          expr: pifanctl_node_temperature_max_celsius > {{ $rule.criticalTemperature }}
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ "{{ $labels.node }}" }} is above {{ $rule.criticalTemperature }}°C and close to throttling"
+            description: '{{ "{{ $labels.node }}" }} is at {{ "{{ $value | printf \"%.1f\" }}" }}°C.'
+        {{- if .Values.agent.enabled }}
+        - alert: PifanctlAgentDown
+          expr: up{job={{ $agentJob | quote }}, namespace={{ .Release.Namespace | quote }}} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "pifanctl agent on {{ "{{ $labels.instance }}" }} is not being scraped"
+            description: "That node's temperature is missing from the cluster maximum, so the fans may under-react to it."
+        {{- end }}
+        - alert: PifanctlControllerFailsafe
+          expr: pifanctl_control_source{source="failsafe"} == 1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Fan on {{ "{{ $labels.node }}" }} runs on failsafe: no temperature can be read"
+            description: "The controller cannot read any thermal zone and holds the failsafe duty."
+        - alert: PifanctlControllerFallback
+          expr: increase(pifanctl_control_fallbacks_total{to="local"}[10m]) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Fan on {{ "{{ $labels.node }}" }} cannot reach Prometheus and only sees its own node"
+            description: "The controller fell back to the local temperature, so it ignores hotter neighbours until the query works again."
+        - alert: PifanctlControllerMissing
+          expr: absent(pifanctl_fan_duty_percent)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No pifanctl controller reports a fan duty"
+            description: "Either no controller runs, or its metrics are not scraped. Fans may be unmanaged."
+{{- end }}
