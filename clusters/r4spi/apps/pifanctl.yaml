@@ -23,6 +23,11 @@ spec:
           default:
             nodeSelector:
               kubernetes.io/hostname: raspi-40
+            # The image runs as a non-root user, but RPi.GPIO maps /dev/mem,
+            # which needs root.
+            podSecurityContext:
+              runAsUser: 0
+              runAsNonRoot: false
 
         monitoring:
           # Selected by the Prometheus in the observability namespace
