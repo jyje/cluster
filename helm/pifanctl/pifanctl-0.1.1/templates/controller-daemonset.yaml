@@ -1,8 +1,14 @@
 {{- /*
-One DaemonSet per entry of .Values.controllers. Each entry is merged over
-controllerDefaults, so a group only states what differs.
+One DaemonSet per entry of .Values.controllers (or one "default" group when
+there are none). Each entry is merged over controllerDefaults, so a group only
+states what differs. controllerDefaults has no nodeSelector, so a group's
+selector is exactly what it declares.
 */ -}}
-{{- range $group, $overrides := .Values.controllers }}
+{{- $groups := .Values.controllers }}
+{{- if not $groups }}
+{{- $groups = dict "default" (dict "nodeSelector" (dict "pifanctl.jyje.online/fan" "true")) }}
+{{- end }}
+{{- range $group, $overrides := $groups }}
 {{- $c := mergeOverwrite (deepCopy $.Values.controllerDefaults) (default dict $overrides) }}
 {{- if $c.enabled }}
 {{- if not $c.nodeSelector }}

@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/pifanctl/pifanctl-0.1.0
+    path: helm/pifanctl/pifanctl-0.1.1
     helm:
       valuesObject:
         # Where controllers ask for the hottest node. Agents on every node
