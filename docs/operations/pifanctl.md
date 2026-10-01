@@ -90,3 +90,26 @@ Duty: 86.3%, Temperature: 70.5°C, Following: raspi-51, Source: prometheus, Node
 **Rollback.** Delete the DaemonSet's controller (set
 `controllers.default.enabled: false` in git) and `kubectl apply -f` the file
 saved in step 1. The agents can stay.
+
+## Rolled out
+
+Rolled out on 2026-10-01. The hand-applied Deployment was removed after the
+`pifanctl` Application synced, and the controller has driven the fan from the
+cluster maximum since. Two things only a real board showed:
+
+- **The controller needs root.** The image runs as a non-root user, but
+  `RPi.GPIO` maps `/dev/mem`. As a non-root user the controller crash-loops with
+  `No access to /dev/mem`. Chart 0.1.2 runs it as root by default.
+- **A group's `nodeSelector` is used as written.** Chart 0.1.0 merged it with
+  its own default label, which matched no node and left the DaemonSet with no
+  pods and no error. Fixed in 0.1.1.
+
+## CI runners (ARC)
+
+The `r4spi-microk8s` runner scale set serves the pifanctl repository. After
+upgrading the ARC controller and scale set (0.14.2 to 0.15.0), the
+`AutoscalingRunnerSet` was gone and the Application stayed `OutOfSync`, because
+the scale set Application has no `selfHeal`. Syncing the Application once
+restored it and the listener came back. After any ARC upgrade, check
+`kubectl get autoscalingrunnersets -n arc-system`, sync the scale set
+Application if it is empty, and run one workflow to see a runner pick it up.
