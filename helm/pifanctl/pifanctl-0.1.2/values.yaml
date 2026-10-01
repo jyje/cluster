@@ -115,9 +115,12 @@ controllerDefaults:
   failsafeDuty: 100
   exitDuty: 100
   port: 9102
-  # Driving GPIO or /sys/class/pwm needs root and a writable /sys. Narrow this
-  # if your nodes expose /dev/gpiomem to a group you can join instead.
-  podSecurityContext: {}
+  # Driving GPIO or /sys/class/pwm needs root and a writable /sys: RPi.GPIO maps
+  # /dev/mem, and the image itself runs as a non-root user. Narrow this if your
+  # nodes expose /dev/gpiomem to a group you can join instead.
+  podSecurityContext:
+    runAsUser: 0
+    runAsNonRoot: false
   securityContext:
     privileged: true
 

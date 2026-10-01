@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/pifanctl/pifanctl-0.1.1
+    path: helm/pifanctl/pifanctl-0.1.2
     helm:
       valuesObject:
         # Where controllers ask for the hottest node. Agents on every node
@@ -23,11 +23,6 @@ spec:
           default:
             nodeSelector:
               kubernetes.io/hostname: raspi-40
-            # The image runs as a non-root user, but RPi.GPIO maps /dev/mem,
-            # which needs root.
-            podSecurityContext:
-              runAsUser: 0
-              runAsNonRoot: false
 
         monitoring:
           # Selected by the Prometheus in the observability namespace
