@@ -1,5 +1,5 @@
 apiVersion: v2
-appVersion: 0.2.0
+appVersion: 0.2.1
 description: PWM fan control for Raspberry Pi clusters. An agent on every node publishes
   temperatures to Prometheus, and a controller drives each fan from the hottest node.
 home: https://github.com/jyje/pifanctl
@@ -15,4 +15,4 @@ name: pifanctl
 sources:
 - https://github.com/jyje/pifanctl
 type: application
-version: 0.1.2
+version: 0.1.3
