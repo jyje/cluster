@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": [
+        "repository"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "logLevel": {
+      "enum": [
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR"
+      ]
+    },
+    "prometheus": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^$|^https?://"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeout": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "interval": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
+    "controllerDefaults": {
+      "type": "object",
+      "properties": {
+        "driver": {
+          "enum": [
+            "auto",
+            "rpigpio",
+            "sysfs",
+            "mock"
+          ]
+        },
+        "algorithm": {
+          "enum": [
+            "curve",
+            "step"
+          ]
+        },
+        "source": {
+          "enum": [
+            "",
+            "local",
+            "prometheus"
+          ]
+        },
+        "pin": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failsafeDuty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "exitDuty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "refreshInterval": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "curve": {
+          "type": "object",
+          "properties": {
+            "tempLow": {
+              "type": "number"
+            },
+            "tempHigh": {
+              "type": "number"
+            },
+            "dutyIdle": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "dutyStart": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "dutyMax": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "dutyDownStep": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
+    },
+    "controllers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "grafanaDashboard": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "enum": [
+                "configMap",
+                "grafanaOperator"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "extraResources": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

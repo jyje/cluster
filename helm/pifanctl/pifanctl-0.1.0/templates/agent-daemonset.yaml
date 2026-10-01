@@ -1,0 +1,87 @@
+{{- if .Values.agent.enabled }}
+{{- $agent := .Values.agent }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "pifanctl.fullname" . }}-agent
+  labels:
+    {{- include "pifanctl.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  selector:
+    matchLabels:
+      {{- include "pifanctl.selectorLabels" (dict "root" . "component" "agent") | nindent 6 }}
+  updateStrategy:
+    {{- toYaml $agent.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pifanctl.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agent
+        {{- with $agent.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with $agent.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $agent.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml $agent.podSecurityContext | nindent 8 }}
+      containers:
+        - name: agent
+          image: {{ include "pifanctl.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "main.py", "agent"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: AGENT_INTERVAL
+              value: {{ $agent.interval | quote }}
+            - name: METRICS_PORT
+              value: {{ $agent.port | quote }}
+            {{- with $agent.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ $agent.port }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            periodSeconds: 10
+          resources:
+            {{- toYaml $agent.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $agent.securityContext | nindent 12 }}
+      {{- with $agent.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $agent.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $agent.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

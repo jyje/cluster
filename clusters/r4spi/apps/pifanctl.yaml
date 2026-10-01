@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pifanctl
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/pifanctl/pifanctl-0.1.0
+    helm:
+      valuesObject:
+        # Where controllers ask for the hottest node. Agents on every node
+        # publish pifanctl_temperature_celsius, so the fan follows the maximum
+        # of the whole cluster instead of only its own board.
+        prometheus:
+          url: http://prometheus-kube-prometheus-prometheus.observability.svc:9090
+
+        # The fan is wired to a single node. Selecting it by hostname keeps
+        # the placement declared here instead of in a hand-applied node label.
+        # Add a group (with its own nodeSelector and driver) for another fan.
+        controllers:
+          default:
+            nodeSelector:
+              kubernetes.io/hostname: raspi-40
+
+        monitoring:
+          # Selected by the Prometheus in the observability namespace
+          # (serviceMonitorSelector / ruleSelector: release=prometheus).
+          serviceMonitor:
+            enabled: true
+            labels:
+              release: prometheus
+          prometheusRule:
+            enabled: true
+            labels:
+              release: prometheus
+          # grafana-operator only watches the observability namespace, so the
+          # dashboard has to live there even though the release does not.
+          grafanaDashboard:
+            enabled: true
+            mode: grafanaOperator
+            namespace: observability
+            folder: Hardware
+            instanceSelector:
+              matchLabels:
+                dashboards: r4spi
+  destination:
+    namespace: pifanctl
+    server: 'https://kubernetes.default.svc'
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

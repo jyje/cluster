@@ -1,0 +1,163 @@
+# Default values for pifanctl.
+#
+# Two roles ship in one image:
+#   agent       runs on EVERY node, publishes that node's temperatures.
+#   controller  runs on nodes that have a fan, drives it from the hottest node.
+
+nameOverride: ""
+fullnameOverride: ""
+commonLabels: {}
+
+image:
+  repository: ghcr.io/jyje/pifanctl
+  # Defaults to v<appVersion> of this chart. Pin a digest-style tag for
+  # reproducible rollouts; never use "latest".
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+logLevel: INFO
+
+# Where controllers read the cluster-wide temperature. Any Prometheus-compatible
+# HTTP API works (Prometheus, Thanos Query, VictoriaMetrics, Mimir).
+# Leave url empty to run controllers on their own node's temperature only.
+prometheus:
+  url: ""
+  # The maximum value of this instant query is the control temperature.
+  query: max(pifanctl_temperature_celsius)
+  timeout: 3
+
+agent:
+  enabled: true
+  # Seconds between thermal reads.
+  interval: 5
+  port: 9101
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 64Mi}
+  # Every node by default, including tainted ones: the point is to see them all.
+  nodeSelector: {}
+  tolerations:
+    - operator: Exists
+  affinity: {}
+  priorityClassName: ""
+  podAnnotations: {}
+  podLabels: {}
+  extraEnv: []
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+
+# Settings every controller group starts from. A group in `controllers` below
+# overrides any of these, so nodes with different hardware (a Pi 4 on GPIO, a
+# Pi 5 on kernel PWM) can be declared side by side in one release.
+controllerDefaults:
+  enabled: true
+  nodeSelector: {}
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+  affinity: {}
+  priorityClassName: ""
+  podAnnotations: {}
+  podLabels: {}
+  extraEnv: []
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 128Mi}
+  # Fan hardware ---------------------------------------------------------
+  # auto: kernel PWM on Raspberry Pi 5, RPi.GPIO elsewhere. Never a mock.
+  driver: auto
+  # BCM pin of the fan's PWM wire (RPi.GPIO driver).
+  pin: 18
+  # Kernel PWM (sysfs driver): /sys/class/pwm/pwmchip<chip>/pwm<channel>.
+  # GPIO 18 is channel 2 on Raspberry Pi 5.
+  pwmChip: 0
+  pwmChannel: 2
+  pwmFrequency: 1000
+  # Control ---------------------------------------------------------------
+  # Seconds between decisions.
+  refreshInterval: 5
+  # curve: temperature to duty. step: the original fixed-step behaviour.
+  algorithm: curve
+  # Empty picks prometheus when prometheus.url is set, otherwise local.
+  source: ""
+  curve:
+    tempLow: 50        # below: idle
+    tempHigh: 70       # at and above: dutyMax
+    dutyIdle: 0
+    dutyStart: 30      # duty at tempLow, where the ramp begins
+    dutyMax: 100
+    dutyDownStep: 5    # largest decrease per interval (hysteresis)
+  step:
+    targetTemperature: 50
+    dutyCycleStep: 2
+    dutyCycleInitial: 0
+  # Duty when no temperature can be read, and the duty left on the fan when the
+  # controller stops. Both default to full speed: an unwatched fan should cool.
+  failsafeDuty: 100
+  exitDuty: 100
+  port: 9102
+  # Driving GPIO or /sys/class/pwm needs root and a writable /sys. Narrow this
+  # if your nodes expose /dev/gpiomem to a group you can join instead.
+  podSecurityContext: {}
+  securityContext:
+    privileged: true
+
+# Named controller groups. Label the nodes that have a fan and select them here:
+#   kubectl label node <node> pifanctl.jyje.online/fan=true
+# Add a group (with its own nodeSelector) for nodes with different hardware.
+# A node must match at most one group, or two controllers will fight over a pin.
+controllers:
+  default:
+    nodeSelector:
+      pifanctl.jyje.online/fan: "true"
+
+monitoring:
+  # Prometheus Operator ServiceMonitor for the agent and the controllers.
+  serviceMonitor:
+    enabled: false
+    interval: 15s
+    scrapeTimeout: 10s
+    # Labels the Prometheus selects on, for example {release: prometheus}.
+    labels: {}
+  # Alerts and a recording rule that keeps the cluster maximum cheap to query.
+  prometheusRule:
+    enabled: false
+    labels: {}
+    warningTemperature: 75
+    criticalTemperature: 82
+  # Grafana dashboard.
+  #   configMap:        a ConfigMap picked up by the Grafana dashboard sidecar.
+  #   grafanaOperator:  a GrafanaDashboard custom resource.
+  grafanaDashboard:
+    enabled: false
+    mode: configMap
+    labels:
+      grafana_dashboard: "1"
+    folder: ""
+    # Namespace of the dashboard object. Defaults to the release namespace; set it
+    # when the Grafana sidecar or grafana-operator only watches another one.
+    namespace: ""
+    # grafanaOperator mode: which Grafana instances receive the dashboard.
+    instanceSelector: {}
+
+# Extra Kubernetes manifests rendered with the release (for example a
+# SealedSecret, or an Ingress for the metrics endpoints).
+extraResources: []
