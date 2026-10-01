@@ -54,7 +54,10 @@ spec:
             # chart stamps app.kubernetes.io/name=litellm, matched there.
             item.homer.rajsingh.info/name: "LiteLLM"
             item.homer.rajsingh.info/subtitle: "LLM API gateway / proxy"
-            item.homer.rajsingh.info/logo: "https://avatars.githubusercontent.com/BerriAI"
+            # BerriAI's org avatar is GitHub's generic default silhouette (no
+            # custom avatar set), so it rendered as a placeholder rather than
+            # a real logo. LiteLLM's docs site favicon is their actual mark.
+            item.homer.rajsingh.info/logo: "https://docs.litellm.ai/img/favicon.ico"
             item.homer.rajsingh.info/tag: "litellm #llm #proxy #gateway #openai"
             item.homer.rajsingh.info/type: "Ping"
             service.homer.rajsingh.info/name: "1. Applications"
