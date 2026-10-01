@@ -83,3 +83,26 @@ Duty: 86.3%, Temperature: 70.5°C, Following: raspi-51, Source: prometheus, Node
 
 **롤백.** git에서 `controllers.default.enabled: false`로 컨트롤러를 끄고 1단계에서
 저장한 파일을 `kubectl apply -f` 합니다. 에이전트는 그대로 둬도 됩니다.
+
+## 롤아웃 완료
+
+2026-10-01에 롤아웃했습니다. `pifanctl` Application이 동기화된 뒤 손으로 적용했던
+Deployment를 제거했고, 그 이후 컨트롤러는 클러스터 최고 온도를 기준으로 팬을
+구동합니다. 실제 보드에서만 드러난 것이 두 가지 있습니다.
+
+- **컨트롤러는 root가 필요합니다.** 이미지는 non-root 사용자로 실행되지만
+  `RPi.GPIO`는 `/dev/mem`을 매핑합니다. non-root면 `No access to /dev/mem`으로
+  크래시 루프에 빠집니다. 차트 0.1.2는 기본값으로 root로 실행합니다.
+- **그룹의 `nodeSelector`는 적은 그대로 쓰입니다.** 차트 0.1.0은 자체 기본
+  라벨과 병합해서 어떤 노드와도 일치하지 않았고, DaemonSet이 에러 없이 파드가
+  0개였습니다. 0.1.1에서 수정했습니다.
+
+## CI 러너 (ARC)
+
+`r4spi-microk8s` 러너 스케일 셋이 pifanctl 저장소를 담당합니다. ARC 컨트롤러와
+스케일 셋을 0.14.2에서 0.15.0으로 올린 뒤 `AutoscalingRunnerSet`이 사라지고
+Application이 `OutOfSync`로 남았습니다. 스케일 셋 Application에는 `selfHeal`이
+없기 때문입니다. Application을 한 번 sync하자 복구되고 listener가 돌아왔습니다.
+ARC 업그레이드 후에는 `kubectl get autoscalingrunnersets -n arc-system`을 확인하고,
+비어 있으면 스케일 셋 Application을 sync한 뒤 워크플로 하나를 돌려 러너가 잡을
+집어가는지 확인하세요.
