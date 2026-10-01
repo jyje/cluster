@@ -79,8 +79,13 @@ kubectl get pods -n pifanctl -o wide
 kubectl logs -n pifanctl -l app.kubernetes.io/component=controller --tail=20
 ```
 
-**Verify.** The controller log shows `Source: prometheus`, the dashboard has
-data for every node, and `pifanctl_fan_duty_percent` is reported.
+**Verify.** The controller log shows every node's temperature and the node it
+follows (marked with `*`), the dashboard has data for every node, and
+`pifanctl_fan_duty_percent` is reported:
+
+```
+Duty: 86.3%, Temperature: 70.5°C, Following: raspi-51, Source: prometheus, Nodes: raspi-51=70.5* raspi-41=52.1 raspi-50=51.8 raspi-40=49.2
+```
 
 **Rollback.** Delete the DaemonSet's controller (set
 `controllers.default.enabled: false` in git) and `kubectl apply -f` the file

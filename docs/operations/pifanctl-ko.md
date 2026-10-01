@@ -74,8 +74,12 @@ kubectl get pods -n pifanctl -o wide
 kubectl logs -n pifanctl -l app.kubernetes.io/component=controller --tail=20
 ```
 
-**확인.** 컨트롤러 로그에 `Source: prometheus`가 보이고, 대시보드에 모든 노드의
-데이터가 있으며 `pifanctl_fan_duty_percent`가 보고됩니다.
+**확인.** 컨트롤러 로그에 모든 노드의 온도와 따라가는 노드(`*` 표시)가 보이고,
+대시보드에 모든 노드의 데이터가 있으며 `pifanctl_fan_duty_percent`가 보고됩니다.
+
+```
+Duty: 86.3%, Temperature: 70.5°C, Following: raspi-51, Source: prometheus, Nodes: raspi-51=70.5* raspi-41=52.1 raspi-50=51.8 raspi-40=49.2
+```
 
 **롤백.** git에서 `controllers.default.enabled: false`로 컨트롤러를 끄고 1단계에서
 저장한 파일을 `kubectl apply -f` 합니다. 에이전트는 그대로 둬도 됩니다.

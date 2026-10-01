@@ -23,8 +23,10 @@ logLevel: INFO
 # Leave url empty to run controllers on their own node's temperature only.
 prometheus:
   url: ""
-  # The maximum value of this instant query is the control temperature.
-  query: max(pifanctl_temperature_celsius)
+  # The maximum value of this instant query is the control temperature. Keep
+  # the `node` label: it is how the controller logs what every node reads and
+  # which one it followed.
+  query: max by (node) (pifanctl_temperature_celsius)
   timeout: 3
 
 agent:

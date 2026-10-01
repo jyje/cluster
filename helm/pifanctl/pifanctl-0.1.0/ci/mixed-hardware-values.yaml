@@ -17,7 +17,7 @@ controllers:
     driver: sysfs
     pwmChannel: 2
     prometheus:
-      query: max(pifanctl_temperature_celsius{node=~"raspi-5.*"})
+      query: max by (node) (pifanctl_temperature_celsius{node=~"raspi-5.*"})
 monitoring:
   grafanaDashboard:
     enabled: true

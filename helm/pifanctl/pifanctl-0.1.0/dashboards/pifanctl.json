@@ -126,7 +126,7 @@
       "gridPos": {
         "x": 6,
         "y": 0,
-        "w": 10,
+        "w": 8,
         "h": 4
       },
       "targets": [
@@ -191,9 +191,9 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "x": 16,
+        "x": 14,
         "y": 0,
-        "w": 8,
+        "w": 4,
         "h": 4
       },
       "targets": [
@@ -714,6 +714,54 @@
         "tooltip": {
           "mode": "multi"
         }
+      }
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Following",
+      "description": "The node whose temperature each controller followed in its last cycle.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "pifanctl_control_followed_node{node=~\"$node\"} == 1",
+          "legendFormat": "{{followed}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "name",
+        "colorMode": "value",
+        "graphMode": "none"
       }
     }
   ]
