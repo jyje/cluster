@@ -35,6 +35,11 @@ spec:
             app.kubernetes.io/name: mungchilog
           annotations:
             cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            # Homer performs its Ping check in the browser. Allow only the
+            # dashboard origin to read this public health endpoint.
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+            nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online"
+            nginx.ingress.kubernetes.io/cors-allow-methods: "HEAD, GET, OPTIONS"
             # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchExpressions: app.kubernetes.io/name in [...]).
             item.homer.rajsingh.info/name: "Mungchilog"
