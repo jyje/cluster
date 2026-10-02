@@ -181,6 +181,10 @@ spec:
                       - homer
                       - grafana
                       - authentik
+                  - key: homer.jyje.online/discovery
+                    operator: NotIn
+                    values:
+                      - disabled
               assets:
                 configMapRef:
                   name: homer-assets
