@@ -20,8 +20,6 @@ spec:
         locationSharing:
           enabled: true
         ingress:
-          labels:
-            app.kubernetes.io/name: mungchilog
           annotations:
             cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
           host: mungchilog.dev.jyje.online
