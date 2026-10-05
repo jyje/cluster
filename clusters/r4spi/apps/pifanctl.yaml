@@ -23,13 +23,14 @@ spec:
           default:
             nodeSelector:
               kubernetes.io/hostname: raspi-40
-            # Cooler target than the chart default (50 to 70). Idle nodes sit
-            # at 42 to 44 C and loaded ones at 53 to 60 C, so the fan stays off
-            # at idle, starts earlier under load, and reaches full speed at
-            # 60 C. 55 C now runs the fan at about 77% instead of 48%.
+            # Cooler target than the chart default (50 to 70). Nodes idle at
+            # about 40 to 44 C and run at 53 to 60 C under load, so with 40 to
+            # 55 the fan never fully stops (it holds at least 30% from 40 C)
+            # and its duty visibly follows the hottest node: 47 C is about
+            # 64%, 55 C is full speed. Raise tempLow for a quieter idle.
             curve:
-              tempLow: 45
-              tempHigh: 60
+              tempLow: 40
+              tempHigh: 55
 
         monitoring:
           # Selected by the Prometheus in the observability namespace
