@@ -106,3 +106,47 @@ Application이 `OutOfSync`로 남았습니다. 스케일 셋 Application에는 `
 ARC 업그레이드 후에는 `kubectl get autoscalingrunnersets -n arc-system`을 확인하고,
 비어 있으면 스케일 셋 Application을 sync한 뒤 워크플로 하나를 돌려 러너가 잡을
 집어가는지 확인하세요.
+
+## 시험을 위해 멈추기, 그리고 복구
+
+같은 팬을 구동하는 시험(예: 브랜치의 새 컨트롤러)은 이 릴리스와 나란히 돌면 안 됩니다.
+컨트롤러 두 개가 한 핀을 두고 다투기 때문입니다. 이 릴리스를 멈출 때 함정이 둘 있습니다.
+
+- **스케일을 내리지 말고 Application을 동결하세요.** `argocd.argoproj.io/skip-reconcile=true`는
+  Argo CD가 손대지 않게 하지만, 아무것도 안 돌아가는데도 `Synced`, `Healthy`로
+  보입니다. 배지가 아니라 DaemonSet을 확인하세요.
+- **손으로 DaemonSet에 추가한 키는 Argo CD가 지우지 못합니다.** `kubectl patch`로 넣은
+  `nodeSelector` 항목은 다른 field manager 소유라서, sync하면 이미지는 복구되지만 그
+  항목은 남아 파드가 0개로 유지됩니다.
+
+**복구가 수동인 이유.** 멈춘 상태와 시험이 git 밖에서 적용되어, 수렴할 git 정의가
+없습니다. 되돌리기 전에 팬을 구동하는 다른 Application이 있는지
+(`kubectl get applications -n argocd | grep -i pifan`, 팬 노드의 privileged 파드) 먼저
+확인하세요. 시험이 도는 중에 동결을 풀면 핀에 두 번째 컨트롤러가 뜹니다.
+
+**절차 (시험이 끝났거나 폐기된 뒤).**
+
+```sh
+# 1. 시험 제거. 직접 만든 Application에는 finalizer가 없으므로 커스텀 리소스를 먼저
+#    지우고(오퍼레이터가 자기 finalizer를 정리), 네임스페이스, 클러스터 범위 객체 순으로
+#    지웁니다. Grafana CRD는 건드리지 마세요.
+kubectl delete application <trial-app> -n argocd
+kubectl delete <trial-custom-resources> --all -A
+kubectl delete namespace <trial-namespace>
+kubectl delete crd <trial-crds>
+kubectl delete clusterrole,clusterrolebinding <trial-rbac>
+
+# 2. 이 릴리스의 동결을 풀고 git 정의로 DaemonSet을 다시 만듭니다.
+kubectl annotate application pifanctl -n argocd argocd.argoproj.io/skip-reconcile-
+kubectl delete ds pifanctl-agent pifanctl-controller-default -n pifanctl
+kubectl patch application pifanctl -n argocd --type merge -p '{"operation":{"sync":{}}}'
+```
+
+Argo CD는 이미 sync한 리비전에 대해 삭제된 객체를 스스로 다시 만들지 않으므로
+명시적 sync가 필요합니다. `PrometheusRule`과 `GrafanaDashboard`는 이 차트를 재사용하는
+시험과 이름이 같아 둘이 함께 있는 동안 Application에 `SharedResourceWarning`이 뜨며,
+시험을 제거하면 이 릴리스로 돌아옵니다.
+
+**확인.** 에이전트와 컨트롤러가 모두 git의 이미지로 `Running`이고, 컨트롤러 로그가
+가장 뜨거운 노드를 따라가며, 모든 `pifanctl-*` 타깃의 `up`이 1이고, `Pifanctl*` 알림이
+없어야 합니다.

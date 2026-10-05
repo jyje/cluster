@@ -113,3 +113,52 @@ the scale set Application has no `selfHeal`. Syncing the Application once
 restored it and the listener came back. After any ARC upgrade, check
 `kubectl get autoscalingrunnersets -n arc-system`, sync the scale set
 Application if it is empty, and run one workflow to see a runner pick it up.
+
+## Pausing for a trial, and recovering
+
+A trial that drives the same fan (for example a new controller from a branch)
+must not run next to this one: two controllers on one pin fight over it. Pausing
+this release has two traps.
+
+- **Freeze the Application, do not just scale it.** `argocd.argoproj.io/skip-reconcile=true`
+  stops Argo CD from touching it, but then it keeps showing `Synced` and
+  `Healthy` while nothing is running. Look at the DaemonSets, not at the badge.
+- **A key added by hand to a DaemonSet cannot be removed by Argo CD.** A
+  `nodeSelector` entry added with `kubectl patch` is owned by another field
+  manager, so a sync restores the image but leaves the entry, and the pods stay
+  at zero.
+
+**Why recovery is manual.** The paused state and the trial were applied outside
+git, so there is nothing in git to converge from. Before undoing anything, look
+for another Application that drives the fan
+(`kubectl get applications -n argocd | grep -i pifan`, and a privileged pod on
+the fan node). Removing the freeze while a trial still runs would start a second
+controller on the pin.
+
+**Steps, once the trial is finished or abandoned.**
+
+```sh
+# 1. Remove the trial. A hand-made Application has no finalizer, so delete its
+#    custom resources first (the operator clears its own finalizers), then the
+#    namespace, then its cluster-scoped objects. Leave the Grafana CRDs alone.
+kubectl delete application <trial-app> -n argocd
+kubectl delete <trial-custom-resources> --all -A
+kubectl delete namespace <trial-namespace>
+kubectl delete crd <trial-crds>
+kubectl delete clusterrole,clusterrolebinding <trial-rbac>
+
+# 2. Unfreeze this release and recreate the DaemonSets from git.
+kubectl annotate application pifanctl -n argocd argocd.argoproj.io/skip-reconcile-
+kubectl delete ds pifanctl-agent pifanctl-controller-default -n pifanctl
+kubectl patch application pifanctl -n argocd --type merge -p '{"operation":{"sync":{}}}'
+```
+
+Argo CD does not recreate deleted objects on its own for a revision it has
+already synced, hence the explicit sync. The `PrometheusRule` and
+`GrafanaDashboard` are shared by name with a trial that reuses this chart, and
+the Application reports a `SharedResourceWarning` while both exist; they come
+back to this release after the trial is removed.
+
+**Verify.** All agents and the controller are `Running` with the image from git,
+the controller log follows the hottest node, `up` is 1 for every `pifanctl-*`
+target, and no `Pifanctl*` alert fires.
