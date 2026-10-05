@@ -113,6 +113,8 @@ spec:
               value: {{ $c.curve.dutyMax | quote }}
             - name: DUTY_DOWN_STEP
               value: {{ $c.curve.dutyDownStep | quote }}
+            - name: TEMP_HYSTERESIS
+              value: {{ $c.curve.hysteresis | quote }}
             - name: TARGET_TEMPERATURE
               value: {{ $c.step.targetTemperature | quote }}
             - name: DUTY_CYCLE_STEP
@@ -147,6 +149,14 @@ spec:
             {{- toYaml $c.resources | nindent 12 }}
           securityContext:
             {{- toYaml $c.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: pwm-lock
+              mountPath: /var/lock/pifanctl
+      volumes:
+        - name: pwm-lock
+          hostPath:
+            path: /var/lock/pifanctl
+            type: DirectoryOrCreate
       nodeSelector:
         {{- toYaml $c.nodeSelector | nindent 8 }}
       {{- with $c.tolerations }}

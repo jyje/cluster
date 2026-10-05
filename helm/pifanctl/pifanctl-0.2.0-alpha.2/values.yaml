@@ -105,7 +105,11 @@ controllerDefaults:
     dutyIdle: 0
     dutyStart: 30      # duty at tempLow, where the ramp begins
     dutyMax: 100
-    dutyDownStep: 5    # largest decrease per interval (hysteresis)
+    dutyDownStep: 5    # largest decrease per interval, so the duty falls smoothly
+    # The temperature must fall this far below its peak before the duty follows
+    # it down: with 50 and 5 the fan starts at 50 but only stops under 45. It
+    # keeps the fan from switching on and off around tempLow. 0 disables it.
+    hysteresis: 5
   step:
     targetTemperature: 50
     dutyCycleStep: 2
