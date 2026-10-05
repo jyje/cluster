@@ -135,6 +135,10 @@
             "dutyDownStep": {
               "type": "number",
               "exclusiveMinimum": 0
+            },
+            "hysteresis": {
+              "type": "number",
+              "minimum": 0
             }
           }
         }

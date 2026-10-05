@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/pifanctl/pifanctl-0.1.3
+    path: helm/pifanctl/pifanctl-0.2.0-alpha.2
     helm:
       valuesObject:
         # Where controllers ask for the hottest node. Agents on every node
@@ -29,6 +29,9 @@ spec:
             # hottest node of the cluster. At today's load that is expected to
             # hold the hottest node near 51 C at about 34% duty, and a heavy
             # load below about 60 C, 20 C under the 80 C throttling point.
+            # A 5 C temperature hysteresis (the chart default) keeps the fan
+            # running until the node is 5 C below its peak, so it does not
+            # switch on and off around 50 C.
             # These are estimates from a model fitted to this cluster; the
             # earlier 40 to 55 curve ran about 6 C cooler at about 19 points
             # more duty. Lower tempLow for cooler, raise it for quieter.
