@@ -23,14 +23,18 @@ spec:
           default:
             nodeSelector:
               kubernetes.io/hostname: raspi-40
-            # Cooler target than the chart default (50 to 70). Nodes idle at
-            # about 40 to 44 C and run at 53 to 60 C under load, so with 40 to
-            # 55 the fan never fully stops (it holds at least 30% from 40 C)
-            # and its duty visibly follows the hottest node: 47 C is about
-            # 64%, 55 C is full speed. Raise tempLow for a quieter idle.
+            # Linear fan curve at the Raspberry Pi 5 official fan's end points:
+            # off below 50 C, 30% at 50 C, 100% at 75 C, with a straight line
+            # in between (duty = 30 + 2.8 * (T - 50)). The fan follows the
+            # hottest node of the cluster. At today's load that is expected to
+            # hold the hottest node near 51 C at about 34% duty, and a heavy
+            # load below about 60 C, 20 C under the 80 C throttling point.
+            # These are estimates from a model fitted to this cluster; the
+            # earlier 40 to 55 curve ran about 6 C cooler at about 19 points
+            # more duty. Lower tempLow for cooler, raise it for quieter.
             curve:
-              tempLow: 40
-              tempHigh: 55
+              tempLow: 50
+              tempHigh: 75
 
         monitoring:
           # Selected by the Prometheus in the observability namespace
