@@ -68,6 +68,9 @@ spec:
     server: 'https://kubernetes.default.svc'
   syncPolicy:
     automated:
+      # Prune removed controller groups so a disabled actuator cannot remain
+      # as an unmanaged second writer during the staged v1 handoff.
+      prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
