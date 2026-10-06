@@ -13,7 +13,7 @@ spec:
         operatorId: pifanctl-v1-staging
         image:
           repository: ghcr.io/jyje/pifanctl-issue
-          tag: 69a829f-py312
+          tag: cbc8958-py312
           pullPolicy: IfNotPresent
         agent:
           mode: reuse
@@ -67,8 +67,8 @@ spec:
     namespace: pifanctl
     server: https://kubernetes.default.svc
   syncPolicy:
-    # Manual synchronization during the archived storage/runtime migration trial.
-    # Restore automation after candidate upgrade and rollback acceptance.
+    automated:
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true

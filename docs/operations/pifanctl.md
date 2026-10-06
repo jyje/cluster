@@ -173,8 +173,8 @@ image digest is
 The default Python 3.14 image is not substituted during this trial: this
 cluster's legacy CA profile requires the verified Python 3.12 client.
 
-Automatic synchronization is temporarily disabled for this Application.
-Merging this preparation alone does not start the candidate worker. Preserve
+Automatic synchronization was disabled during this acceptance window.
+The initial preparation merge alone did not start the candidate worker. Preserve
 the existing alpha.3 image, Application, CRDs, resource UIDs/specs/finalizers
 and runtime snapshot before proceeding. The v0 rollback archive must also
 pass its checksum inventory.
@@ -209,3 +209,23 @@ image. Return to the verified alpha.6 image through a subsequent GitOps change
 and restore automatic synchronization after successful verification. This is
 a runtime image rollback, not the full v0 topology rollback or electrical
 acceptance.
+
+### Return to the verified candidate
+
+The alpha.6 candidate held healthy for 121.6 seconds, and the archived alpha.3
+image rollback held for 62.6 seconds. Both runs checked one worker, matching
+Argo source/revision, resource UIDs/specs, image digest, direct worker heartbeat
+and each member's original Prometheus sample timestamp. These are runtime
+observations, not target-temperature stabilization or physical RPM evidence.
+
+The subsequent reverse storage trial restored both original alpha-only CRD
+specifications and alpha storage history with their UIDs intact. A new complete
+v1 promotion then passed with explicit declaration/history checks. No finalizer
+was forced. Earlier failed freshness and observer attempts remain excluded from
+acceptance in the upstream report.
+
+The final GitOps source restores `cbc8958-py312` and automatic self-heal. Observe
+source-matched readiness and a further healthy hold after it synchronizes. The
+legacy controller remains disabled and the temperature agents remain reused.
+Retain the archives and continue hardware, thermal and fleet acceptance before
+publishing a stable v1 release.
