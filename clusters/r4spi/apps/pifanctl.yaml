@@ -21,6 +21,9 @@ spec:
         # Add a group (with its own nodeSelector and driver) for another fan.
         controllers:
           default:
+            # Stage 2 of the v1 handoff: stop the sole legacy GPIO18 writer.
+            # Keep the temperature agents running for the v1 operator.
+            enabled: false
             nodeSelector:
               kubernetes.io/hostname: raspi-40
             # Linear fan curve at the Raspberry Pi 5 official fan's end points:
