@@ -22,9 +22,47 @@ spec:
             kubernetes.io/metadata.name: observability
         serviceMonitor:
           enabled: false
-        # Stage 1: run the operator beside the v0 application. Add Fan and
-        # CoolingZone resources only after the v0 controller has stopped.
-        extraResources: []
+        # One shared fan on raspi-40 cools the complete four-node rack.
+        # Keep the temperature curve aligned with the v0 cluster settings.
+        extraResources:
+          - apiVersion: pifanctl.jyje.online/v1alpha1
+            kind: Fan
+            metadata:
+              name: r4spi-rack-fan
+            spec:
+              nodeName: raspi-40
+              hardware:
+                rpigpio:
+                  pin: 18
+                  frequencyHz: 1000
+              control:
+                curve:
+                  temperatureLow: 50
+                  temperatureHigh: 75
+                  dutyIdle: 0
+                  dutyStart: 30
+                  dutyMax: 100
+                  dutyDownStep: 5
+                  temperatureHysteresis: 5
+                refreshIntervalSeconds: 5
+                failsafeDuty: 100
+                exitDuty: 100
+          - apiVersion: pifanctl.jyje.online/v1alpha1
+            kind: CoolingZone
+            metadata:
+              name: r4spi-rack
+            spec:
+              nodeNames:
+                - raspi-40
+                - raspi-41
+                - raspi-50
+                - raspi-51
+              fanRefs:
+                - r4spi-rack-fan
+              telemetry:
+                source: prometheus
+                prometheusURL: http://prometheus-kube-prometheus-prometheus.observability.svc:9090
+                maxSampleAgeSeconds: 30
   destination:
     namespace: pifanctl
     server: https://kubernetes.default.svc
