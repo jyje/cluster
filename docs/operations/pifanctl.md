@@ -162,3 +162,37 @@ back to this release after the trial is removed.
 **Verify.** All agents and the controller are `Running` with the image from git,
 the controller log follows the hottest node, `up` is 1 for every `pifanctl-*`
 target, and no `Pifanctl*` alert fires.
+
+## Alpha.6 CRD migration acceptance window
+
+The `pifanctl-v1-staging` Application pins operator chart 0.1.0-alpha.6 at
+`e04f73b53e52050a31da274723a8d4b2ca8e61a1` and the Python 3.12
+compatibility image `ghcr.io/jyje/pifanctl-issue:cbc8958-py312`. Its verified
+image digest is
+`sha256:774e8355d08ba18bcca660c4045d7dfc8f3ed25e77661c305f97c97ea387f49f`.
+The default Python 3.14 image is not substituted during this trial: this
+cluster's legacy CA profile requires the verified Python 3.12 client.
+
+Automatic synchronization is temporarily disabled for this Application.
+Merging this preparation alone does not start the candidate worker. Preserve
+the existing alpha.3 image, Application, CRDs, resource UIDs/specs/finalizers
+and runtime snapshot before proceeding. The v0 rollback archive must also
+pass its checksum inventory.
+
+1. With the alpha.3 worker still regulating, explicitly apply the dual-version
+   CRDs, rewrite every resource to v1, verify the complete inventory, and only
+   then clear the alpha storage history. Exercise the reverse rewrite and
+   restore the archived alpha-only definitions. Verify the original worker
+   UID and uninterrupted healthy telemetry. Do not delete a CRD or finalizer.
+2. Promote storage again, then manually synchronize the exact candidate
+   Application source. Keep the same operator identity, Node UID and PWM
+   channel. Worker replacement uses Recreate and the shared host lock.
+3. Verify source-matched Argo success, one worker, fresh four-member telemetry,
+   readiness, image identity and requested duty. Exercise the archived image
+   rollback through a reviewed GitOps change before returning to the candidate.
+4. Restore automation after acceptance, retaining the archives until the
+   release decision. Electrical waveform, RPM, hardware failures and target
+   temperature stability remain separate release gates.
+
+See the upstream [storage procedure](https://github.com/jyje/pifanctl/blob/main/docs/v1/api-migration.md)
+and [acceptance plan](https://github.com/jyje/pifanctl/blob/main/PLAN.md).
