@@ -6,14 +6,14 @@ spec:
   project: base
   source:
     repoURL: https://github.com/jyje/pifanctl
-    targetRevision: 69a829f2bb17977b692954c905129498d63abcf7
+    targetRevision: e04f73b53e52050a31da274723a8d4b2ca8e61a1
     path: charts/pifanctl-operator
     helm:
       valuesObject:
         operatorId: pifanctl-v1-staging
         image:
           repository: ghcr.io/jyje/pifanctl-issue
-          tag: 69a829f-py312
+          tag: cbc8958-py312
           pullPolicy: IfNotPresent
         agent:
           mode: reuse
@@ -25,7 +25,7 @@ spec:
         # One shared fan on raspi-40 cools the complete four-node rack.
         # Keep the temperature curve aligned with the v0 cluster settings.
         extraResources:
-          - apiVersion: pifanctl.jyje.online/v1alpha1
+          - apiVersion: pifanctl.jyje.online/v1
             kind: Fan
             metadata:
               name: r4spi-rack-fan
@@ -47,7 +47,7 @@ spec:
                 refreshIntervalSeconds: 5
                 failsafeDuty: 100
                 exitDuty: 100
-          - apiVersion: pifanctl.jyje.online/v1alpha1
+          - apiVersion: pifanctl.jyje.online/v1
             kind: CoolingZone
             metadata:
               name: r4spi-rack
@@ -67,7 +67,10 @@ spec:
     namespace: pifanctl
     server: https://kubernetes.default.svc
   syncPolicy:
-    automated:
-      selfHeal: true
+    # Manual synchronization during the archived storage/runtime migration trial.
+    # Restore automation after candidate upgrade and rollback acceptance.
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+      - PrunePropagationPolicy=background
+      - PruneLast=true
