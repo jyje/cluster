@@ -196,3 +196,16 @@ pass its checksum inventory.
 
 See the upstream [storage procedure](https://github.com/jyje/pifanctl/blob/main/docs/v1/api-migration.md)
 and [acceptance plan](https://github.com/jyje/pifanctl/blob/main/PLAN.md).
+
+### Runtime image rollback trial
+
+During the manual acceptance window, select the archived alpha.3 image
+`69a829f-py312` again while retaining the dual-version chart and stable v1
+instance manifests. This tests compatibility and the Recreate/shared-lock
+return path without deleting CRDs or changing the physical rack topology.
+Verify the current source after manual synchronization, one Ready worker,
+resource UIDs, fresh direct worker/Prometheus observations and the restored
+image. Return to the verified alpha.6 image through a subsequent GitOps change
+and restore automatic synchronization after successful verification. This is
+a runtime image rollback, not the full v0 topology rollback or electrical
+acceptance.

@@ -13,7 +13,7 @@ spec:
         operatorId: pifanctl-v1-staging
         image:
           repository: ghcr.io/jyje/pifanctl-issue
-          tag: cbc8958-py312
+          tag: 69a829f-py312
           pullPolicy: IfNotPresent
         agent:
           mode: reuse
