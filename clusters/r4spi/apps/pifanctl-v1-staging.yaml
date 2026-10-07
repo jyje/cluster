@@ -6,14 +6,16 @@ spec:
   project: base
   source:
     repoURL: https://github.com/jyje/pifanctl
-    targetRevision: e04f73b53e52050a31da274723a8d4b2ca8e61a1
+    targetRevision: 0b37ed93e28095d0973ff5d171cdaba1ce17a8f0
     path: charts/pifanctl-operator
     helm:
       valuesObject:
         operatorId: pifanctl-v1-staging
         image:
-          repository: ghcr.io/jyje/pifanctl-issue
-          tag: cbc8958-py312
+          repository: ghcr.io/jyje/pifanctl
+          # Immutable stable runtime variant for the existing legacy cluster CA.
+          # Keep TLS verification enabled; canonical Python 3.14 requires CA modernization.
+          tag: v1.0.0-py312
           pullPolicy: IfNotPresent
         agent:
           mode: reuse
