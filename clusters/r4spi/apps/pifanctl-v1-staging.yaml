@@ -39,6 +39,17 @@ spec:
                 rpigpio:
                   pin: 18
                   frequencyHz: 1000
+              # Observe the existing NF-A12x25 PWM driven from Pi 5 V power.
+              # Gray extension wire carries tach to BCM23 (physical pin 16).
+              # Internal 3.3 V bias was explicitly authorized and measured.
+              # RPM is observational; it does not change the thermal curve.
+              feedback:
+                tachometer:
+                  gpio:
+                    pin: 23
+                    pull: up
+                  pulsesPerRevolution: 2
+                  sampleSeconds: 5
               control:
                 curve:
                   temperatureLow: 50

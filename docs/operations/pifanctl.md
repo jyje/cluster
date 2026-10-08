@@ -229,3 +229,45 @@ source-matched readiness and a further healthy hold after it synchronizes. The
 legacy controller remains disabled and the temperature agents remain reused.
 Retain the archives and continue hardware, thermal and fleet acceptance before
 publishing a stable v1 release.
+
+
+## v1.1 managed runtime and RPM feedback
+
+The current deployment is `clusters/r4spi/apps/pifanctl-v1-staging.yaml`.
+It pins the v1.1.0 operator chart source and `v1.1.0-py312` runtime, uses four
+managed temperature agents and one worker for the shared rack fan. The legacy
+chart declaration does not run another actuator.
+
+The Fan declares `spec.feedback.tachometer` on BCM23 (physical pin 16), with
+`pull: up`, two pulses per revolution and a five-second rolling window. The
+maintainer explicitly authorized the internal 3.3 V pull-up. The installed
+NF-A12x25 PWM 12 V model is powered from the Pi 5 V supply. A preliminary bounded
+measurement obtained 936-942 RPM. These are actual 5 V installation observations,
+not rated 12 V speed/airflow acceptance. GPIO18 (physical pin 12), its existing
+1 kHz software PWM and the normal thermal curve are retained.
+
+Check the deployed declaration and collector state:
+
+```sh
+kubectl --context microk8s -n pifanctl get fan r4spi-rack-fan \
+  -o jsonpath='{.spec.feedback.tachometer}{"\n"}{.status.feedback.tachometer}{"\n"}'
+```
+
+The CR's `status.feedback.tachometer` includes `ready`, `pulseCount`, `rpm` and
+`observedAt` for a valid complete window. Status is rate limited; worker metrics
+provide more frequent samples. The existing worker ServiceMonitor is selected
+by Prometheus through `release: prometheus` and scrapes these metrics:
+
+```promql
+pifanctl_worker_fan_rpm{fan="r4spi-rack-fan"}
+pifanctl_worker_fan_tachometer_ready{fan="r4spi-rack-fan"}
+time() - pifanctl_worker_fan_rpm_observed_timestamp_seconds{fan="r4spi-rack-fan"}
+```
+
+`NoPulses` is inconclusive about rotor motion until wiring and physical context
+are checked. Unknown or stale observations must not be treated as a working fan.
+RPM feedback does not implement RPM closed-loop control or change thermal
+failsafe behavior. To disable it, remove `spec.feedback` from the Fan in this
+GitOps declaration and wait for the worker to acknowledge the new plan. Remove
+feedback before rolling the runtime back to a version without collector support.
+See the upstream [tachometer guide](https://github.com/jyje/pifanctl/blob/main/docs/v1/tachometer.md).
