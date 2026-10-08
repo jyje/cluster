@@ -6,7 +6,7 @@ spec:
   project: base
   source:
     repoURL: https://github.com/jyje/pifanctl
-    targetRevision: 0b37ed93e28095d0973ff5d171cdaba1ce17a8f0
+    targetRevision: c08ac28158b00e9d2cc25a863b6a3b937785c98d
     path: charts/pifanctl-operator
     helm:
       valuesObject:
@@ -15,7 +15,7 @@ spec:
           repository: ghcr.io/jyje/pifanctl
           # Immutable stable runtime variant for the existing legacy cluster CA.
           # Keep TLS verification enabled; canonical Python 3.14 requires CA modernization.
-          tag: v1.0.0-py312
+          tag: v1.1.0-py312
           pullPolicy: IfNotPresent
         agent:
           mode: managed
