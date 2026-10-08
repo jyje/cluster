@@ -271,3 +271,34 @@ failsafe behavior. To disable it, remove `spec.feedback` from the Fan in this
 GitOps declaration and wait for the worker to acknowledge the new plan. Remove
 feedback before rolling the runtime back to a version without collector support.
 See the upstream [tachometer guide](https://github.com/jyje/pifanctl/blob/main/docs/v1/tachometer.md).
+
+
+### Temporary duty-response acceptance window
+
+The v1.1 RPM trial temporarily disables only this Application's `selfHeal`.
+Automatic synchronization of new Git revisions stays enabled. Existing PWM
+hardware, worker identity, temperature agents and feedback remain unchanged.
+The final GitOps change must restore self-heal after restoring the normal Fan
+control declaration. Do not leave the acceptance window as the permanent state.
+
+Trial stages use the existing single managed worker and complete 100%, 75%, 50%
+and 30% commanded-duty observations. A temporary curve is flat below 55 C and
+rises to full duty by 60 C; failsafe and exit duty remain 100%. Stale member
+telemetry and local-sensor failure retain the worker's full-duty safety behavior.
+An independent in-cluster deadline guardian restores the captured control
+configuration if the remote runner disappears. Configuration acknowledgement,
+collector errors, source timestamps and every member's temperature are checked
+throughout. No second GPIO writer or artificial RPM is introduced.
+
+The first positive-RPM-only baseline was interrupted when the normal curve
+reached idle. Preserve that result and use a complete-window baseline that
+permits `NoPulses` at zero command. Prometheus history already records zero RPM
+followed by positive RPM under normal thermal control; this observation does not
+establish a calibrated minimum startup duty or rated 12 V speed.
+
+- [ ] Verify the independent guardian is armed before changing control.
+- [ ] Record acknowledged stages, at least 30 s settlement and 60 s observations.
+- [ ] Abort at 55 C, stale telemetry, unexpected ownership or collector errors.
+- [ ] Restore the captured control and source-matched Argo state on every exit.
+- [ ] Restore GitOps self-heal and remove temporary trial annotations/processes.
+- [ ] Publish actual measurements and retained limitations in the hardware issue.
