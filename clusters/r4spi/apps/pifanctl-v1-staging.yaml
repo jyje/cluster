@@ -18,12 +18,14 @@ spec:
           tag: v1.0.0-py312
           pullPolicy: IfNotPresent
         agent:
-          mode: reuse
+          mode: managed
         networkPolicy:
           monitoringNamespaceSelector:
             kubernetes.io/metadata.name: observability
         serviceMonitor:
-          enabled: false
+          enabled: true
+          labels:
+            release: prometheus
         # One shared fan on raspi-40 cools the complete four-node rack.
         # Keep the temperature curve aligned with the v0 cluster settings.
         extraResources:

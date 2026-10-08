@@ -16,6 +16,11 @@ spec:
         prometheus:
           url: http://prometheus-kube-prometheus-prometheus.observability.svc:9090
 
+        # The v1 operator now owns the temperature agents as well. Retire the
+        # legacy alpha agents after the managed v1 agents are reconciled.
+        agent:
+          enabled: false
+
         # The fan is wired to a single node. Selecting it by hostname keeps
         # the placement declared here instead of in a hand-applied node label.
         # Add a group (with its own nodeSelector and driver) for another fan.
