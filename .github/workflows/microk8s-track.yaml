@@ -1,0 +1,29 @@
+name: 🔭 microk8s track watch
+
+# Weekly read-only check of the Snap Store against the track recorded in
+# clusters/r4spi/microk8s-track.yaml. It never touches the cluster: a newer stable
+# track only produces one pull request (or one issue comment) for a human to approve.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 1" # Mondays 00:00 UTC (09:00 KST)
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: microk8s-track
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compare the recorded track with the Snap Store
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .claude/skills/microk8s-release-watch/watch.sh

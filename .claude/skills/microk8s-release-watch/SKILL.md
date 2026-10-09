@@ -26,7 +26,7 @@ downtime. The script reports both and gives one verdict.
 ```
 
 Options: `--current vX.Y.Z` (skip kubectl, for example when the cluster is not
-reachable), `--arch arm64|amd64` (default `arm64`), `--context microk8s`.
+reachable), `--track X.Y` (compare only the minor track, used by the workflow), `--arch arm64|amd64` (default `arm64`), `--context microk8s`.
 
 The script prints versions only. It does not print node names, addresses or
 credentials, so the output is safe to paste into a public issue.
@@ -76,10 +76,26 @@ for 1.37 (jyje/cluster#158) is the template.
 
 ## Weekly use
 
-Run the script once a week, for example at the start of a maintenance review.
-If the verdict is not `UP_TO_DATE`, summarize it in one or two lines and follow
-the table above. To automate it, schedule a recurring task that runs this check
-and reports the verdict, but keep every action behind approval.
+The workflow `.github/workflows/microk8s-track.yaml` runs `watch.sh` every Monday
+(and on demand). It compares the track recorded in `clusters/r4spi/microk8s-track.yaml`
+with the Snap Store:
+
+| Verdict | What the workflow does |
+| --- | --- |
+| `UP_TO_DATE`, `PATCH_AVAILABLE` | Nothing. Patches arrive through the snap refresh schedule |
+| `NEW_MINOR_ANNOUNCED_NOT_IN_STORE` | One comment on the tracking issue, never repeated for the same track |
+| `NEW_MINOR_AVAILABLE` | Opens or updates one pull request on `automation/microk8s-track` that proposes the new track |
+| `UNKNOWN` | Fails the run so it is visible |
+
+The ledger records the approved **minor track only**. It is not applied by Argo CD
+and merging the pull request **does not upgrade any node**. Merging means the
+upgrade is approved. Then follow the upgrade checklist above, one node at a time.
+
+The pull request needs the repository setting "Allow GitHub Actions to create and
+approve pull requests" (Settings, Actions, General). Without it the run fails with
+GitHub's own error when it tries to create the pull request, and nothing else changes.
+
+Try it locally without side effects: `DRY_RUN=1 .claude/skills/microk8s-release-watch/watch.sh`.
 
 ## Offline testing
 
