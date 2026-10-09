@@ -338,9 +338,32 @@ The independent PWM probe remains unconfigured.
 - [x] Verify the published release tag resolves to the pinned source commit.
 - [x] Archive the pre-upgrade Application, runtime, Fan/CoolingZone and CRD state locally.
 - [x] Render the chart with the existing Helm release identity and pass server-side dry-run.
-- [ ] Merge the GitOps change and verify the parent Application selects the merged revision.
-- [ ] Verify the child Application is Synced/Healthy at the pinned release commit.
-- [ ] Verify the operator, four agents and one worker run v1.2.2 with fresh telemetry and RPM.
+- [x] Merge the GitOps change and verify the parent Application selects the merged revision.
+- [x] Verify the child Application is Synced/Healthy at the pinned release commit.
+- [x] Verify the operator, four agents and one worker run v1.2.2 with fresh telemetry and RPM.
+
+### Verified deployment evidence
+
+Deployment PR #163 was merged as
+`04160923d925fb5f0bd2264fa547b3ff57214a6b`. At 05:26 UTC on 2026-10-09,
+the parent Application selected that revision, and the child was Synced/Healthy
+at the pinned pifanctl release commit. The operator, four managed agents and
+single worker were Ready on `v1.2.2`, with zero container restarts. The worker
+reported Python 3.14.8 and application version 1.2.2.
+
+The Fan and CoolingZone retained their pre-upgrade specifications and UIDs.
+Both reported Ready/Regulating, with all four members present. The worker
+returned to its existing control curve after startup: one sample showed a
+46.3 C control temperature, 32.1% commanded duty and 858 RPM, with a heartbeat
+age below three seconds. These are deployment observations, not a new thermal
+stability or physical rotation acceptance test.
+
+Prometheus returned temperature samples for all four members with source ages
+below 14 seconds and tachometer feedback with an acquisition age below seven
+seconds. Independent measured PWM duty remained `NaN` because no probe is
+configured. Commanded duty and measured RPM must not be interpreted as an
+independent electrical PWM measurement. The pre-upgrade archive is retained
+locally for recovery.
 
 ### Rollback
 
