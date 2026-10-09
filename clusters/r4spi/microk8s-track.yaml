@@ -1,0 +1,13 @@
+# MicroK8s snap track approved for the r4spi cluster.
+#
+# This file is a ledger, not a manifest. Argo CD does not read it (the apps
+# Application watches clusters/r4spi/apps) and nothing applies it to the nodes.
+# Patch releases inside a track arrive through the snap refresh schedule, so only
+# the minor track is recorded.
+#
+# The weekly workflow "microk8s track watch" compares this track with the Snap
+# Store and opens a pull request when a newer stable track exists. Merging that
+# pull request means the upgrade is approved. The nodes are then upgraded one at a
+# time by hand, following the checklist in the upgrade issue and in the
+# microk8s-release-watch skill.
+track: "1.36"

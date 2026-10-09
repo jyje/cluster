@@ -3,18 +3,21 @@
 #   1. GitHub releases of canonical/microk8s (one entry per minor release)
 #   2. Snap Store channel map (the source that actually gates `snap refresh`)
 # Cluster versions come from kubectl when reachable, else pass --current vX.Y.Z.
+# With --track X.Y only the minor track is compared (no kubectl, patches are not judged).
 # Prints versions only. Never prints node names, addresses or credentials.
 set -uo pipefail
 
 ARCH=arm64
 CONTEXT=microk8s
 CURRENT=""
+TRACK=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --arch) ARCH=$2; shift 2 ;;
     --context) CONTEXT=$2; shift 2 ;;
     --current) CURRENT=$2; shift 2 ;;
-    -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
+    --track) TRACK=$2; shift 2 ;;
+    -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -33,12 +36,12 @@ if [ -n "${MICROK8S_STORE_JSON:-}" ]; then store=$(cat "$MICROK8S_STORE_JSON"); 
     'https://api.snapcraft.io/v2/snaps/info/microk8s?fields=version' 2>/dev/null) || store='{}'
 fi
 
-if [ -z "$CURRENT" ] && command -v kubectl >/dev/null; then
+if [ -z "$CURRENT" ] && [ -z "$TRACK" ] && command -v kubectl >/dev/null; then
   CURRENT=$(kubectl --context "$CONTEXT" --request-timeout=10s get nodes \
     -o jsonpath='{range .items[*]}{.status.nodeInfo.kubeletVersion}{"\n"}{end}' 2>/dev/null | sort -V | head -1)
 fi
 
-GITHUB="$github" STORE="$store" ARCH="$ARCH" CURRENT="$CURRENT" python3 - <<'PY'
+GITHUB="$github" STORE="$store" ARCH="$ARCH" CURRENT="$CURRENT" TRACK="$TRACK" python3 - <<'PY'
 import json, os, re
 
 def ver(text):
@@ -53,6 +56,7 @@ except ValueError: releases = []
 try: channels = json.loads(os.environ['STORE']).get('channel-map', [])
 except ValueError: channels = []
 arch, current = os.environ['ARCH'], ver(os.environ['CURRENT'])
+track = os.environ.get('TRACK', '')
 
 github_minors = sorted({ver(r['tag_name'])[:2] for r in releases
                         if not r.get('prerelease') and ver(r.get('tag_name'))})
@@ -75,7 +79,13 @@ else:
 newest = sorted(stable)[-3:]
 for minor in newest: print('  Snap Store stable v%d.%d     : %s' % (minor[0], minor[1], fmt(stable[minor])))
 if not stable: print('  Snap Store                  : unavailable')
-print('  Cluster (oldest node)       : %s' % fmt(current))
+if track:
+    # Track mode compares minors only: take the newest stable patch of that track as current.
+    base = ver(track)
+    current = stable.get(base[:2], base) if base else None
+    print('  Declared track              : %s' % track)
+else:
+    print('  Cluster (oldest node)       : %s' % fmt(current))
 
 verdict, note = 'UNKNOWN', 'Could not read enough data. Check the network and rerun.'
 if current and stable:
@@ -88,7 +98,10 @@ if current and stable:
     elif same and same > current:
         verdict, note = 'PATCH_AVAILABLE', '%s is the newest stable patch of the current track. The snap refresh schedule applies it.' % fmt(same)
     else:
-        verdict, note = 'UP_TO_DATE', 'Nodes run the newest stable patch of the newest track.'
+        verdict, note = 'UP_TO_DATE', ('The declared track is the newest stable track.' if track else 'Nodes run the newest stable patch of the newest track.')
 print('VERDICT: %s' % verdict)
 print(note)
+if verdict in ('NEW_MINOR_AVAILABLE', 'NEW_MINOR_ANNOUNCED_NOT_IN_STORE'):
+    candidates = [m for m in stable if m > current[:2]] if verdict == 'NEW_MINOR_AVAILABLE' else [latest]
+    print('NEXT_TRACK: %d.%d' % max(candidates))
 PY
