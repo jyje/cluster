@@ -273,9 +273,9 @@ feedback before rolling the runtime back to a version without collector support.
 See the upstream [tachometer guide](https://github.com/jyje/pifanctl/blob/main/docs/v1/tachometer.md).
 
 
-### Temporary duty-response acceptance window
+### Completed duty-response acceptance window (2026-10-09)
 
-The v1.1 RPM trial temporarily disables only this Application's `selfHeal`.
+The completed v1.1 RPM trial temporarily disabled only this Application's `selfHeal`.
 Automatic synchronization of new Git revisions stays enabled. Existing PWM
 hardware, worker identity, temperature agents and feedback remain unchanged.
 The final GitOps change must restore self-heal after restoring the normal Fan
@@ -296,9 +296,21 @@ permits `NoPulses` at zero command. Prometheus history already records zero RPM
 followed by positive RPM under normal thermal control; this observation does not
 establish a calibrated minimum startup duty or rated 12 V speed.
 
-- [ ] Verify the independent guardian is armed before changing control.
-- [ ] Record acknowledged stages, at least 30 s settlement and 60 s observations.
-- [ ] Abort at 55 C, stale telemetry, unexpected ownership or collector errors.
-- [ ] Restore the captured control and source-matched Argo state on every exit.
+- [x] Verify the independent guardian is armed before changing control.
+- [x] Record acknowledged stages, at least 30 s settlement and 60 s observations.
+- [x] Abort at 55 C, stale telemetry, unexpected ownership or collector errors.
+- [x] Restore the captured control and source-matched Argo state on every exit.
 - [ ] Restore GitOps self-heal and remove temporary trial annotations/processes.
 - [ ] Publish actual measurements and retained limitations in the hardware issue.
+
+
+The four measured stages completed: 100% averaged 1,826 RPM, 75% averaged
+1,524 RPM, 50% averaged 1,178.77 RPM and 30% averaged 817.38 RPM. Each used
+at least 30 seconds of settlement and 60 seconds of observations. Peak member
+temperature was 50.7 C. The deliberate stop/restart was skipped because its
+precondition required every member below 50 C. Natural idle/restart observations
+remain separate evidence, not a minimum startup-duty certification.
+
+The original normal control was restored, the guardian acknowledged cancellation,
+and temporary annotations were removed. This closeout restores `selfHeal: true`.
+See the upstream [measured report](https://github.com/jyje/pifanctl/blob/main/docs/v1/hardware-verification/rpm-5v/README.md).

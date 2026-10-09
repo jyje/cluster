@@ -83,9 +83,7 @@ spec:
     server: https://kubernetes.default.svc
   syncPolicy:
     automated:
-      # Temporary measured-duty trial: restore true after normal control returns.
-      # Keep auto-sync on new Git revisions; avoid undoing bounded CR stage patches.
-      selfHeal: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
