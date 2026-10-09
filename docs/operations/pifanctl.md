@@ -4,6 +4,11 @@
 
 ## Overview
 
+The active CRD runtime is declared in `clusters/r4spi/apps/pifanctl-v1-staging.yaml`.
+It uses the v1 operator chart, four managed temperature agents and one worker
+for the shared rack fan. Earlier sections below retain the legacy rollout
+history; the current release procedure is recorded at the end of this document.
+
 [pifanctl](https://github.com/jyje/pifanctl) controls the PWM fan of the
 cluster and records the temperature of every node.
 
@@ -231,10 +236,10 @@ Retain the archives and continue hardware, thermal and fleet acceptance before
 publishing a stable v1 release.
 
 
-## v1.1 managed runtime and RPM feedback
+## v1 managed runtime and RPM feedback
 
 The current deployment is `clusters/r4spi/apps/pifanctl-v1-staging.yaml`.
-It pins the v1.1.0 operator chart source and `v1.1.0-py312` runtime, uses four
+It pins the released v1.2.2 operator chart source and `v1.2.2` Python 3.14 runtime, uses four
 managed temperature agents and one worker for the shared rack fan. The legacy
 chart declaration does not run another actuator.
 
@@ -314,3 +319,35 @@ remain separate evidence, not a minimum startup-duty certification.
 The original normal control was restored, the guardian acknowledged cancellation,
 and temporary annotations were removed. This closeout restores `selfHeal: true`.
 See the upstream [measured report](https://github.com/jyje/pifanctl/blob/main/docs/v1/hardware-verification/rpm-5v/README.md).
+
+## v1.2.2 GitOps rollout (2026-10-09)
+
+The Application pins the released chart at
+`632fa7062c66a6357c7d8aa463bd9de51408edfa` and image
+`ghcr.io/jyje/pifanctl:v1.2.2`. Operator chart version and appVersion are both
+1.2.2. The release includes complete software line/branch coverage and typed
+strict-TLS diagnostics. Physical measurement and thermal acceptance remain
+separate from software coverage.
+
+The instance topology, control curve, BCM18 PWM output, BCM23 tachometer input,
+internal pull-up, four rack members and Prometheus integration are unchanged.
+The independent PWM probe remains unconfigured.
+
+### Deployment checklist
+
+- [x] Verify the published release tag resolves to the pinned source commit.
+- [x] Archive the pre-upgrade Application, runtime, Fan/CoolingZone and CRD state locally.
+- [x] Render the chart with the existing Helm release identity and pass server-side dry-run.
+- [ ] Merge the GitOps change and verify the parent Application selects the merged revision.
+- [ ] Verify the child Application is Synced/Healthy at the pinned release commit.
+- [ ] Verify the operator, four agents and one worker run v1.2.2 with fresh telemetry and RPM.
+
+### Rollback
+
+Revert this Application's source to
+`083f50ed5865384f8238fe62d480344ff3bb5d66` and image to `v1.2.0` through GitOps,
+then refresh the parent and verify the child revision and actual runtime.
+Both releases use the stable v1 API and existing feedback settings. Preserve
+resource UIDs, finalizers, rack membership and the single actuator identity.
+The locally archived state supports investigation; do not delete CRDs or
+manually start another fan writer for a version rollback.
