@@ -1,0 +1,54 @@
+name: 🤖 renovate
+
+# Self-hosted Renovate (container image) that updates the repository it lives in.
+# The repo's own renovate.json5 is the repository config; nothing here is global config.
+#
+# Same naming as jyje/claude-docker uses for jyje-bot:
+#   vars.APP_CLIENT_ID        GitHub App client id (not a secret)
+#   secrets.APP_PRIVATE_KEY   GitHub App private key (PEM)
+# A GitHub App token is used instead of GITHUB_TOKEN so that the PRs Renovate opens
+# trigger the normal CI workflows (events created by GITHUB_TOKEN do not).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Log what would happen without creating branches or PRs"
+        type: choice
+        options: ["full", "lookup", "off"]
+        default: "full"
+  schedule:
+    - cron: "0 20 * * 0" # Sundays 20:00 UTC (Monday 05:00 KST), inside the "before 6am on monday" window
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: renovatebot/github-action@230ce922b08968d0a4f6f70f295601daff09ef1d # v46.3.7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          renovate-version: 44.149.2
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Scheduled runs create PRs; manual runs default to a dry run.
+          RENOVATE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run != 'off' && inputs.dry-run || '' }}
+          # Do not open an onboarding PR; the config is committed deliberately.
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          LOG_LEVEL: debug
