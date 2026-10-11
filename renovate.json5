@@ -1,0 +1,37 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended"],
+
+  timezone: "Asia/Seoul",
+  schedule: ["before 6am on monday"],
+  prConcurrentLimit: 3,
+  prHourlyLimit: 2,
+
+  // jyje/skills git-commit-helper: bot commits are "🤖 ci(deps): <title>".
+  semanticCommits: "disabled",
+  commitMessagePrefix: "🤖 ci(deps):",
+
+  // helm/<group>/<chart>-<version>/ holds vendored upstream charts (several
+  // versions of the same chart side by side). An unconfigured scan reads their
+  // values.yaml, subchart Chart.yaml and even upstream .github/workflows, and
+  // wants to "update" each of them. They are changed only by the
+  // helm-chart-vendor skill (helm pull + rename), which Renovate cannot do.
+  // Setting ignorePaths replaces the list from config:recommended
+  // (node_modules, test, tests, examples, vendor), which is fine here.
+  ignorePaths: ["helm/**"],
+
+  // Only what Renovate can really own here.
+  enabledManagers: ["github-actions", "pip_requirements"],
+
+  packageRules: [
+    {
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
+    },
+    {
+      // Same weekly grouping the old dependabot.yaml used for actions.
+      matchManagers: ["github-actions"],
+      groupName: "actions",
+    },
+  ],
+}
