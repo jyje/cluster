@@ -375,7 +375,7 @@ resource UIDs, finalizers, rack membership and the single actuator identity.
 The locally archived state supports investigation; do not delete CRDs or
 manually start another fan writer for a version rollback.
 
-## v1.5.1 GitOps rollout (2026-10-17)
+## v1.5.1 GitOps rollout (2026-10-17 KST)
 
 The Application pins the released chart at
 `aba63731a4e71776f0e39b4586019e64e429aeca` and image
@@ -418,9 +418,9 @@ reports.
 ### Verified deployment evidence
 
 Deployment PR #170 was merged as `a6aea9d58`. The parent Application picked it up
-at about 17:28 UTC on 2026-10-16 (about two and a half minutes after the merge), and
+at about 17:28 UTC on 2026-10-16 (02:28 KST on 2026-10-17, about two and a half minutes after the merge), and
 the child was Synced/Healthy at `aba63731a4e71776f0e39b4586019e64e429aeca`. Times
-below come from polling every ten seconds, so they are approximate.
+below are UTC and come from polling every ten seconds, so they are approximate.
 
 - The operator, four managed agents and the single worker run `ghcr.io/jyje/pifanctl:v1.5.1`,
   with zero container restarts.
