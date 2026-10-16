@@ -410,10 +410,43 @@ reports.
 - [x] Verify the release tag resolves to the pinned source commit.
 - [x] Archive the pre-upgrade Application, runtime, Fan/CoolingZone and CRD state locally.
 - [x] Render the chart with the existing Helm release identity and compare it with the live cluster.
-- [ ] Merge the GitOps change and verify the parent Application selects the merged revision.
-- [ ] Verify the child Application is Synced/Healthy at the pinned release commit.
-- [ ] Verify the operator, four agents and one worker run v1.5.1 with fresh telemetry and RPM.
-- [ ] Verify `kubectl get coolingzone r4spi-rack -o yaml` lists all four members with reason `Fresh`.
+- [x] Merge the GitOps change and verify the parent Application selects the merged revision.
+- [x] Verify the child Application is Synced/Healthy at the pinned release commit.
+- [x] Verify the operator, four agents and one worker run v1.5.1 with fresh telemetry and RPM.
+- [x] Verify `kubectl get coolingzone r4spi-rack -o yaml` lists all four members with reason `Fresh`.
+
+### Verified deployment evidence
+
+Deployment PR #170 was merged as `a6aea9d58`. The parent Application picked it up
+at about 17:28 UTC on 2026-10-16 (about two and a half minutes after the merge), and
+the child was Synced/Healthy at `aba63731a4e71776f0e39b4586019e64e429aeca`. Times
+below come from polling every ten seconds, so they are approximate.
+
+- The operator, four managed agents and the single worker run `ghcr.io/jyje/pifanctl:v1.5.1`,
+  with zero container restarts.
+- The Fan and CoolingZone kept their UIDs (`dace8f05-...` and `f2dd2630-...`) and
+  their specifications.
+- Worker replacement: the old worker stopped at about 17:29:20 and the fan reported
+  100% duty with `ready=False` at 17:29:46. The new worker was Ready by about 17:29:57.
+  The falling duty was rate limited (95% at 17:29:57, 60% at 17:30:23) and the fan
+  returned to regulation at about 39.8% by 17:31:00. This was a short period at full
+  duty, as expected for a worker replacement. It is an observation, not a measurement
+  of fan speed during the gap.
+- At 17:35 UTC `status.nodeTemperatures` listed all four members with reason `Fresh`
+  and a sample age of a few seconds. `status.temperatureCelsius` was 52.35,
+  `missingNodeNames` was empty, and the zone was `Ready/Regulating`.
+- The tachometer reported 1002 RPM with feedback ready. Independent measured PWM duty is
+  still unavailable because no probe is configured. Commanded duty and RPM are not an
+  independent electrical measurement.
+
+### Observation: operator readiness
+
+`/readyz` on the operator returned 503 intermittently (14 non-200 answers during about
+three minutes of one-second polling). The cause is the code, not this release:
+`Operator.reconcile()` sets `ready = False` at the start of each pass and `True` at
+the end, so a request during a pass gets 503. The same code is in 1.2.2. The Pod stayed
+Ready because the kubelet needs three consecutive failures, but the probe logs
+`Unhealthy` warning events. This is tracked upstream as a possible improvement.
 
 ### Rollback
 
