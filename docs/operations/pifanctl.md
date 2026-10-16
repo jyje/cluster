@@ -239,7 +239,7 @@ publishing a stable v1 release.
 ## v1 managed runtime and RPM feedback
 
 The current deployment is `clusters/r4spi/apps/pifanctl-v1-staging.yaml`.
-It pins the released v1.2.2 operator chart source and `v1.2.2` Python 3.14 runtime, uses four
+It pins the released v1.5.1 operator chart source and `v1.5.1` Python 3.14 runtime, uses four
 managed temperature agents and one worker for the shared rack fan. The legacy
 chart declaration does not run another actuator.
 
@@ -374,3 +374,52 @@ Both releases use the stable v1 API and existing feedback settings. Preserve
 resource UIDs, finalizers, rack membership and the single actuator identity.
 The locally archived state supports investigation; do not delete CRDs or
 manually start another fan writer for a version rollback.
+
+## v1.5.1 GitOps rollout (2026-10-17)
+
+The Application pins the released chart at
+`aba63731a4e71776f0e39b4586019e64e429aeca` and image
+`ghcr.io/jyje/pifanctl:v1.5.1`. Operator chart version and appVersion are both
+1.5.1. Between 1.2.2 and 1.5.1 the release adds per-node temperatures in
+`CoolingZone.status.nodeTemperatures` (1.3.0), an opt-in worker egress policy
+(1.4.0), an optional worker namespace and worker admission policy (1.5.0) and the
+kubernetes Python client 37 (1.5.1). None of the new options is enabled here.
+Workers, plans and agents stay in the `pifanctl` namespace.
+
+The instance topology, control curve, BCM18 PWM output, BCM23 tachometer input,
+internal pull-up, four rack members and Prometheus integration are unchanged.
+
+### Expected change set
+
+A server-side diff of the rendered chart against the live cluster showed only:
+
+- the `coolingzones` CRD gains the additive, status-only `nodeTemperatures` field
+  in both served versions;
+- the operator Deployment changes image and gains `--worker-namespace pifanctl`,
+  which equals the release namespace;
+- the agent DaemonSet changes image.
+
+No RBAC, Service, NetworkPolicy or ServiceMonitor object changes. The operator then
+replaces the worker Deployment with the new image. The worker exits at full duty
+and the new one takes over, so expect a short period at `failsafeDuty`/`exitDuty`
+of 100%, and `nodeTemperatures` entries shown as `Unavailable` until the new worker
+reports.
+
+### Deployment checklist
+
+- [x] Verify the release tag resolves to the pinned source commit.
+- [x] Archive the pre-upgrade Application, runtime, Fan/CoolingZone and CRD state locally.
+- [x] Render the chart with the existing Helm release identity and compare it with the live cluster.
+- [ ] Merge the GitOps change and verify the parent Application selects the merged revision.
+- [ ] Verify the child Application is Synced/Healthy at the pinned release commit.
+- [ ] Verify the operator, four agents and one worker run v1.5.1 with fresh telemetry and RPM.
+- [ ] Verify `kubectl get coolingzone r4spi-rack -o yaml` lists all four members with reason `Fresh`.
+
+### Rollback
+
+Revert this Application's source to
+`632fa7062c66a6357c7d8aa463bd9de51408edfa` and image to `v1.2.2` through GitOps,
+then refresh the parent and verify the child revision and actual runtime.
+The CRD addition is additive and stays installed; do not delete CRDs. Preserve
+resource UIDs, finalizers, rack membership and the single actuator identity, and do
+not start another fan writer by hand.
