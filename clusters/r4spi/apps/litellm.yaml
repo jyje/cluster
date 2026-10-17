@@ -145,6 +145,28 @@ spec:
               model_info:
                 max_input_tokens: 1000000
             -
+              model_name: "nvidia/nemotron-3.5-super-vl-120b-a12b"
+              litellm_params:
+                model: "nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b"
+                api_base: "https://integrate.api.nvidia.com/v1"
+                api_key: "os.environ/NIM_API_KEY"
+                extra_body:
+                  chat_template_kwargs:
+                    enable_thinking: true
+              # Multimodal (text + image input) reasoning model. Verified via
+              # direct API tests, not just the model card:
+              # - context: a request of 1,288,753 tokens was rejected with
+              #   "maximum context length is 1000000 tokens" (decimal million),
+              #   and a request of 979,279 tokens succeeded (HTTP 200).
+              # - thinking: chat_template_kwargs.enable_thinking=true returns
+              #   reasoning_content; false returns none.
+              # - vision: an image_url message was read correctly.
+              # Without max_input_tokens litellm reports null and Hermes
+              # silently falls back to its own 128K default.
+              model_info:
+                max_input_tokens: 1000000
+                supports_vision: true
+            -
               model_name: "openai/gpt-oss-120b"
               litellm_params:
                 model: "nvidia_nim/openai/gpt-oss-120b"
