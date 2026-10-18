@@ -34,6 +34,12 @@ spec:
             - authentik-rbac-groups
 
         server:
+          # Keep the SSO endpoint available if one server process is restarted.
+          # The upstream chart's soft pod anti-affinity prefers separate nodes.
+          replicas: 2
+          pdb:
+            enabled: true
+            minAvailable: 1
           env:
             - name: AUTHENTIK_SECRET_KEY
               valueFrom:
@@ -66,10 +72,11 @@ spec:
                 secretKeyRef:
                   name: authentik-bootstrap-creds
                   key: password
-          # The server health endpoint exceeded the chart's 3-second probe
-          # timeout during recovery. Allow a little more response latency
-          # without changing the probe paths or failure thresholds.
+          # The health proxy briefly returns 500 while its Gunicorn Unix socket
+          # is unavailable, then recovers. Keep readiness strict, but tolerate
+          # short transient live-check failures before restarting a server.
           livenessProbe:
+            failureThreshold: 6
             timeoutSeconds: 5
           readinessProbe:
             timeoutSeconds: 5
@@ -95,6 +102,9 @@ spec:
               item.homer.rajsingh.info/logo: "https://goauthentik.io/img/icon.png"
               item.homer.rajsingh.info/tag: "authentik #sso #oidc #iam"
               item.homer.rajsingh.info/type: "Ping"
+              # Readiness reflects whether Authentik can serve traffic; the
+              # homepage may redirect to login and is not a health signal.
+              item.homer.rajsingh.info/endpoint: "https://authentik.app.jyje.online/-/health/ready/"
               # Grouped with Argo CD/Portainer — occasionally-visited admin
               # tools, not daily-use apps.
               service.homer.rajsingh.info/name: "3. Management"
