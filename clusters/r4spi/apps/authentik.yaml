@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/authentik/authentik-2026.8.0
+    path: helm/authentik/authentik-2026.8.4
     helm:
       valuesObject:
         authentik:
@@ -66,6 +66,15 @@ spec:
                 secretKeyRef:
                   name: authentik-bootstrap-creds
                   key: password
+          # The server health endpoint exceeded the chart's 3-second probe
+          # timeout during recovery. Allow a little more response latency
+          # without changing the probe paths or failure thresholds.
+          livenessProbe:
+            timeoutSeconds: 5
+          readinessProbe:
+            timeoutSeconds: 5
+          startupProbe:
+            timeoutSeconds: 5
           ingress:
             enabled: true
             ingressClassName: nginx
