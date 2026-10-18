@@ -72,6 +72,9 @@ spec:
             item.homer.rajsingh.info/logo: "https://grafana.com/static/img/menu/grafana2.svg"
             item.homer.rajsingh.info/tag: "grafana #monitoring #dashboard #lgtm"
             item.homer.rajsingh.info/type: "Ping"
+            # Probe Grafana's health API directly instead of the homepage,
+            # which may redirect to login and confuse the browser-side check.
+            item.homer.rajsingh.info/endpoint: "https://grafana.app.jyje.online/api/health"
             service.homer.rajsingh.info/name: "2. Dashboards"
             service.homer.rajsingh.info/icon: "fas fa-chart-line"
           hosts:
