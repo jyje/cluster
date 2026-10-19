@@ -59,11 +59,111 @@ Service account name.
 {{- end }}
 {{- end }}
 
+{{/* Runtime identity used by Hermes services for mutable HERMES_HOME files. */}}
+{{- define "hermes-agent.migrationUID" -}}
+{{- $uid := "10000" -}}
+{{- if .Values.podSecurityContext.runAsUser }}{{- $uid = printf "%v" .Values.podSecurityContext.runAsUser -}}{{- end }}
+{{- if .Values.securityContext.runAsUser }}{{- $uid = printf "%v" .Values.securityContext.runAsUser -}}{{- end }}
+{{- with index .Values.env "PUID" }}{{- $uid = printf "%v" . -}}{{- end }}
+{{- with index .Values.env "HERMES_UID" }}{{- $uid = printf "%v" . -}}{{- end }}
+{{- $uid -}}
+{{- end }}
+
+{{- define "hermes-agent.migrationGID" -}}
+{{- $gid := "10000" -}}
+{{- if .Values.podSecurityContext.runAsGroup }}{{- $gid = printf "%v" .Values.podSecurityContext.runAsGroup -}}{{- end }}
+{{- if .Values.securityContext.runAsGroup }}{{- $gid = printf "%v" .Values.securityContext.runAsGroup -}}{{- end }}
+{{- with index .Values.env "PGID" }}{{- $gid = printf "%v" . -}}{{- end }}
+{{- with index .Values.env "HERMES_GID" }}{{- $gid = printf "%v" . -}}{{- end }}
+{{- $gid -}}
+{{- end }}
+
+{{/*
+Shell snippet shared by the seed-config and test-Job init containers: run
+Hermes' config migration as the runtime user. The image's `hermes` command is
+a shim that drops root to the hermes user; the migration calls Python
+directly, so it must drop privileges the same way. Run as root it would create
+logs/, sessions/, skills/ and the rest of the HERMES_HOME skeleton as root, which
+the gateway (and the test Job's `hermes` shim) then cannot write. When the init
+container starts as root, hand over only the top-level HERMES_HOME and the
+files the chart itself wrote (non-recursive, the same scope the image's own
+stage2 first-boot fix uses); a non-root init container (hardened profile)
+already creates everything as the runtime user.
+*/}}
+{{- define "hermes-agent.migrateConfig" -}}
+echo "Migrating persisted Hermes config when supported"
+case "$HERMES_MIGRATION_UID:$HERMES_MIGRATION_GID" in
+  *[!0-9:]*|:*|*:) echo "HERMES_MIGRATION_UID/GID must be numeric" >&2; exit 1 ;;
+esac
+if [ "$(id -u)" = 0 ]; then
+  if [ -L "$HERMES_HOME" ]; then
+    echo "Refusing to change ownership through symlink $HERMES_HOME" >&2; exit 1
+  fi
+  chown "$HERMES_MIGRATION_UID:$HERMES_MIGRATION_GID" "$HERMES_HOME"
+  for name in config.yaml .env SOUL.md; do
+    path="$HERMES_HOME/$name"
+    if [ -f "$path" ] && [ ! -L "$path" ]; then
+      chown "$HERMES_MIGRATION_UID:$HERMES_MIGRATION_GID" "$path"
+    fi
+  done
+  HOME="$HERMES_HOME" setpriv --reuid="$HERMES_MIGRATION_UID" \
+    --regid="$HERMES_MIGRATION_GID" --clear-groups \
+    /opt/hermes/.venv/bin/python /seed/migrate-config.py
+else
+  /opt/hermes/.venv/bin/python /seed/migrate-config.py
+fi
+{{- end }}
+
 {{/*
 Headless service name used for StatefulSet governance.
 */}}
 {{- define "hermes-agent.headlessServiceName" -}}
 {{- printf "%s-headless" (include "hermes-agent.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Name that device-login and ready messages use for this release: the team
+identity in team mode, the release name otherwise.
+*/}}
+{{- define "hermes-agent.loginLabel" -}}
+{{- if and .Values.team.enabled .Values.team.identity -}}
+{{- .Values.team.identity -}}
+{{- else -}}
+{{- include "hermes-agent.fullname" . -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Channel the ready message goes to. readyNotify.notify wins; empty follows
+auth.deviceFlow.notify when the device flow is enabled. Only discord and
+telegram can carry a message, so any other result fails the render when
+readyNotify is enabled.
+*/}}
+{{- define "hermes-agent.readyNotify.channel" -}}
+{{- $channel := .Values.readyNotify.notify -}}
+{{- if and (not $channel) .Values.auth.deviceFlow.enabled -}}
+{{- $channel = .Values.auth.deviceFlow.notify -}}
+{{- end -}}
+{{- if not (has $channel (list "discord" "telegram")) -}}
+{{- fail (printf "readyNotify.enabled needs readyNotify.notify set to discord or telegram (got %q). It follows auth.deviceFlow.notify only when auth.deviceFlow.enabled is true and that is discord or telegram" $channel) -}}
+{{- end -}}
+{{- $channel -}}
+{{- end }}
+
+{{/*
+Name of the env Secret referenced by every chart-owned envFrom (main
+container, auth-device-login init container, helm test Job). Normally the
+chart's own Secret (secret.yaml); when externalSecret.enabled, secret.yaml
+never renders and this becomes the ExternalSecret's target name instead -
+externalSecret.target.name when set, or the same <fullname>-env default
+otherwise, so every reference stays in lockstep without extraEnvFrom.
+*/}}
+{{- define "hermes-agent.envSecretName" -}}
+{{- if and .Values.externalSecret.enabled .Values.externalSecret.target.name -}}
+{{- .Values.externalSecret.target.name -}}
+{{- else -}}
+{{- printf "%s-env" (include "hermes-agent.fullname" .) -}}
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -114,7 +214,8 @@ list for another Kubernetes port shape, such as containerPorts.
 {{- end }}
 {{- else -}}
 # Intended for the management dashboard (port 9119). Requires the dashboard
-# to be enabled and bound to 0.0.0.0 (--insecure) inside the container.
+# to be enabled (HERMES_DASHBOARD=1) with an auth provider configured; it
+# binds 0.0.0.0 inside the container by default (see values-ingress.yaml).
 - name: dashboard
   port: {{ .Values.service.port }}
   targetPort: {{ .Values.service.port }}
@@ -123,16 +224,80 @@ list for another Kubernetes port shape, such as containerPorts.
 {{- end }}
 
 {{/*
+Public URL the dashboard is reached at. An explicit dashboard.publicUrl wins;
+otherwise it is derived from the first Ingress host (https when the Ingress
+has TLS entries). Empty when neither is available.
+*/}}
+{{- define "hermes-agent.dashboard.publicUrl" -}}
+{{- if .Values.dashboard.publicUrl -}}
+{{- .Values.dashboard.publicUrl -}}
+{{- else if and .Values.ingress.enabled .Values.ingress.hosts -}}
+{{- $scheme := ternary "https" "http" (not (empty .Values.ingress.tls)) -}}
+{{- printf "%s://%s" $scheme (index .Values.ingress.hosts 0).host -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+True (non-empty) when an env var name is provided through `env` or `extraEnv`.
+Call as: include "hermes-agent.dashboard.hasEnv" (list . "NAME")
+*/}}
+{{- define "hermes-agent.dashboard.hasEnv" -}}
+{{- $root := index . 0 -}}
+{{- $name := index . 1 -}}
+{{- if hasKey (default (dict) $root.Values.env) $name -}}true
+{{- else -}}
+{{- range $root.Values.extraEnv -}}{{- if eq .name $name -}}true{{- end -}}{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Fail early when the dashboard is enabled but no upstream auth provider would be
+configured: on a non-loopback bind the dashboard fails closed and stays down,
+so an Ingress in front of it only answers 502/503. dashboard.auth.provider
+"external" skips the check for credentials injected through extraEnvFrom or an
+ExternalSecret, which the chart cannot inspect.
+*/}}
+{{- define "hermes-agent.dashboard.validate" -}}
+{{- if .Values.dashboard.enabled -}}
+{{- $provider := .Values.dashboard.auth.provider -}}
+{{- $cfgDash := default (dict) (get (default (dict) .Values.config) "dashboard") -}}
+{{- $cfgOauth := default (dict) (get $cfgDash "oauth") -}}
+{{- if eq $provider "basic" -}}
+  {{- $user := include "hermes-agent.dashboard.hasEnv" (list . "HERMES_DASHBOARD_BASIC_AUTH_USERNAME") -}}
+  {{- $pass := or (include "hermes-agent.dashboard.hasEnv" (list . "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD")) (include "hermes-agent.dashboard.hasEnv" (list . "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH")) -}}
+  {{- if not (and $user $pass) -}}
+    {{- fail "dashboard.enabled with auth.provider=basic needs env.HERMES_DASHBOARD_BASIC_AUTH_USERNAME and env.HERMES_DASHBOARD_BASIC_AUTH_PASSWORD (or _PASSWORD_HASH); set them, or set dashboard.auth.provider=external when the credentials come from extraEnvFrom or an ExternalSecret" -}}
+  {{- end -}}
+{{- else if eq $provider "oauth" -}}
+  {{- if not (or (include "hermes-agent.dashboard.hasEnv" (list . "HERMES_DASHBOARD_OAUTH_CLIENT_ID")) (get $cfgOauth "client_id")) -}}
+    {{- fail "dashboard.enabled with auth.provider=oauth needs env.HERMES_DASHBOARD_OAUTH_CLIENT_ID or config.dashboard.oauth.client_id; set it, or set dashboard.auth.provider=external when it comes from extraEnvFrom or an ExternalSecret" -}}
+  {{- end -}}
+{{- else if eq $provider "oidc" -}}
+  {{- $sh := default (dict) (get $cfgOauth "self_hosted") -}}
+  {{- $issuer := or (include "hermes-agent.dashboard.hasEnv" (list . "HERMES_DASHBOARD_OIDC_ISSUER")) (get $sh "issuer") -}}
+  {{- $client := or (include "hermes-agent.dashboard.hasEnv" (list . "HERMES_DASHBOARD_OIDC_CLIENT_ID")) (get $sh "client_id") -}}
+  {{- if not (and $issuer $client) -}}
+    {{- fail "dashboard.enabled with auth.provider=oidc needs HERMES_DASHBOARD_OIDC_ISSUER and HERMES_DASHBOARD_OIDC_CLIENT_ID (env/extraEnv) or config.dashboard.oauth.self_hosted.issuer/client_id; set them, or set dashboard.auth.provider=external when they come from extraEnvFrom or an ExternalSecret" -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Pod template (metadata + spec), shared by the StatefulSet and Deployment
 controllers. Caller is expected to nest this under `template:` with `nindent 4`.
 */}}
 {{- define "hermes-agent.podTemplate" -}}
 {{- include "hermes-agent.team.validate" . -}}
+{{- include "hermes-agent.dashboard.validate" . -}}
 metadata:
   annotations:
     # Roll pods when config/secret content changes.
     checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-    checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    # secret.yaml never renders while externalSecret.enabled (see that
+    # template and hermes-agent.envSecretName) - hash the ExternalSecret
+    # manifest instead, so changing its target/data still rolls the Pod.
+    checksum/secret: {{ include (print $.Template.BasePath (ternary "/externalsecret.yaml" "/secret.yaml" .Values.externalSecret.enabled)) . | sha256sum }}
     {{- if and .Values.team.enabled .Values.team.skill.enabled }}
     # Roll leaders and members when the rendered shared skill changes. Members
     # reference the leader-owned ConfigMap, so hashing only the created resource
@@ -192,6 +357,20 @@ spec:
           if [ -f /seed/SOUL.md ]; then
             seed "{{ .Values.persistence.mountPath }}/SOUL.md" /seed/SOUL.md
           fi
+          {{- if .Values.readyNotify.enabled }}
+          # Chart-owned gateway:startup hook: always refreshed, never user-edited.
+          mkdir -p "{{ .Values.persistence.mountPath }}/hooks/ready-notify"
+          cp /seed/ready-notify-HOOK.yaml "{{ .Values.persistence.mountPath }}/hooks/ready-notify/HOOK.yaml"
+          cp /seed/ready-notify-handler.py "{{ .Values.persistence.mountPath }}/hooks/ready-notify/handler.py"
+          {{- end }}
+          {{- include "hermes-agent.migrateConfig" . | nindent 10 }}
+      env:
+        - name: HERMES_HOME
+          value: {{ .Values.persistence.mountPath | quote }}
+        - name: HERMES_MIGRATION_UID
+          value: {{ include "hermes-agent.migrationUID" . | quote }}
+        - name: HERMES_MIGRATION_GID
+          value: {{ include "hermes-agent.migrationGID" . | quote }}
       volumeMounts:
         - name: config
           mountPath: /seed
@@ -237,6 +416,8 @@ spec:
           value: {{ $p.issuer | default "https://auth.openai.com" | quote }}
         - name: NOTIFY
           value: {{ $df.notify | quote }}
+        - name: LOGIN_LABEL
+          value: {{ include "hermes-agent.loginLabel" . | quote }}
         - name: LOGIN_TIMEOUT_SECONDS
           value: {{ $df.timeoutSeconds | quote }}
         - name: FORCE_RELOGIN
@@ -252,7 +433,7 @@ spec:
         {{- end }}
       envFrom:
         - secretRef:
-            name: {{ include "hermes-agent.fullname" . }}-env
+            name: {{ include "hermes-agent.envSecretName" . }}
         {{- with .Values.extraEnvFrom }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -311,6 +492,16 @@ spec:
       env:
         - name: HERMES_HOME
           value: {{ .Values.persistence.mountPath | quote }}
+        {{- if .Values.readyNotify.enabled }}
+        - name: READY_NOTIFY
+          value: {{ include "hermes-agent.readyNotify.channel" . | quote }}
+        - name: READY_NOTIFY_LABEL
+          value: {{ include "hermes-agent.loginLabel" . | quote }}
+        {{- end }}
+        {{- if .Values.dashboard.enabled }}
+        - name: HERMES_DASHBOARD
+          value: "1"
+        {{- end }}
         {{- if .Values.apiServer.enabled }}
         - name: API_SERVER_ENABLED
           value: "true"
@@ -330,22 +521,14 @@ spec:
           value: {{ .Values.webhook.port | quote }}
         {{- end }}
         {{- if .Values.team.enabled }}
-        # Team mode makes explicit body mentions the only bot-to-bot trigger.
-        - name: DISCORD_ALLOW_BOTS
-          value: "mentions"
-        - name: DISCORD_THREAD_REQUIRE_MENTION
-          value: "true"
-        - name: DISCORD_REPLY_TO_MODE
-          value: "off"
-        - name: DISCORD_ALLOW_MENTION_REPLIED_USER
-          value: "false"
+        {{- include "hermes-agent.team.env" . | trim | nindent 8 }}
         {{- end }}
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       envFrom:
         - secretRef:
-            name: {{ include "hermes-agent.fullname" . }}-env
+            name: {{ include "hermes-agent.envSecretName" . }}
         {{- with .Values.extraEnvFrom }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -357,9 +540,18 @@ spec:
       livenessProbe:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.probes.readiness }}
+      {{- if .Values.probes.readiness }}
       readinessProbe:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .Values.probes.readiness | nindent 8 }}
+      {{- else if and .Values.dashboard.enabled .Values.dashboard.readinessProbe.enabled }}
+      # Dashboard-aware readiness: the pod only joins the Service once the
+      # dashboard listens (first start can take minutes while bundled skills
+      # sync onto the volume). Readiness never restarts the container.
+      readinessProbe:
+        tcpSocket:
+          port: {{ .Values.service.port }}
+        periodSeconds: {{ .Values.dashboard.readinessProbe.periodSeconds }}
+        failureThreshold: 3
       {{- end }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}

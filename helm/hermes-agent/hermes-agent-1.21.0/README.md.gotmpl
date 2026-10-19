@@ -12,7 +12,9 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-jyje%2Fhermes--agent--helm-181717?logo=github)](https://github.com/jyje/hermes-agent-helm) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/jyje/hermes-agent-helm/blob/main/LICENSE) {{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
 
-[English](README.md) · [한국어](README-ko.md)
+[English](README.md) · [한국어](README-ko.md) · [日本語](README-ja.md) · [简体中文](README-zh.md)
+
+**Found [this project](https://github.com/jyje/hermes-agent-helm) useful? Please give it a [⭐ on GitHub](https://github.com/jyje/hermes-agent-helm) - it helps others find it.**
 
 ## TL;DR
 
@@ -33,6 +35,9 @@ helm upgrade --install hermes-agent hermes-agent/hermes-agent \
   --set-string env.OPENAI_API_KEY='sk-...' --wait
 ```
 
+- **Web dashboard**: chat with your agent in the browser, browse sessions, and
+  manage models, skills and settings behind a password, Nous Portal OAuth, or
+  your own OpenID Connect sign-in: [Expose the dashboard](#expose-the-dashboard).
 - **ArgoCD**: ready-to-apply `Application` manifests, one per provider/messenger
   combo: [`examples/argocd/`](../../examples/argocd/).
 - **GitOps without committing real secrets**: SealedSecret + `extraEnvFrom`
@@ -101,8 +106,9 @@ the pod; the pod is the sandbox). The `docker` backend is intentionally **not
 supported in-cluster** - it requires a Docker daemon/socket, absent on
 containerd clusters (MicroK8s / Raspberry Pi) and a security risk to mount.
 
-> Image tags are **date-based** (e.g. `v2026.6.5` == Hermes v0.16.0); the image
-> is multi-arch (amd64 + arm64), so it runs on Raspberry Pi clusters.
+> Image tags follow **semver** (e.g. `v0.22.2`) since October 2026; earlier
+> images use date-based tags (e.g. `v2026.9.24`). The image is multi-arch
+> (amd64 + arm64), so it runs on Raspberry Pi clusters.
 
 > **Scaling note.** Hermes is a single-instance personal agent, so this chart
 > pins `replicaCount: 1` and there is no multi-replica mode (see the
@@ -212,14 +218,43 @@ can go under `.Values.extraEnv` (plain env). Setting the token is enough to
   `env.TELEGRAM_BOT_TOKEN` (optionally `TELEGRAM_HOME_CHANNEL`,
   `TELEGRAM_ALLOWED_USERS` via `extraEnv`).
 
+- **Slack**: set `env.SLACK_BOT_TOKEN` and `env.SLACK_APP_TOKEN` for Socket
+  Mode. To suppress link and media previews in messages sent by the native
+  Slack adapter, add this partial `config.yaml` override:
+
+  ```yaml
+  config:
+    platforms:
+      slack:
+        extra:
+          unfurl_links: false
+          unfurl_media: false
+  ```
+
+  For Slack messages sent through the relay adapter, use the relay namespace
+  instead:
+
+  ```yaml
+  config:
+    platforms:
+      relay:
+        extra:
+          slack:
+            unfurl_links: false
+            unfurl_media: false
+  ```
+
+  Omit either key to preserve Slack's default unfurling behavior. These
+  settings affect outbound Slack messages only.
+
 See `values-anthropic-and-discord.yaml` / `values-openai-and-telegram.yaml` in
 ["More examples"](#more-examples) for copy-pasteable messenger blocks.
 
 ## Login via device flow (GitHub Copilot and OpenAI Codex)
 
 Set `auth.deviceFlow.enabled=true` to add an **`auth-device-login` init
-container**. It sends the verification URL + one-time code to the Discord home
-channel (or logs), waits for human approval, and persists the resulting
+container**. It sends the verification URL + one-time code to the Discord or
+Telegram home channel (or logs), waits for human approval, and persists the resulting
 credential on the `HERMES_HOME` volume.
 
 - `github-copilot` performs GitHub's OAuth 2.0 device grant and writes
@@ -237,12 +272,54 @@ helm upgrade --install hermes-agent ./charts/hermes-agent -n hermes-agent --crea
 kubectl logs deploy/hermes-agent -n hermes-agent -c auth-device-login -f
 ```
 
+**Which provider and channel combinations work.** One release logs in to one
+provider (`auth.deviceFlow.provider`), and the code and the ready message go to
+one channel (`notify`). All four combinations of the two providers and the two
+messengers were run on a real cluster (image `v2026.9.24`, October 2026). Each
+run covered the code arriving in the channel, approval, the stored credential,
+the completion message, the ready message, and a model reply to a mention.
+
+| Provider | Discord | Telegram |
+| --- | --- | --- |
+| `openai-codex` | Verified (`gpt-6-luna`) | Verified (`gpt-6-luna`) |
+| `github-copilot` | Verified (`gpt-4o`, Copilot Free account) | Verified (`gpt-4o`, Copilot Free account) |
+
+The Copilot runs used a Free account, so the models your plan can use follow
+GitHub's rules, and Discord also needs your own user id in
+`DISCORD_ALLOWED_USERS` (a message from an account that is not listed is
+ignored without a log line).
+
+```bash
+# Same flow with Telegram instead of Discord (Copilot shown).
+helm upgrade --install hermes-copilot ./charts/hermes-agent -n hermes-copilot --create-namespace \
+  -f charts/hermes-agent/values-github-copilot.yaml \
+  --set auth.deviceFlow.notify=telegram \
+  --set-string env.TELEGRAM_BOT_TOKEN='<bot-token>' \
+  --set-json 'extraEnv=[{"name":"TELEGRAM_HOME_CHANNEL","value":"<chat-id>"},{"name":"TELEGRAM_ALLOWED_USERS","value":"<user-id>"}]'
+```
+
 Notes:
 
 - **Requires `persistence.enabled=true`**: without a volume the token is lost
   on restart and you would re-approve every time.
-- **`notify`** is `discord` (reuses `DISCORD_BOT_TOKEN` + `DISCORD_HOME_CHANNEL`)
-  or `logs` (verification prompt printed to the init container logs only).
+- **`notify`** is `discord` (reuses `DISCORD_BOT_TOKEN` + `DISCORD_HOME_CHANNEL`),
+  `telegram` (reuses `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL`), or `logs`
+  (verification prompt printed to the init container logs only). With
+  `telegram` the message is sent with `sendMessage` only, so it does not
+  conflict with the agent polling the same bot. In a multi-release team, set
+  `TELEGRAM_HOME_CHANNEL` on every release that runs a device login. Each
+  prompt names the release (the team identity, or the release name outside team
+  mode), so parallel logins can be told apart.
+- **Ready message**: "login complete" only means the credential is stored. A
+  first start can still take minutes (skill sync, model warm-up), and Hermes
+  announces a *restart* but not a fresh start. Set `readyNotify.enabled=true` to
+  post one line to the same Discord or Telegram home channel when the gateway is
+  up (`readyNotify.notify` picks the channel, or follows `auth.deviceFlow.notify`
+  when the device flow is on). The chart seeds a `gateway:startup` hook into
+  `HERMES_HOME/hooks/ready-notify` that reuses the bot credentials already in
+  `env`/`extraEnvFrom`. On a live first start the message arrived together with
+  Hermes' own `Gateway running` log line, a few seconds before the first turn was
+  warm.
 - The init container runs as **root** so it can write to any storage class, then
   **chowns** the token file to `auth.deviceFlow.tokenOwner` (default uid/gid
   `10000` - the upstream image's runtime user) so the non-root agent can read it.
@@ -316,6 +393,68 @@ The `file` and `memory` toolsets remain available for each agent's own work;
 only cross-agent handoffs through files, memory, hooks, or background work are
 prohibited.
 
+For Telegram teams, set `team.platform: telegram`, use the per-role Telegram
+values files, and follow the [Telegram teams guide](../../docs/advanced/teams/telegram.md).
+It covers the one-bot shared assistant pattern, BotFather setup, per-release
+Secrets, mention routing, loop safeguards, and the ArgoCD ApplicationSet.
+Telegram team examples are render-checked in CI. A live run on a real Telegram
+group completed a full leader, member, leader handoff on two models
+(`nemotron-3-ultra-550b` and `gpt-6-luna`); the evidence is in the comments on
+[#311](https://github.com/jyje/hermes-agent-helm/pull/311). The leader model
+matters: a 30B model answered by itself instead of delegating. Another human
+account being blocked, the loop guard threshold, and several consecutive
+handoffs were not tested.
+
+**Example: a Telegram team where every bot signs in to OpenAI Codex.** Each
+release logs in on its own, so no external credential proxy or shared token is
+involved. Put the three bot tokens in Secrets (`tg-august`, `tg-may`, `tg-march`,
+each with a `TELEGRAM_BOT_TOKEN` key), then layer one overlay on the per-role
+values files:
+
+```yaml
+# codex-overlay.yaml
+config:
+  model:
+    provider: openai-codex
+    default: gpt-6-luna            # gpt-6-luna-900k for the larger window
+auth:
+  deviceFlow:
+    enabled: true
+    provider: openai-codex
+    notify: telegram               # each code arrives in the team group
+readyNotify:
+  enabled: true                    # one "ready" line per bot when it is up
+```
+
+```bash
+# Install all three at once. Each bot posts its own code to the group,
+# for example "OpenAI Codex login required for may".
+for r in august may march; do
+  role=member; [ "$r" = august ] && role=leader
+  helm upgrade --install "hermes-$r" ./charts/hermes-agent \
+    --namespace hermes-team --create-namespace \
+    -f "charts/hermes-agent/values-telegram-team-$role.yaml" -f codex-overlay.yaml \
+    --set-string "fullnameOverride=hermes-$r" --set-string "team.identity=$r" \
+    --set-json "extraEnvFrom=[{\"secretRef\":{\"name\":\"tg-$r\"}}]" &
+done; wait
+```
+
+Approve the three codes at `https://auth.openai.com/codex/device`. Do not message
+the team yet: after "login complete" a first start still takes a few minutes (it
+took about seven in a live run), and a message sent in that window is lost. Wait
+for each bot's "is ready" line, then mention the leader.
+
+- Set `TELEGRAM_HOME_CHANNEL` on **every** release, as the member values file
+  does: the login and ready messages go there.
+- Three logins on one ChatGPT account refreshed fine in a live check, but
+  upstream says a second login of the same account revokes the older one. Prefer
+  one account per bot for a team, and see
+  [OpenAI Codex](../../docs/advanced/providers/openai-codex.md) for what was and
+  was not checked.
+- Each bot's first reply in the group may include Hermes' one-time
+  "caps context at 272K" notice. Set `compression.codex_gpt55_autoraise_notice:
+  false` to silence it.
+
 > Upstream currently documents Hermes bot-to-bot Discord conversation as an
 > unsupported topology with no built-in circuit breaker. The example is
 > experimental: use a dedicated trusted channel, keep a manual stop path, and
@@ -327,17 +466,24 @@ timestamped [team evidence](../../docs/advanced/teams/reference.md#leader-orches
 > **Alternative: one pod, many profiles.** If what you actually need is
 > routing different Discord guilds/channels/threads to different agent
 > *profiles* from a **single bot token** - rather than several bots sharing
-> one channel - set `config.gateway.multiplex_profiles: true` (env override:
-> `GATEWAY_MULTIPLEX_PROFILES=1`). That's one pod instead of one-per-teammate;
-> it solves a different problem than the hand-off pattern above (routing, not
-> collaboration), so pick based on which shape your use case actually needs.
+> one channel - use gateway profile multiplexing. Upstream turns it on by
+> default (`gateway.multiplex_profiles` defaults to `true`, and `true` is the
+> only valid value; the old `false` is retired), so no chart setting is needed.
+> That's one pod instead of one-per-teammate; it solves a different problem
+> than the hand-off pattern above (routing, not collaboration), so pick based
+> on which shape your use case actually needs.
 
 ## Advanced testing
 
 The [`helm test`](#test) Job (hook `helm.sh/hook: test`) runs `hermes
 --version`, verifies the seeded `config.yaml`, checks docker availability
-(informational, since the backend is `local`), and runs `hermes doctor`.
-Disable it with `--set tests.enabled=false`; make doctor failures fatal with
+(informational, since the backend is `local`), and runs `hermes doctor`. Two
+checks run only when the feature is on, because they guard code that the chart
+runs inside the Hermes image and that an image bump could break: with the
+OpenAI Codex device login it confirms the image still provides the Hermes
+helpers the login imports, and with `readyNotify.enabled` it confirms Hermes
+discovers and fires the seeded `gateway:startup` hook. Disable the Job with
+`--set tests.enabled=false`; make doctor failures fatal with
 `--set tests.doctorStrict=true`.
 
 ### Verifying a provider end-to-end (`tests.chat.enabled`)
@@ -407,8 +553,14 @@ the full upstream config (which would drift across Hermes versions).
 - **`config.yaml`**: set only override keys under `.Values.config`. It is
   rendered into a ConfigMap and **seeded into `HERMES_HOME`** (the persistent
   volume) by an init container, because Hermes also writes to its home at
-  runtime (skills, `auth.json`, self-improvement). `bootstrap.overwrite=true`
-  (default) re-seeds on every deploy; set `false` to seed only when absent.
+  runtime (skills, `auth.json`, self-improvement). `bootstrap.overwrite=false`
+  (default) seeds only when absent, preserving runtime edits; set `true` to
+  replace the file with chart content on every deploy.
+  After seeding, the init container runs Hermes' non-interactive config
+  migration. It backs up `config.yaml` and `.env` before changes and restores
+  them if migration fails. An unversioned config is migrated as a fresh
+  partial config. An explicitly versioned config below the upstream support
+  floor (currently v12) is left untouched; follow the recovery steps below.
 - **`SOUL.md` identity**: set `.Values.soul.text` to seed a persistent agent
   identity into `HERMES_HOME/SOUL.md`. Leave it empty to let Hermes create its
   own starter file on first run. Its seed decision is independent from
@@ -419,6 +571,20 @@ the full upstream config (which would drift across Hermes versions).
   for identity content and scope.
 - **Secrets / API keys**: set under `.Values.env`. Rendered into a Secret and
   injected via `envFrom` as environment variables (env wins over `config.yaml`).
+
+#### Recovering a config older than the migration floor
+
+Hermes deliberately refuses to auto-migrate a config that explicitly declares
+an unsupported schema version. Back up `HERMES_HOME/config.yaml` before
+editing it. Review the upstream migration history first; if the file's keys
+are compatible with the supported floor, set `_config_version: 12` at its root
+and restart the workload. Hermes then runs the supported migrations and keeps
+a pre-migration backup under `HERMES_HOME/backups/config/`. Otherwise use
+`hermes setup` to generate a current config, then restore the settings you need
+from the backup. With `bootstrap.overwrite=false`, the chart preserves the
+existing file by default so you can perform this recovery. With
+`bootstrap.overwrite=true`, the chart replaces it with the values-rendered
+config before migration.
 
 ### Secret provisioning strategies
 
@@ -445,11 +611,113 @@ credential in an externally managed Kubernetes Secret referenced through
 first startup downloads the checksum-verified `bws` CLI into `HERMES_HOME`,
 so the pod needs egress to Bitwarden and GitHub Releases.
 
-- **Dashboard routing**: the management dashboard (`service.port`, default
-  9119) requires `--insecure` to bind beyond `127.0.0.1`, which the upstream
-  warns **exposes API keys on the network**. Route it only behind
-  authentication (for example, an oauth2-proxy/basic-auth Ingress annotation)
-  or on a private network.
+- **Dashboard routing**: see [Expose the dashboard](#expose-the-dashboard).
+
+### Expose the dashboard
+
+<p align="center"><a href="https://raw.githubusercontent.com/jyje/hermes-agent-helm/main/docs/images/dashboard-architecture.png"><img src="https://raw.githubusercontent.com/jyje/hermes-agent-helm/main/docs/images/dashboard-architecture.png" alt="Architecture: Browser to Ingress to Service port 9119 to the hermes dashboard process, which runs next to hermes gateway run in one pod and shares the HERMES_HOME volume" width="900"></a></p>
+
+The management dashboard (`service.port`, default 9119) is an s6 service inside
+the image and the only built-in web UI. The dashboard itself is upstream
+Hermes'; this chart only switches it on and exposes it. It shows API keys to whoever is signed
+in, and a signed-in user can also create shell hooks and use the Chat tab, so
+treat sign-in as shell access to the pod and work through these steps in order.
+
+**1. Choose a sign-in method.** On a non-loopback bind upstream's auth gate is
+mandatory: without a provider the dashboard **fails closed and never listens**.
+`--insecure` and `HERMES_DASHBOARD_INSECURE` are deprecated no-ops upstream.
+
+| Method | `dashboard.auth.provider` | Use it for | Example |
+| --- | --- | --- | --- |
+| Username and password | `basic` | A trusted network or a VPN. Upstream does not recommend it for public internet exposure. | [`values-ingress.yaml`](values-ingress.yaml) |
+| Nous Portal OAuth | `oauth` | A public host. In the portal set **Base URL** to the external origin (it appends `/auth/callback`). A personal-account client limits sign-in to its owner. | [`values-ingress-oauth.yaml`](values-ingress-oauth.yaml) |
+| Your own OpenID Connect provider | `oidc` | A public host with your own identity provider (a public PKCE client, no secret). The dashboard has no user allowlist: every identity the provider issues a token to for the client can sign in, so restrict the application at the provider. | [`values-ingress-oidc.yaml`](values-ingress-oidc.yaml) |
+
+Use `external` when the credentials come from `extraEnvFrom` or an
+ExternalSecret. Otherwise the template fails at render time when the provider's
+keys are missing from `env` or `extraEnv` (for OAuth and OIDC, from
+`config.dashboard.oauth` as well), instead of leaving an Ingress that answers
+502/503. `basic` needs `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` plus `_PASSWORD`
+or `_PASSWORD_HASH`. The OAuth client id and the OIDC issuer are not secrets, so
+the examples keep them under `config.dashboard.oauth`.
+
+**2. Turn it on and route it.** Set `dashboard.enabled: true` (it renders
+`HERMES_DASHBOARD=1`), `service.enabled: true`, and an `ingress` or `httpRoute`.
+`dashboard.publicUrl` feeds `config.dashboard.public_url`. When empty it is
+derived from the first Ingress host (`https` once `ingress.tls` is set); set it
+explicitly for an HTTPRoute. It must equal the external origin registered with
+the identity provider. A value already set under `config.dashboard` wins.
+
+Prefer `dashboard.enabled` over putting `HERMES_DASHBOARD=1` in `extraEnv` or
+`env`. The image honors the bare variable, but the chart cannot see it, so the
+readiness probe, the derived `public_url` and `trusted_proxies`, the
+auth-provider check, and the trusted-proxy warning are all skipped. If you keep
+the variable, add your own `probes.readiness`, for example a `tcpSocket` probe on
+`service.port`.
+
+**3. Set a trusted proxy.** Behind a TLS-terminating Ingress, list the
+controller in `dashboard.trustedProxies` (it feeds
+`config.dashboard.trusted_proxies`; an exact IP or a bounded CIDR, and
+`0.0.0.0/0` is rejected). Without it upstream ignores `X-Forwarded-Proto`,
+sign-in still works, and the session cookies are not marked `Secure`. The gap is
+silent, so the release notes print a warning when the dashboard is served over
+`https` without one. List the address the dashboard sees as its peer, which
+depends on the controller:
+
+- A regular controller pod: its pod IP or the pod CIDR. Look it up with
+  `kubectl get pods -n <controller namespace> -o wide`.
+- A host-network controller (for example the MicroK8s ingress): the address of
+  the node it runs on. On an overlay CNI such as Calico VXLAN this only holds
+  for a controller on the **same node** as the dashboard pod; a controller on
+  another node reaches it from that node's tunnel address, which lies inside the
+  pod network. Measured on MicroK8s with one controller per node: with only the
+  node network listed, sign-in through the other nodes worked but the cookies
+  lost `Secure`. List both the node network and the pod network (for example
+  `10.0.4.0/24` and `10.1.0.0/16`). Find the pod network with
+  `kubectl get ippools.crd.projectcalico.org` (Calico) or
+  `kubectl get nodes -o jsonpath='{.items[*].spec.podCIDR}'`.
+
+An exact IP stops matching when the controller pod is recreated; prefer a
+bounded CIDR outside of tests.
+
+**4. Changing it later.** `public_url` and `trusted_proxies` are written into
+`config.yaml` when the volume is first seeded, and `bootstrap.overwrite`
+defaults to `false`. A later `helm upgrade` that changes the host or any
+`dashboard.*` value therefore does **not** reach the pod, and a stale
+`public_url` breaks the OAuth and OIDC callback. For that upgrade pass
+`--set bootstrap.overwrite=true`, which replaces `config.yaml` (and a configured
+`SOUL.md`) with the chart-rendered content, so back up runtime edits first, then
+go back to `false`.
+
+**5. Expect a slow first start.** The first start can take minutes while bundled
+skills sync onto the volume (longer on network storage). While the dashboard is
+enabled the chart renders a TCP readiness probe on `service.port`
+(`dashboard.readinessProbe`), so the pod stays NotReady, and the Ingress does not
+route to it, until the dashboard listens. `helm --wait` waits for that. An
+explicit `probes.readiness` wins, and readiness never restarts the pod.
+
+**6. Check it.** Without a session `GET /` redirects to the sign-in page and
+`/api/env` and `/api/config` return 401. After signing in, `GET /api/auth/me`
+reports the provider and the session cookies are `__Host-`, `Secure` and
+`HttpOnly`.
+
+| Symptom | Likely cause |
+| --- | --- |
+| The Ingress answers 502 right after install | The first start is still running; the pod is NotReady until the dashboard listens. |
+| The dashboard never listens | No auth provider is configured, so the gate fails closed. |
+| OIDC: `/auth/login` answers 503 | The issuer is wrong. The response body names the reason (`OIDC discovery returned 404 for ...`); a proxy with custom error pages can hide it, so query the Service directly. A trailing-slash difference in the issuer is tolerated. |
+| The identity provider says `Unregistered redirect_uri` (OIDC) or the portal says `redirect_uri_mismatch` (OAuth) | The external origin differs from what is registered. If you changed the host, see step 4. |
+| Sign-in works but the cookies are not `Secure` | No trusted proxy, a wrong address, or a `*.localhost` host (upstream treats loopback hosts as a development setup). Behind a host-network controller on an overlay CNI it can depend on which node the request enters: list the pod network as well (step 3). |
+| After enabling `networkPolicy` the Ingress times out, possibly only through some controllers | The policy denies all inbound traffic and the controller is not allowed. See step 7. |
+
+**7. With a NetworkPolicy.** `networkPolicy.enabled` denies all inbound traffic,
+so it silently cuts the Ingress off from the dashboard while the pod stays Ready
+(the kubelet probe is not affected). Add a rule for port 9119 to
+`networkPolicy.extraIngress`. A host-network controller is not matched by a pod or
+namespace selector. On an overlay CNI (Calico VXLAN measured) allow both the node
+network and the pod network, and use the same two CIDRs in
+`dashboard.trustedProxies`. The measured rules and a ready overlay are in
+[`values-networkpolicy-dashboard.yaml`](values-networkpolicy-dashboard.yaml).
 
 ### API server and webhook listeners
 
@@ -461,9 +729,10 @@ for a loopback-only server. Use `apiServer.corsOrigins` only for an explicit,
 narrow browser-origin allowlist. See the upstream [API server
 guide](https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server).
 
-`webhook.enabled` starts the one generic webhook receiver. Telegram, Discord,
-Slack, and other integrations are routes behind that listener, not separate
-listeners. Set `WEBHOOK_SECRET` or a per-route secret through `env` or
+`webhook.enabled` starts the generic webhook receiver and its configured routes.
+Native messenger webhook modes, such as Telegram and WhatsApp Cloud, use
+separate listeners and are not started by this switch.
+Set `WEBHOOK_SECRET` or a per-route secret through `env` or
 `extraEnvFrom`; see the upstream [webhook
 guide](https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks).
 
@@ -472,6 +741,13 @@ the legacy dashboard-only Service, or specify every Service port explicitly.
 The copy-ready [`values-api-server-and-webhook.yaml`](values-api-server-and-webhook.yaml)
 overlay exposes API server and webhook ports and references an external Secret
 for the required credentials.
+
+The [public listener inventory](https://jyje.github.io/hermes-agent-helm/advanced/integrations/listeners/)
+lists version-specific ports, bind addresses, authentication and chart wiring.
+For Telegram's native receiver, use
+[`values-telegram-webhook.yaml`](values-telegram-webhook.yaml): it explicitly
+connects the listener, Service and TLS Ingress. Ordinary polling remains outbound
+and needs none of those resources.
 
 ### A2A (Agent-to-Agent) listener
 
@@ -516,6 +792,10 @@ targets this chart's Service, so it requires `service.enabled: true`; explicitly
 named external Services are allowed without the chart Service. HTTPRoute uses
 the same defaulting rule for each `backendRefs` entry. The chart fails early if
 an implicit chart-Service backend would point at no Service.
+
+`ingress.annotations` and `httpRoute.annotations` add metadata to each resource,
+such as external-dns hints or controller- and Gateway implementation-specific
+settings.
 
 [`values-ingress-listeners.yaml`](values-ingress-listeners.yaml) routes `/v1`
 and webhook traffic through distinct Ingress hosts and Service ports.
@@ -592,15 +872,35 @@ config:
       - "rm -rf /"       # any approval/yolo logic even sees them: safe to keep
       - "curl.*\\|.*sh"  # even in yolo mode
     cron_mode: deny       # unattended cron runs: "deny" (default) or "approve"
+    unattended_mode: deny # API server / webhook sessions: "deny" (default) or "approve"
+    single_query_mode: deny  # one-shot `hermes chat -q` runs: same choice
     discord_prompt_timeout: 120  # seconds a Discord button prompt stays live
                                  # (clamped upstream; default 300s / 5 min)
 ```
+
+`cron_mode`, `unattended_mode` and `single_query_mode` are the three
+"nobody can answer" switches. They cover, respectively, cron jobs, sessions
+that arrive through the `apiServer` / `webhook` listeners this chart can
+expose, and one-shot `-q` runs. Each defaults to `deny`: when such a session
+hits a dangerous-command prompt, the command is refused immediately instead
+of blocking for the approval timeout, and the agent has to find another
+path. `approve` auto-approves everything in that context. Messaging
+platforms with a human on the other end (Discord, Telegram, ...) are not
+covered by these switches: they get the interactive prompt, bounded by the
+platform's prompt timeout.
+
+Separately from command approvals, writes to the agent's own instruction
+files (`AGENTS.md`, `SOUL.md`, skills, memory stores) always ask for approval
+and fail closed when no human channel exists, with no yolo bypass
+(upstream `security.protected_instruction_files`, on by default). Expect
+Hermes' self-improvement skill writes to prompt in chat rather than land
+silently.
 
 `approvals.deny` is a allowlist-of-refusals, not a full policy - it exists to
 hard-block specific dangerous patterns regardless of any other approval mode
 you run with. It does not, by itself, make the gateway non-interactive; pair
 it with whatever HERMES_YOLO_MODE / approval-mode setting fits your risk
-tolerance (see the [Configuration guide](https://hermes-agent.nousresearch.com/docs/user-guide/configuration)
+tolerance (see the [Security guide](https://hermes-agent.nousresearch.com/docs/user-guide/security)
 for the full picture - approvals policy is deliberately not duplicated here).
 
 ## Environment variables
@@ -621,25 +921,92 @@ A few more commonly-used ones, current as of image `{{ template "chart.appVersio
 | Variable | Purpose |
 | --- | --- |
 | `DEEPSEEK_API_KEY` | DeepSeek provider |
-| `FIREWORKS_API_KEY` | Fireworks AI provider |
-| `DEEPINFRA_API_KEY` / `DEEPINFRA_BASE_URL` | DeepInfra provider and optional endpoint override |
-| `UPSTAGE_API_KEY` / `UPSTAGE_BASE_URL` | Upstage Solar provider and optional endpoint override |
 | `ZAI_API_KEY` | Z.AI / GLM provider (built-in key `zai`; `GLM_BASE_URL` picks the Global/China/Coding-Plan endpoint) |
-| `AWS_REGION` / `AWS_PROFILE` | Amazon Bedrock provider |
+| `MODEL_API_KEY` | Meta Model API (Muse Spark) provider (built-in key `meta-ai`; `META_API_KEY` is accepted as an alias, `META_BASE_URL` overrides the endpoint) |
+| `NEBIUS_API_KEY` / `NEBIUS_BASE_URL` | Nebius Token Factory provider (built-in key `nebius-token-factory`) and optional endpoint override |
+| `RAMP_ROUTER_API_KEY` / `RAMP_ROUTER_BASE_URL` | Ramp Router provider (built-in key `router`) and optional endpoint override |
+| `TOKENPLAN_API_KEY` / `TOKENPLAN_BASE_URL` | Tencent TokenPlan provider (built-in key `tencent-tokenplan`, Anthropic Messages endpoint) and optional endpoint override |
 | `AZURE_FOUNDRY_API_KEY` | Microsoft Foundry / Azure OpenAI provider |
-| `NOUS_INFERENCE_BASE_URL` | Override the Nous OAuth inference endpoint |
 | `HERMES_WRITE_SAFE_ROOT` | Restrict `write_file`/`patch` to these root dirs (OS path separator for multiple) |
 | `SLACK_BOT_TOKEN` / `SLACK_APP_TOKEN` | Slack bot (Socket Mode) |
 | `MATRIX_HOMESERVER` / `MATRIX_ACCESS_TOKEN` | Matrix homeserver integration |
 | `WHATSAPP_CLOUD_PHONE_NUMBER_ID` / `WHATSAPP_CLOUD_ACCESS_TOKEN` | WhatsApp Cloud API |
-| `HERMES_MAX_ITERATIONS` | Tool-calling loop limit (default: 90) |
+| `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` / `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` | Bundled username/password provider for the dashboard auth gate, which upstream engages on any non-loopback bind; `HERMES_DASHBOARD_PUBLIC_URL` declares the external origin behind an Ingress |
+| `HERMES_MAX_ITERATIONS` | Tool-calling iteration budget per conversation (default: 500, then one wrap-up grace call); a hard cap is `config.agent.max_turns`, unlimited upstream by default and no longer seeded by this chart |
 | `HERMES_AGENT_TIMEOUT` | Gateway inactivity timeout (default: 1800s / 30 min) |
-| `SESSION_IDLE_MINUTES` | Idle session reset window (default: 1440) |
 | `HERMES_TIMEZONE` | IANA timezone override |
 
 > **Not env-configurable:** context compression, fallback providers, and
 > provider routing live in `config.yaml` only (under `.Values.config`), with
 > no environment variable equivalent.
+
+## Upgrade notes
+
+### Retired zero-key Nous example
+
+The `values-nous.yaml` overlay has been removed. Hermes v0.22 removed
+`HERMES_GUEST_ONBOARDING`; the free `nous/welcome` onboarding model is now
+desktop-only, so that overlay no longer provides a zero-key gateway deployment.
+See the [official v0.22.0 notes](https://github.com/NousResearch/hermes-agent/releases/tag/v0.22.0).
+
+Remove the old overlay and environment variable from your deployment inputs.
+Choose a provider example such as [OpenAI](values-openai.yaml) or
+[OpenRouter](values-openrouter.yaml) and supply your own credentials. Existing
+volumes keep their `config.yaml` when `bootstrap.overwrite: false`: update the
+persisted provider/model configuration too, or intentionally reseed it after
+backing it up (see [Configuration model](#configuration-model)). This retires
+the anonymous example; it does not remove upstream's authenticated Nous support.
+
+### Hermes v0.22 (chart 1.20.0)
+
+> **If you ran v0.22.1:** upstream says that release was built from the wrong
+> commit and that sessions used by its gateway cannot be deleted in v0.22.2.
+> Keep a backup of your Hermes volume before changing versions. This exception
+> concerns deployments that ran v0.22.1, including explicit `image.tag`
+> overrides; it does not describe fresh v0.22.2 installs or direct upgrades
+> that skipped v0.22.1. Keep the chart's v0.22.2 default and avoid selecting
+> v0.22.1. No safe rollback or manual database repair is established here:
+> do not delete `state.db` to work around it. See the
+> [official v0.22.2 correction and known issue](https://github.com/NousResearch/hermes-agent/releases/tag/v0.22.2).
+
+Chart 1.20.0 moves the default image from `v2026.9.24` (Hermes v0.21.5) to
+`v0.22.2`. The chart's values and templates did not change, but Hermes itself
+changed a few defaults that reach data on the persistent volume. Read these
+before upgrading a release that already has history.
+
+- **Old sessions are pruned at startup.** `sessions.auto_prune` is now on by
+  default: ended sessions inactive for `sessions.retention_days` (default 90)
+  are deleted from `state.db` when the gateway starts. Open sessions are never
+  touched. To keep everything, set it before the upgrade:
+
+  ```yaml
+  config:
+    sessions:
+      auto_prune: false
+  ```
+
+  With the default `bootstrap.overwrite: false`, an existing `config.yaml` on
+  the volume is not replaced, so this value only reaches new installs. On an
+  existing release, run
+  `kubectl exec <pod> -- hermes config set sessions.auto_prune false` before
+  upgrading, or deploy once with `bootstrap.overwrite: true` (see
+  [Configuration model](#configuration-model)).
+- **Idle and daily session resets are retired.** Chats no longer reset on a
+  timer, and `SESSION_IDLE_MINUTES` and the `session_reset` idle/daily modes
+  have no effect (a config that still sets them logs a warning). Use `/new` or
+  `/reset` in the chat to start fresh.
+- **One gateway serves every profile.** Upstream folds per-profile gateways
+  into one multiplexed gateway per machine. Each chart release is its own pod
+  with one gateway, so [Agent team](#agent-team) deployments are unaffected.
+- **Image tags are semver.** Pin `image.tag` as `vX.Y.Z` from now on; see
+  [Overview](#overview).
+- **Security fixes.** The new image includes upstream's dashboard
+  authentication hardening from v0.21.6. If you
+  [expose the dashboard](#expose-the-dashboard), upgrade promptly.
+
+See the upstream
+[v0.22.0 release notes](https://github.com/NousResearch/hermes-agent/releases/tag/v0.22.0)
+for everything else.
 
 ## FAQ
 
@@ -693,6 +1060,10 @@ comment), or use the SealedSecret + `extraEnvFrom` pattern above.
 | [`values-openai-codex.yaml`](values-openai-codex.yaml) | OpenAI Codex (`openai-codex`) | **ChatGPT/Codex device login** + Discord bot |
 | [`values-anthropic-and-discord.yaml`](values-anthropic-and-discord.yaml) | Anthropic (Claude) | **Discord bot** wired in |
 | [`values-openai-and-telegram.yaml`](values-openai-and-telegram.yaml) | OpenAI (`openai-api`) | **Telegram bot** wired in |
+| [`values-telegram-team-assistant.yaml`](values-telegram-team-assistant.yaml) | OpenAI (`openai-api`) | **One Telegram bot shared by several authorized users** |
+| [`values-telegram-team-leader.yaml`](values-telegram-team-leader.yaml) + [`values-telegram-team-member.yaml`](values-telegram-team-member.yaml) | NVIDIA NIM | **Telegram leader/member team** with mention gating and loop safeguards |
+| [`examples/argocd/hermes-team-telegram.yaml`](../../examples/argocd/hermes-team-telegram.yaml) | any | **ArgoCD ApplicationSet** for one leader and multiple Telegram members, with per-release Secrets |
+| [`values-google-chat.yaml`](values-google-chat.yaml) | OpenAI (`openai-api`) | **Google Chat bot** over a Pub/Sub pull subscription, service-account JSON mounted via `extraVolumes` |
 | [`values-openai.yaml`](values-openai.yaml) | OpenAI (`openai-api`) |: |
 | [`values-anthropic.yaml`](values-anthropic.yaml) | Anthropic (Claude) |: |
 | [`values-gemini.yaml`](values-gemini.yaml) | Google Gemini |: |
@@ -705,12 +1076,16 @@ comment), or use the SealedSecret + `extraEnvFrom` pattern above.
 | [`values-bitwarden.yaml`](values-bitwarden.yaml) | any | **Bitwarden Secrets Manager** supplies provider keys at startup |
 | [`values-litellm.yaml`](values-litellm.yaml) | LiteLLM proxy (remote/Ingress) |: |
 | [`values-litellm-k8s.yaml`](values-litellm-k8s.yaml) | LiteLLM proxy (in-cluster Service DNS) |: |
-| [`values-ingress.yaml`](values-ingress.yaml) | OpenAI (`openai-api`) | **Dashboard Ingress** wired in (basic-auth) |
+| [`values-ingress.yaml`](values-ingress.yaml) | OpenAI (`openai-api`) | **Dashboard Ingress** wired in (dashboard enabled, upstream password gate, trusted proxy) |
+| [`values-ingress-oauth.yaml`](values-ingress-oauth.yaml) | OpenAI (`openai-api`) | **Dashboard Ingress with Nous Portal OAuth**, the upstream-recommended sign-in for an internet-facing dashboard |
+| [`values-ingress-oidc.yaml`](values-ingress-oidc.yaml) | OpenAI (`openai-api`) | **Dashboard Ingress with your own OpenID Connect provider** (public PKCE client, no Nous Portal) |
 | [`values-api-server-and-webhook.yaml`](values-api-server-and-webhook.yaml) | OpenAI (`openai-api`) | **API server + webhook** with explicit Service ports and external listener secrets |
+| [`values-telegram-webhook.yaml`](values-telegram-webhook.yaml) | OpenAI (`openai-api`) | **Native Telegram webhook**: explicit receiver, Service port and TLS Ingress with external credentials |
 | [`values-a2a.yaml`](values-a2a.yaml) | OpenAI (`openai-api`) | **A2A (Agent-to-Agent)**, config.yaml passthrough + explicit Service port, so other A2A agents can discover and drive this one |
 | [`values-ingress-listeners.yaml`](values-ingress-listeners.yaml) | OpenAI (`openai-api`) | **Ingress listener routing**: `/v1` API and webhook hosts use separate Service ports |
 | [`values-httproute.yaml`](values-httproute.yaml) | OpenAI (`openai-api`) | **Gateway API HTTPRoute**: listener routing through a pre-existing Gateway |
 | [`values-networkpolicy-litellm.yaml`](values-networkpolicy-litellm.yaml) | LiteLLM proxy (in-cluster) | **Egress-locked NetworkPolicy**: blocks RFC1918 and the cloud metadata endpoint, with a precise allowlist for the LiteLLM Service |
+| [`values-networkpolicy-dashboard.yaml`](values-networkpolicy-dashboard.yaml) | OpenAI (`openai-api`) | **Dashboard Ingress with NetworkPolicy on**: the inbound rule for port 9119 and the matching trusted proxies, measured on a host-network controller with Calico VXLAN |
 | [`values-hardened.yaml`](values-hardened.yaml) | OpenAI (`openai-api`) | **Pod Security Standards `restricted`**: non-root, read-only rootfs, dropped capabilities - CI-verified in a `restricted`-enforcing namespace |
 | [`values-soul.yaml`](values-soul.yaml) | any | **Persistent identity**: pragmatic engineering style, with runtime edits preserved |
 | [`values-multi-agent-collab.yaml`](values-multi-agent-collab.yaml) | any | **Collaborating pair**: two agents handing off by @mention in a shared Discord channel |
