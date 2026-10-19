@@ -9,8 +9,8 @@ fullnameOverride: ""
 image:
   # -- Container image repository (multi-arch: amd64 + arm64).
   repository: nousresearch/hermes-agent
-  # -- Image tag. Upstream uses DATE-based tags (e.g. "v2026.6.5" ==
-  # Hermes v0.16.0), plus `latest` / `main`. There is no semver tag.
+  # -- Image tag. Upstream uses semver tags (e.g. "v0.22.2") since
+  # October 2026; older images use date-based tags (e.g. "v2026.9.24").
   # Empty defaults to `.Chart.AppVersion`.
   tag: ""
   # -- Image pull policy.
@@ -106,7 +106,13 @@ config:
     # clusters (e.g. MicroK8s / Raspberry Pi). Keep this `local`.
     backend: local
   agent:
-    max_turns: 90
+    # Upstream leaves `max_turns` unlimited: a hard turn cap caused silent
+    # mid-task truncation, so it now relies on the HERMES_MAX_ITERATIONS
+    # budget (500, with a wrap-up grace call) plus `gateway_timeout` below.
+    # Earlier chart versions seeded `max_turns: 90`, which was just a mirror
+    # of the then-upstream default, not a chart decision. Set it here only as
+    # a deliberate per-deployment cost guard.
+    # max_turns: 90
     gateway_timeout: 1800
 
 # -- Contents of SOUL.md, seeded into HERMES_HOME alongside config.yaml. It
@@ -115,29 +121,47 @@ config:
 soul:
   text: ""
 
+# Post a one-line message when the gateway has started, so you know when to
+# talk to the agent. A first boot can take minutes (skill sync, model warm-up),
+# and Hermes itself only announces a *restart*, not a fresh start. The chart
+# seeds a `gateway:startup` hook into HERMES_HOME/hooks/ready-notify that reuses
+# the bot credentials already in `env`/`extraEnvFrom`.
+readyNotify:
+  # -- Seed the hook and enable it. Off by default.
+  enabled: false
+  # -- Where to post: `discord` (DISCORD_BOT_TOKEN + DISCORD_HOME_CHANNEL) or
+  #    `telegram` (TELEGRAM_BOT_TOKEN + TELEGRAM_HOME_CHANNEL). Required when
+  #    enabled, unless `auth.deviceFlow.enabled` is true: then empty follows
+  #    `auth.deviceFlow.notify`.
+  notify: ""
+
 # Seeding of config.yaml into HERMES_HOME (the persistent volume). Hermes writes
 # to its home at runtime (skills, auth.json, self-improvement), so config lives
 # in the writable volume rather than a read-only mount.
 bootstrap:
   # -- Seed chart-managed files into HERMES_HOME via an init container.
   enabled: true
-  # -- true: overwrite config.yaml and configured SOUL.md with chart content on
-  #    every deploy (declarative). false: seed each file only if it does not
-  #    already exist (preserve runtime edits).
-  overwrite: true
+  # -- false: seed config.yaml and configured SOUL.md only if absent, preserving
+  #    runtime edits across upgrades. Set true to replace both files with chart
+  #    content on every deploy.
+  overwrite: false
 
 # ---------------------------------------------------------------------------
 # Team mode -> one chart release still runs one independent Hermes identity,
-# while several releases share a Discord thread and one RWX knowledge volume.
-# The chart mounts one shared, read-only roster skill and appends a small
-# role-specific environment hint so the agent knows when to load it. Cross-agent
-# task handoffs stay visible in Discord; the shared volume stores only durable,
-# accepted knowledge.
+# while several releases share one chat (a Discord thread, or a Telegram group
+# or forum topic) and one RWX knowledge volume. The chart mounts one shared,
+# read-only roster skill and appends a small role-specific environment hint so
+# the agent knows when to load it. Cross-agent task handoffs stay visible in
+# the chat; the shared volume stores only durable, accepted knowledge.
 # ---------------------------------------------------------------------------
 team:
   # -- Enable the chart-native leader/member team protocol, roster skill, and
   # shared knowledge volume mount for this release.
   enabled: false
+  # -- Chat platform the team coordinates on: `discord` or `telegram`. It picks
+  # the mention format and the gates team mode enforces (see the chart README,
+  # "Agent team"). Every release in one team must use the same platform.
+  platform: discord
   # -- Stable team identifier used in the generated skill and default names.
   name: ""
   # -- This release's team role.
@@ -151,6 +175,8 @@ team:
     # -- Environment variable containing the leader's Discord user ID. Supply
     # it through a Secret/SealedSecret; the ID is expanded by Hermes at runtime.
     mentionEnv: ""
+    # -- Telegram only: the leader bot's @username, without the `@`.
+    username: ""
   # -- Configured members. ApplicationSet users define this once in the common
   # template so every generated release receives the same complete roster.
   members: []
@@ -158,6 +184,8 @@ team:
   #    role: Research and evidence gathering
   #    mentionEnv: TEAM_RESEARCHER_DISCORD_ID
   #    capabilities: [research, source-review]
+  #  Telegram teams give each member `username: <bot_username>` instead of
+  #  `mentionEnv`.
   protocol:
     # -- Maximum serial leader-to-member handoffs before escalating to a human.
     maxHandoffs: 6
@@ -298,6 +326,50 @@ extraContainers: []
 extraResources: []
 
 # ---------------------------------------------------------------------------
+# externalSecret -> replace the chart's own env Secret (above) with an
+# ExternalSecret for External Secrets Operator (ESO) users. This is a sole
+# replacement, not an addition: enabling it stops `secret.yaml` from
+# rendering entirely, and `env` above is then ignored - wire secret values
+# solely through `data`/`dataFrom` below. Every chart-owned envFrom reference
+# (main container, auth device-login init container, helm test Job) follows
+# automatically, no `extraEnvFrom` needed.
+#
+# ESO does not guarantee restarting the Pod when the external provider
+# rotates the secret's contents later - that's a reloader controller's job,
+# and this chart doesn't bundle one. Pair this with a tool like Reloader or
+# Stakater if that's required.
+# ---------------------------------------------------------------------------
+externalSecret:
+  # -- Render an ExternalSecret instead of the chart's own env Secret.
+  #    Requires the External Secrets Operator CRDs to already be installed
+  #    in-cluster.
+  enabled: false
+  # -- How often ESO resyncs the target Secret from the provider.
+  refreshInterval: 1h
+  # -- Which SecretStore/ClusterSecretStore to pull from. `name` is required
+  #    when enabled.
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: ""
+  target:
+    # -- Target Secret name. Empty defaults to the chart's own env Secret
+    #    name (`<fullname>-env`); when set, every chart-owned envFrom
+    #    reference uses this name instead.
+    name: ""
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  # -- Individual remoteRef -> key mappings. See the External Secrets
+  #    Operator docs for the full field set.
+  data: []
+  #  - secretKey: OPENAI_API_KEY
+  #    remoteRef:
+  #      key: hermes-agent/openai
+  #      property: api-key
+  # -- Bulk provider-native secret imports. See the External Secrets
+  #    Operator docs for the full field set.
+  dataFrom: []
+
+# ---------------------------------------------------------------------------
 # auth -> Interactive credential bootstrap.
 #
 # By default the agent authenticates with the static provider key from `env`
@@ -320,8 +392,9 @@ auth:
     provider: github-copilot
     # -- Where to deliver the verification URL + user code for human approval.
     #    `discord` reuses the agent's bot creds (DISCORD_BOT_TOKEN +
-    #    DISCORD_HOME_CHANNEL from `env`/`extraEnvFrom`). The code is always
-    #    also printed to the init container logs as a fallback.
+    #    DISCORD_HOME_CHANNEL from `env`/`extraEnvFrom`); `telegram` reuses
+    #    TELEGRAM_BOT_TOKEN + TELEGRAM_HOME_CHANNEL the same way. The code is
+    #    always also printed to the init container logs as a fallback.
     notify: discord
     # -- Seconds to wait for the human to authorize before the init container
     #    fails (and retries). Keep below the provider's device-code validity.
@@ -369,7 +442,11 @@ auth:
         tokenEnv: COPILOT_GITHUB_TOKEN
         # -- Optional endpoint to verify an existing token is still live; on
         #    401/403 the init container re-runs the login. Empty = skip the check.
-        validateUrl: https://api.github.com/copilot_internal/v2/token
+        #    `/user` answers 401 for a revoked token and does not depend on the
+        #    Copilot plan. The old `copilot_internal/v2/token` exchange endpoint
+        #    returned 403 for a valid token on a Copilot Free account, which made
+        #    every restart ask for a new login.
+        validateUrl: https://api.github.com/user
       openai-codex:
         # -- Use the OpenAI Codex device-code flow bundled with the pinned
         #    Hermes version and persist refreshable credentials in auth.json.
@@ -379,6 +456,17 @@ auth:
 
 # ---------------------------------------------------------------------------
 # Persistence: HERMES_HOME state lives here.
+#
+# HERMES_HOME holds SQLite databases (state.db and others) in WAL mode by
+# default. A PVC's access mode (RWO/RWX) says nothing about whether the
+# filesystem underneath supports the file locking and shared memory WAL needs:
+# prefer block-backed storage (ext4/xfs), and check what is actually mounted
+# at mountPath. Hermes detects virtiofs and 9p and falls back to `delete`
+# journaling for a fresh database there; it does not detect NFS/CIFS. On a
+# network filesystem set `config.database.journal_mode: delete` BEFORE the
+# first start. An existing WAL database is never switched live: stop the
+# workload first (see the storage guide). Keep one private HERMES_HOME per
+# agent; share knowledge through `team.sharedVolume`, never HERMES_HOME.
 # ---------------------------------------------------------------------------
 persistence:
   enabled: true
@@ -393,16 +481,70 @@ persistence:
   existingClaim: ""
 
 # ---------------------------------------------------------------------------
-# Networking. `hermes gateway run` is primarily OUTBOUND (Telegram/Discord/etc.)
-# and exposes no inbound API, so no access Service is created by default. A
+# Networking. `hermes gateway run` uses outbound messenger connections by
+# default, so no access Service is created by default. A
 # headless Service is always created for StatefulSet DNS/governance.
 #
-# The management `dashboard` (default port 9119, binds to 127.0.0.1), optional
-# OpenAI-compatible API server, and optional webhook receiver are inbound HTTP
-# listeners. Enabling a listener does not expose it through Kubernetes: choose
-# its Service ports explicitly below. The dashboard requires `--insecure` for a
-# non-loopback bind, which the upstream warns EXPOSES API KEYS on the network.
+# The management `dashboard`, optional OpenAI-compatible API server, and
+# optional webhook receiver are inbound HTTP listeners. Enabling a listener
+# does not expose it through Kubernetes: choose its Service ports explicitly
+# below.
+#
+# The dashboard is an s6 service inside the image, off by default: set
+# `dashboard.enabled: true` to start it (see the `dashboard` block below).
+# Prefer that over putting `HERMES_DASHBOARD=1` in `extraEnv`/`env`: the image
+# honors the bare variable, but the chart cannot see it, so none of the
+# dashboard wiring applies (no readiness probe, so an Ingress answers 502 during
+# the first start; no derived `public_url`/`trusted_proxies`; no auth check; no
+# trusted-proxy warning). If you must keep the variable, add your own
+# `probes.readiness`, for example a `tcpSocket` probe on `service.port`.
+# In-container it binds
+# `0.0.0.0:9119` (`HERMES_DASHBOARD_HOST` / `_PORT`), and on any non-loopback
+# bind upstream's auth gate is mandatory: provide the bundled password
+# provider (`HERMES_DASHBOARD_BASIC_AUTH_USERNAME` + `_PASSWORD`, secrets, so
+# put them in `env`), OAuth (`HERMES_DASHBOARD_OAUTH_CLIENT_ID`) or OIDC, or
+# the service fails closed and stays down. `HERMES_DASHBOARD_INSECURE` and the
+# `--insecure` flag are deprecated no-ops upstream and do not disable the
+# gate. Behind a TLS-terminating Ingress also set `config.dashboard.public_url`
+# and `config.dashboard.trusted_proxies`; see values-ingress.yaml.
 # ---------------------------------------------------------------------------
+dashboard:
+  # -- Start the supervised management dashboard (renders `HERMES_DASHBOARD=1`).
+  #    Exposing it also needs `service.enabled` plus an `ingress` or `httpRoute`.
+  #    `public_url` and `trusted_proxies` are written into `config.yaml` when the
+  #    volume is first seeded, so changing the host or `dashboard.*` later needs
+  #    `--set bootstrap.overwrite=true` for that upgrade (see the README, "Expose the
+  #    dashboard").
+  enabled: false
+  # -- External origin the dashboard is reached at, for example
+  #    `https://hermes.example.com`. Feeds `config.dashboard.public_url`. When
+  #    empty and `ingress.enabled`, it is derived from the first Ingress host
+  #    (`https` when `ingress.tls` is set). Set it explicitly for an HTTPRoute.
+  #    A value already set under `config.dashboard` wins.
+  publicUrl: ""
+  # -- Peers allowed to supply X-Forwarded-Proto / X-Forwarded-For, usually the
+  #    ingress controller's pod CIDR. Feeds `config.dashboard.trusted_proxies`;
+  #    upstream rejects unbounded entries such as 0.0.0.0/0.
+  trustedProxies: []
+  readinessProbe:
+    # -- Render a TCP readiness probe on `service.port` while the dashboard is
+    #    enabled, so the pod only joins the Service once the dashboard
+    #    listens. The first start can take minutes (bundled skills sync onto
+    #    the volume), during which an Ingress would otherwise answer 502. An
+    #    explicit `probes.readiness` wins. Readiness never restarts the pod.
+    enabled: true
+    # -- Seconds between readiness checks.
+    periodSeconds: 10
+  auth:
+    # -- Upstream auth provider the credentials below are for. The template
+    #    fails when the provider's required keys are missing from `env` or
+    #    `extraEnv`: `basic` (HERMES_DASHBOARD_BASIC_AUTH_USERNAME + _PASSWORD
+    #    or _PASSWORD_HASH), `oauth` (HERMES_DASHBOARD_OAUTH_CLIENT_ID) or
+    #    `oidc` (HERMES_DASHBOARD_OIDC_ISSUER + _CLIENT_ID). Use `external`
+    #    when credentials arrive through `extraEnvFrom` or an ExternalSecret,
+    #    which the chart cannot inspect.
+    provider: basic
+
 apiServer:
   # -- Enable Hermes' OpenAI-compatible HTTP API server.
   enabled: false
@@ -416,8 +558,8 @@ apiServer:
   corsOrigins: ""
 
 webhook:
-  # -- Enable Hermes' generic inbound webhook receiver. Telegram, Discord,
-  #    Slack, and other sources are routes behind this single listener.
+  # -- Enable Hermes' generic inbound webhook receiver. Native messenger
+  #    webhook modes (such as Telegram) are separate listeners configured via env/config.
   enabled: false
   # -- Webhook receiver port.
   port: 8644
@@ -448,7 +590,8 @@ service:
 # resources. Pick the one supported by your cluster. Any backend that omits a
 # Service name targets this chart's Service and therefore requires
 # `service.enabled: true`. Routing the management dashboard also requires
-# --insecure and strong authentication (see the `service` comment above).
+# the dashboard to be enabled with an auth provider (see the listener comment
+# above and values-ingress.yaml).
 ingress:
   # -- Create an Ingress resource.
   enabled: false
@@ -477,6 +620,9 @@ httpRoute:
   # -- Create a Gateway API HTTPRoute. The cluster must already provide the
   #    Gateway API CRD and a Gateway selected by `parentRefs`.
   enabled: false
+  # -- Annotations to add to the HTTPRoute (e.g. external-dns, cert-manager,
+  #    or Gateway implementation-specific policies).
+  annotations: {}
   # -- Gateway API parent references.
   parentRefs: []
   #  - name: my-gateway
