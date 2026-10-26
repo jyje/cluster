@@ -13,7 +13,7 @@ env:
 
 jobs:
   ping:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Send request
         run: |
