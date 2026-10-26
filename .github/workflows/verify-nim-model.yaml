@@ -1,0 +1,62 @@
+name: 🧪 verify nvidia nim model
+
+# On-demand check of whether a given NVIDIA NIM model id is actually live,
+# vs. merely rate-limited or genuinely retired. Run this before deleting a
+# model_list entry from clusters/r4spi/apps/litellm.yaml on the strength of
+# a stale "429 during verification" comment — 429 means "try again later",
+# not "gone". Never prints the API key; GitHub also auto-redacts any
+# occurrence of a registered secret value in logs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "NVIDIA NIM model id, e.g. z-ai/glm-5.2"
+        required: true
+        default: "z-ai/glm-5.2"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Call NVIDIA NIM chat completions
+        env:
+          NIM_API_KEY: ${{ secrets.NIM_API_KEY }}
+          MODEL: ${{ inputs.model }}
+        run: |
+          if [ -z "$NIM_API_KEY" ]; then
+            echo "::error::NIM_API_KEY secret is not set on this repository (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            https://integrate.api.nvidia.com/v1/chat/completions \
+            -H "Authorization: Bearer ${NIM_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"model\": \"${MODEL}\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 5}")
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response body:"
+          cat /tmp/resp.json
+          echo
+
+          case "$HTTP_CODE" in
+            200)
+              echo "✅ $MODEL is live and responding — do not delete it."
+              ;;
+            404)
+              echo "❌ $MODEL was not found on NVIDIA NIM — looks genuinely retired/down."
+              exit 1
+              ;;
+            429)
+              echo "⏳ $MODEL is rate-limited right now, not confirmed down. Re-run later before deleting."
+              exit 1
+              ;;
+            *)
+              echo "⚠️ Unexpected status $HTTP_CODE for $MODEL — inspect the response body above."
+              exit 1
+              ;;
+          esac
