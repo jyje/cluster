@@ -199,16 +199,6 @@ spec:
               # 262144 tokens".
               model_info:
                 max_input_tokens: 262144
-            -
-              model_name: "z-ai/glm-5.2"
-              litellm_params:
-                model: "nvidia_nim/z-ai/glm-5.2"
-                api_base: "https://integrate.api.nvidia.com/v1"
-                api_key: "os.environ/NIM_API_KEY"
-              # Not yet verified: NVIDIA NIM returned 429 (rate-limited) on
-              # every verification attempt this session. Leave unset rather
-              # than guess; re-verify and add model_info.max_input_tokens once
-              # the rate limit clears.
 
             # GitHub Copilot Models (June)
             # Auth is FILE-based: LiteLLM's github_copilot provider reads the
