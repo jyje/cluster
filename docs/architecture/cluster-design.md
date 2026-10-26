@@ -59,7 +59,7 @@ What those Applications compose into, bottom-up:
 | Layer | Components | Notes |
 |-------|-----------|-------|
 | **Edge / Ingress** | ingress-nginx, MetalLB (L2) | ingress is a hostNetwork DaemonSet — see [Decisions](#design-decisions) |
-| **Certificates** | cert-manager + Let's Encrypt (HTTP-01) | ClusterIssuers delivered as L4 extraResources |
+| **Certificates** | cert-manager + Let's Encrypt (HTTP-01) | ClusterIssuers delivered as L4 inline manifests (`extraObjects`) |
 | **Service Mesh** | Istio Ambient | *evaluation / temporarily disabled* |
 | **Storage** | Longhorn (block), SeaweedFS (object), NFS (legacy) | hybrid governance |
 | **Stateful data** | CloudNativePG, Qdrant | Postgres for metadata, vectors for RAG |
@@ -109,8 +109,9 @@ workloads whose addresses do **not** collide with the nodes.
 ### Declarative certificate trust
 
 The whole certificate chain is reproducible from git. `ClusterIssuer`s are not
-`kubectl apply`'d by hand — they ride along as **L4 extraResources** on the
-cert-manager Application, so the trust anchors version with the operator that
+`kubectl apply`'d by hand — they ride along as **L4 inline manifests** on the
+cert-manager Application (through the chart's native `extraObjects`, which takes
+each object as a YAML string), so the trust anchors version with the operator that
 consumes them. cert-manager then issues Let's Encrypt certs via the HTTP-01
 challenge through the NGINX ingress above.
 
