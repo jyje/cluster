@@ -83,4 +83,5 @@ kubectl get cluster.postgresql.cnpg.io -A -w
 | Resource list, old vs new (29 and 20 resources) | Identical |
 | `extraResources` hook, object and string form, old and new charts | Both forms render and the namespace expression is evaluated |
 | `kubectl diff` against the live cluster | Image tags, CRD additions, plugin `info` log level and sidecar image. No RBAC or Service change |
-| Operator rolling restart on a disposable cluster | **Not run.** The workstation disk was nearly full and the shared container VM was low on space. Behavior is taken from the upstream documentation |
+| Operator rolling restart on a disposable cluster | **Not run.** The workstation disk was nearly full and the shared container VM was low on space |
+| Operator rolling restart on the live cluster (2026-10-27) | Merged 11:26 UTC. All 12 PostgreSQL pods were on instance manager 1.30.1 and all 4 clusters were healthy at 11:45 UTC, about 19 minutes in total. The delay settings worked: clusters waited (`Cluster upgrade delayed`) and rolled one after another, each ending in a switchover. LiteLLM stayed connected to its database (`db: connected`) and all Argo CD Applications ended `Synced` and `Healthy` |
