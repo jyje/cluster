@@ -19,6 +19,10 @@ spec:
           pullPolicy: IfNotPresent
         agent:
           mode: managed
+        # Hardware workers, plans, the worker Service and the temperature agents move
+        # to their own namespace so the release namespace can later be restricted.
+        # Needs a maintenance window: see docs/operations/pifanctl-worker-namespace.md.
+        workerNamespace: pifanctl-workers
         networkPolicy:
           monitoringNamespaceSelector:
             kubernetes.io/metadata.name: observability
@@ -29,6 +33,16 @@ spec:
         # One shared fan on raspi-40 cools the complete four-node rack.
         # Keep the temperature curve aligned with the v0 cluster settings.
         extraResources:
+          # Workers and agents need hostPath volumes, which only the privileged Pod
+          # Security level allows. The namespace is kept if this entry is ever removed.
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: pifanctl-workers
+              labels:
+                pod-security.kubernetes.io/enforce: privileged
+              annotations:
+                argocd.argoproj.io/sync-options: Delete=false
           - apiVersion: pifanctl.jyje.online/v1
             kind: Fan
             metadata:
