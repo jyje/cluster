@@ -11,9 +11,10 @@ gives the workers and agents a namespace of their own. The operator keeps only
 Leases and Events in its own namespace.
 
 This is step 2 of pifanctl issue #91. Step 1 (1.2.2 to 1.5.1 in the same
-namespace) is done and verified. **Do not merge this change outside a
-maintenance window.** The fan follows failsafe duty while no worker holds a fresh
-heartbeat.
+namespace) is done and verified. Step 2 was applied on 2026-10-27 and verified,
+see "What was observed". **Do not repeat a change like this outside a maintenance
+window.** While no worker holds a fresh heartbeat the Fan reports
+`AwaitingWorker`, and the temperature rises.
 
 ## What the change does
 
@@ -42,7 +43,7 @@ operator, so Argo CD does not own them.
 ## Procedure
 
 1. Merge the pull request. Argo CD creates the namespace, restarts the operator with the new flag, updates the Roles and creates the new agents, Services, ServiceMonitors and NetworkPolicy.
-2. The new worker cannot drive the fan while the old worker holds the host lock. Members show `Unavailable` until the new agents report. This does not change failsafe behavior.
+2. The gap starts when the operator restarts with the new flag, not when you delete the old worker. From then on the Fan reports `AwaitingWorker`. The new worker cannot drive the fan while the old worker holds the host lock, so be ready to run the next command right after the merge.
 3. Delete the old hardware worker first, so the lock is released:
 
 ```sh
@@ -50,7 +51,7 @@ kubectl -n pifanctl get deploy
 kubectl -n pifanctl delete deploy <old-worker-deployment>
 ```
 
-4. The fan runs at failsafe duty (100 percent) until the new worker has a fresh heartbeat. During the 1.2.2 to 1.5.1 worker replacement this took about 30 seconds, measured by ten-second polling. Treat that as the order of magnitude, not a guarantee.
+4. The new worker was Ready about 22 seconds after the old one was deleted. Do not assume the fan ran at 100 percent during the gap: the Fan reported no duty and no RPM then, and the temperature rose (see "What was observed").
 5. Delete the other old objects in the release namespace by name:
 
 ```sh
@@ -69,6 +70,21 @@ kubectl -n pifanctl-workers get pods
 ```
 
 Also check that Prometheus lists the new targets and that the old ones are gone.
+
+## What was observed (applied 2026-10-27, UTC)
+
+| Moment | Observation |
+|--------|-------------|
+| Pull request merged | 11:51:31 |
+| Fan state at the first sample, right before deleting the old worker | `AwaitingWorker`, no duty, no RPM |
+| Old worker deleted | about 11:52:58 |
+| Fan `Regulating` again | within 27 seconds of the deletion (11:53:25), duty 95 percent |
+| Duty afterwards | 55 percent, then 42.7, then 41.3 percent, back on the curve |
+| Control temperature | 49.6 °C before, **54.55 °C** at the first `Regulating` sample, 50.15 °C about 35 seconds later |
+
+The gap lasted between roughly 30 and 75 seconds. The temperature rose about 5 °C, which does not look like a fan at 100 percent, but the fan speed during the gap was **not measured**. Plan the window with that in mind and keep an eye on the temperature.
+
+After the move: all four `nodeTemperatures` members `Fresh`, `CoolingZone` Ready and Regulating, the tachometer reading 1014 RPM, Argo CD `Synced` and `Healthy`, and no errors in the operator log.
 
 ## Rollback
 
@@ -93,8 +109,9 @@ the same failsafe gap again.
 | Worker NetworkPolicy ingress | From the release namespace and from `observability` |
 | Server-side diff against the live cluster (release namespace and cluster scope) | Three differences only: the operator argument, the reduced Role, the new Namespace |
 
-Not tested: the worker NetworkPolicy ingress on the real CNI (Calico enforces
-policies), worker acknowledgement across namespaces on a node with working GPIO,
-how Argo CD orders objects of two namespaces, and the real length of the failsafe
-gap. A disposable-cluster run was not possible because the workstation disk was
-nearly full.
+Verified on the live rack after the move: the ingress rule works on Calico (the
+operator reads every agent across namespaces, members are `Fresh`), Prometheus
+scrapes five targets in the new namespace and none in the old one, Argo CD
+converged without error, and the worker acknowledged across namespaces.
+
+Not measured: the fan speed and PWM duty during the gap. No probe is attached.
