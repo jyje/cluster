@@ -2,7 +2,13 @@
 
 Korean version: [litellm-chart-image-alignment-ko.md](litellm-chart-image-alignment-ko.md)
 
-## Decision
+## Update: the image was aligned to v1.103.5
+
+The prerequisites below were met and the image moved to `v1.103.5`, matching the
+chart. See "Image upgrade test" for the evidence. The sections after it keep the
+reasoning that led to the earlier decoupling.
+
+## Decision (earlier)
 
 - **Upgrade the chart now**, from `1.98.0` to `1.103.5`.
 - **Keep the proxy image pinned at `v1.89.4`** on purpose. Upgrading it is a separate change with its own plan, because it migrates the database and the migration is one-way.
@@ -80,11 +86,31 @@ range, but they are generated pull request lists, so that is weak evidence.
 8. Hermes Agent can still reach the proxy.
 9. The pod logs show no migration or Prisma errors. All rows in `_prisma_migrations` are finished.
 
+## Image upgrade test (2026-10-27)
+
+The production database was dumped and restored into a throwaway PostgreSQL 18
+container. LiteLLM `v1.103.5` then ran against that copy with the live
+`config.yaml`, and `v1.89.4` ran against both the original and the migrated copy.
+
+| Question | Result |
+|----------|--------|
+| Size of the database | 17 MB in total. The largest table, the spend logs, has about 1,200 rows and 4 MB, so index builds cannot hold a lock for long |
+| Does the dump restore completely? | Yes. `pg_restore --exit-on-error` succeeded and every table row count equals production |
+| Do the 57 migrations apply? | Yes, in about a second. 186 applied, 0 unfinished, 0 rolled back |
+| Is any existing data lost? | No. Row counts of all tables that existed are identical |
+| Does the new image work on that data? | Yes. 15 models, `max_input_tokens` preserved, three completions, key generate and delete, spend log write |
+| Can an old pod run on the migrated schema (rolling update)? | Yes. `v1.89.4` reports no pending migration, is healthy, serves models and completions and creates keys |
+| Config key warnings in the startup log | None for either image |
+| Startup time | About 205 to 220 seconds locally for both images, because the Copilot model waits for a device authorization. The probe budget is 300 seconds. Production mounts a token, so it is faster there |
+
+`migrationJob` stays disabled. The migrations took about a second and the old pods
+keep working on the new schema, so a dedicated Job adds nothing here.
+
 ## Rollback
 
 - Chart: revert the commit. Nothing stateful changes.
 - Image: only before the first new pod starts migrating. After that, restore the
-  dump taken in step 2.
+  dump taken just before the upgrade and set the tag back. The restore was tested.
 
 ## A newer chart exists
 
