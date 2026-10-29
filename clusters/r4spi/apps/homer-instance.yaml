@@ -177,6 +177,7 @@ spec:
                       - open-webui
                       - litellm
                       - portainer
+                      - hermes-agent
                       - argocd-server
                       - homer
                       - grafana
@@ -254,7 +255,7 @@ spec:
                 # Almost every card is discovered automatically from each app's
                 # Ingress annotations (see ingressSelector above), which build the
                 # groups via service.homer.rajsingh.info/name:
-                #   1. Applications — n8n, Open WebUI, LiteLLM
+                #   1. Applications — n8n, Open WebUI, LiteLLM, Hermes Agent
                 #   2. Dashboards   — Grafana, Homer
                 #   3. Management   — Argo CD, Portainer, authentik
                 # Group names carry a numeric prefix everywhere they're set
@@ -262,29 +263,11 @@ spec:
                 # operator renders groups sorted alphabetically by name, not
                 # in declaration/discovery order — this is the only way to
                 # force a specific display order.
-                # This manual block only adds Hermes Agent, which has NO Ingress
-                # (it runs as a Discord gateway — outbound only, no web endpoint),
-                # so it can't be auto-discovered. It joins the "1. Applications"
-                # group by name; the operator merges same-named manual + discovered
-                # groups.
+                # Only the fully manual group below is declared here. Infisical
+                # is intentionally hidden from the dashboard for now (its
+                # Ingress carries no Homer annotations, and it has no manual
+                # card).
                 services:
-                  - parameters:
-                      name: "1. Applications"
-                      icon: "fas fa-rocket"
-                    items:
-                      # Infisical is intentionally hidden from the dashboard for now
-                      # (its Ingress carries no Homer annotations, and it has no
-                      # manual card here).
-                      - parameters:
-                          name: "Hermes Agent"
-                          # No web dashboard exposed: Hermes runs as a Discord
-                          # gateway (outbound only), so there is no endpoint to link
-                          # or health-check. Link to the chart repo instead; no
-                          # "type" (Ping) for the same reason.
-                          logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
-                          subtitle: "Multi-provider LLM Discord agent"
-                          tag: "hermes-agent #discord #llm #agent"
-                          url: "https://github.com/jyje/hermes-agent-helm"
                   # Fully manual group (no Ingress backing these) for personal
                   # branding links. Numbered 4. to render after 3. Management —
                   # see the numeric-prefix note above.

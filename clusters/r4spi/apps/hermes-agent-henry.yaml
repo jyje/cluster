@@ -62,6 +62,62 @@ spec:
             default: nvidia/nemotron-3.5-lightning-30b-a3b
           terminal:
             backend: local
+          # Dashboard sign-in goes through authentik (a public PKCE client, no
+          # secret). The provider and its AuthentikAdmin-only binding are the
+          # authentik-hermes-dashboard blueprint in authentik.yaml. The issuer
+          # ends in the application slug.
+          dashboard:
+            oauth:
+              self_hosted:
+                issuer: https://authentik.app.jyje.online/application/o/hermes-henry/
+                client_id: hermes-henry-dashboard
+        # The dashboard shows API keys and gives shell access to the pod, so it
+        # is only reachable through authentik. public_url is derived from the
+        # Ingress host below and must equal the redirect URI registered there.
+        dashboard:
+          enabled: true
+          # ingress-nginx runs on the host network of three nodes. Behind
+          # Calico VXLAN the dashboard sees the controller either as a node
+          # address or as a tunnel address inside the pod network, so list
+          # both, or the session cookies lose Secure depending on the node
+          # a request enters through.
+          trustedProxies:
+            - 10.0.4.0/24
+            - 10.1.0.0/16
+          auth:
+            provider: oidc
+        service:
+          enabled: true
+        ingress:
+          enabled: true
+          className: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            # Discovered by Homer's Dashboard CR via ingressSelector
+            # (matchExpressions: app.kubernetes.io/name in [...]). The chart
+            # stamps app.kubernetes.io/name=hermes-agent, matched there.
+            item.homer.rajsingh.info/name: "Hermes Agent"
+            item.homer.rajsingh.info/subtitle: "Multi-provider LLM agent (henry)"
+            item.homer.rajsingh.info/logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
+            item.homer.rajsingh.info/tag: "hermes-agent #llm #agent #dashboard"
+            service.homer.rajsingh.info/name: "1. Applications"
+            service.homer.rajsingh.info/icon: "fas fa-rocket"
+          hosts:
+            - host: hermes-henry.app.jyje.online
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - secretName: hermes-henry.app.jyje.online
+              hosts:
+                - hermes-henry.app.jyje.online
+        # ONE-SHOT: public_url, trusted_proxies and the OIDC issuer are written
+        # into config.yaml only when the volume is first seeded, so this sync
+        # has to replace the file. It also drops runtime edits made through
+        # the agent. Set back to false (or remove) in a follow-up change once
+        # the dashboard answers, otherwise every later sync replaces it again.
+        bootstrap:
+          overwrite: true
         nodeSelector:
           app.jyje.online/raspi.type: 5b
         extraEnvFrom:

@@ -1,0 +1,102 @@
+# Example: a Hermes agent with its dashboard behind authentik.
+#
+# Copy this next to the other apps under clusters/r4spi/apps/, then replace
+# every "example" below (instance name, host, slug, client id) and keep them
+# consistent with docs/operations/examples/hermes-dashboard-blueprint.yaml.
+# This file lives under docs/, so Argo CD does not pick it up on its own.
+#
+# See docs/operations/hermes-dashboard.md for the why and the rollout order.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-agent-example
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/hermes-agent/hermes-agent-1.21.0
+    helm:
+      valuesObject:
+        fullnameOverride: hermes-agent-example
+        config:
+          # The model backend, so a copy of this file is a working agent. The
+          # key arrives as OPENAI_API_KEY from the SealedSecret named under
+          # extraEnvFrom below (see hermes-agents.md for the sealing pattern).
+          providers:
+            litellm:
+              base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
+              key_env: OPENAI_API_KEY
+              discover_models: true
+          model:
+            provider: litellm
+            default: openai/gpt-oss-120b
+          terminal:
+            backend: local
+          # Sign-in goes through authentik. A public PKCE client has no secret,
+          # so the issuer and client id are plain config, not a SealedSecret.
+          # The issuer ends in the authentik application slug.
+          dashboard:
+            oauth:
+              self_hosted:
+                issuer: https://authentik.app.jyje.online/application/o/hermes-example/
+                client_id: hermes-example-dashboard
+        dashboard:
+          # Renders HERMES_DASHBOARD=1, a TCP readiness probe, and derives
+          # config.dashboard.public_url from the first Ingress host below.
+          enabled: true
+          # ingress-nginx runs on the host network of the nodes. Behind Calico
+          # VXLAN the dashboard sees it as a node address or as a tunnel
+          # address inside the pod network, so list both networks. Without
+          # them the session cookies lose Secure depending on the entry node.
+          trustedProxies:
+            - 10.0.4.0/24
+            - 10.1.0.0/16
+          auth:
+            provider: oidc
+        service:
+          enabled: true
+        ingress:
+          enabled: true
+          className: nginx
+          annotations:
+            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            # Picked up by Homer through its ingressSelector. No Ping type:
+            # the page sits behind a sign-in.
+            item.homer.rajsingh.info/name: "Hermes Agent"
+            item.homer.rajsingh.info/subtitle: "Multi-provider LLM agent (example)"
+            item.homer.rajsingh.info/logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
+            item.homer.rajsingh.info/tag: "hermes-agent #llm #agent #dashboard"
+            service.homer.rajsingh.info/name: "1. Applications"
+            service.homer.rajsingh.info/icon: "fas fa-rocket"
+          hosts:
+            - host: hermes-example.app.jyje.online
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - secretName: hermes-example.app.jyje.online
+              hosts:
+                - hermes-example.app.jyje.online
+        # NOT needed for a new instance: its volume is seeded with these
+        # values on the first start. Uncomment it only for the one sync that
+        # enables the dashboard on an agent that already has a volume, or that
+        # changes its host, trusted proxies or issuer. Those are written into
+        # config.yaml when the volume is first seeded, so the file has to be
+        # replaced once. It also drops edits the agent made at runtime, and it
+        # replaces the file on every pod start while it is on, so remove it in
+        # the next change.
+        # bootstrap:
+        #   overwrite: true
+        nodeSelector:
+          app.jyje.online/raspi.type: 5b
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-agent-example-creds
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-agent-example
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
