@@ -23,22 +23,36 @@ group above it in this list.
 
 ## The owner is promoted automatically
 
-The blueprint puts `jyje` in `AuthentikAdmin`, so the owner does not have to be
-promoted by hand in the admin interface. authentik applies the blueprint when its
-file changes. A sign-in does not trigger it.
+The owner (jyje) is always an authentik superuser. A sealed blueprint,
+`authentik-owner` in [`authentik.yaml`](../../clusters/r4spi/apps/authentik.yaml),
+keeps the account in `AuthentikAdmin`, so nobody has to promote it by hand in the
+admin interface.
 
-- The account itself still comes from the Google enrollment flow. A new
-  account lands in `Unknown` first and is promoted when the blueprint is next
-  applied. To promote it right away, apply the blueprint instance again in the
+- **It matches by verified email, not by username.** The username is chosen
+  during Google enrollment, so a username match would hand the role to whoever
+  takes a free `jyje`. The email is the owner's, which only the owner's Google
+  login can present. It lives in the sealed blueprint, so it is not in the public
+  file.
+- **If the account is missing, the blueprint creates it** with the owner's
+  email. The first Google sign-in with that email attaches to it, because the
+  source links accounts by email. The owner then has the role without anything
+  else to do.
+- **If the owner enrolls first,** the new account lands in `Unknown`, and the next
+  time the blueprint is applied it finds the account by email and promotes it.
+  authentik applies a blueprint when its file changes, and a sign-in does not
+  trigger that. To promote at once, apply the blueprint instance again in the
   admin interface (System, Blueprints).
-- The `groups` list in a blueprint replaces the user's direct memberships. The
-  lower groups still apply through the hierarchy.
-- If the account is deleted, the blueprint recreates it empty, and Google
-  sign-in has nothing to attach to (the source links accounts by email). Sign in
-  with another admin and fix it by hand, or add the email to the blueprint.
+- The `groups` list replaces the user's direct memberships. The lower groups
+  still apply through the hierarchy.
+- It depends on two assumptions about the Google source: it returns only
+  verified emails, and the enrollment flow does not let a person type their own
+  email. Check both before relying on this for anything beyond the owner.
 - Other people are never promoted by the blueprint. Add them in the admin
-  interface (Directory, Users, the user, Groups) or by listing them in a
+  interface (Directory, Users, the user, Groups), or put them in a sealed
   blueprint on purpose.
+- To change the owner's email, reseal the blueprint (see
+  [introduction.md](../introduction.md#secrets)) and replace
+  `authentik-owner` in `authentik.yaml`.
 
 ## Rule for every new application
 
@@ -76,5 +90,5 @@ and the Hermes specific steps are in [hermes-dashboard.md](hermes-dashboard.md).
 | Symptom | Likely cause |
 | --- | --- |
 | "Permission denied" right after a successful sign-in | The account is not in a group bound to the application. Add the `AuthentikAdmin` binding, or put the user in the group. |
-| The owner is not a superuser after a fresh install | The account did not exist yet when the blueprint was applied. Sign in once through Google, then apply the blueprint instance again (System, Blueprints). |
+| The owner is not a superuser after signing in | The owner enrolled before the blueprint was applied, so the account is in `Unknown`. Apply the blueprint instance again (System, Blueprints). If it fails with "multiple users", two accounts share the owner's email and one has to be removed. |
 | Sign-in answers `invalid_request` | The OAuth2 provider has no `grant_types`. See rule 3. |

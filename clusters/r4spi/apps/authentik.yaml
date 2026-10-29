@@ -28,6 +28,7 @@ spec:
           secrets:
             - authentik-google-source
             - authentik-argocd-oidc
+            - authentik-owner
           # RBAC group hierarchy — no credentials involved, so a plain
           # ConfigMap (not a SealedSecret) is the right home for it.
           configMaps:
@@ -225,25 +226,14 @@ spec:
                       groups:
                         - !KeyOf group-authentikadmin
 
-                  # jyje is the owner and is always an authentik superuser. The
-                  # account itself still comes from the Google enrollment flow
-                  # (so it lands in Unknown first); this entry promotes it
-                  # whenever the blueprint is applied, so nobody has to
-                  # promote it by hand. The groups list replaces direct
-                  # memberships, and Viewer/Developer/Unknown still apply
-                  # through the group hierarchy. If the account is ever
-                  # deleted, this entry recreates it empty, and Google
-                  # sign-in then has nothing to attach to.
+                  # The owner (jyje) is not listed here. The owner is always an
+                  # authentik superuser, promoted by the sealed authentik-owner
+                  # blueprint, which matches the account by its verified email
+                  # so no personal data sits in this public file and nobody can
+                  # take the role by picking a free username.
                   #
-                  # New authentik applications must admit this group. See
+                  # New authentik applications must admit AuthentikAdmin. See
                   # docs/operations/authentik-access.md.
-                  - identifiers:
-                      username: jyje
-                    model: authentik_core.user
-                    state: present
-                    attrs:
-                      groups:
-                        - !KeyOf group-authentikadmin
 
           # Sign-in for the Hermes agent dashboard (hermes-agent-henry). Hermes
           # registers as a public PKCE client, so there is no client secret and
@@ -382,6 +372,20 @@ spec:
               template:
                 metadata:
                   name: authentik-argocd-oidc
+                type: Opaque
+
+          # The owner account blueprint: matched by email, promoted to
+          # AuthentikAdmin. Sealed because it holds the owner's email.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-owner
+            spec:
+              encryptedData:
+                owner.yaml: AgCpvVk0bOsV643kOg44c8YHaedX8fwcdUE1kJFhcZl/OQvqoD0Xtf+SnqIB1lponvR6fAkdEc6jdx4J2SqaM0Fecn3AR0rUrKqMCUFteXv++RHB1ivNN4EZrNZD+Mdb3wDnyrRf3U3ozm+TlTi4nZlQehE5DBo1MB/mIV9Z7SxOGZlndTvTGs8/INHi0QGZIsYsdDF4+ue3R4oEJ1LXa9KLvuU69lebOjU5wKbHGY+gV42q+xQnI/d8KYD77UI+qgrJybOckXH+yLX1SYBejaRRDXGkNqQ+xPRAiiwJ0ETGBXoxDjPj/U0vl9zU3Cg3tmvOWNUOSxA13GlLj9tpLQizJPpMeiTeYXJuNoCEM8SNbVwGV7PxrB3DUoVW0kSAsb2vyOx6fLWNIQuJqI6Ri7zPhw5rrY9fpHvvMA6LAt2gZSb1Hmk69bY/qAWPjb3b9uSPJ4CvUj5pe/jLdp+jy+/kO/gvdUTVWywbSqFyrwtxHyQUYetxdx+HlVI6j+hnyi+GFYdx5IhMqlHclXDvLhxAJpai6LbLBLUni6U2oCp1H6C5HFtFw/AzYhnk41Mbl1qHABPUz2iVM5c6/OkhdZ4DlpJ5EQKmR1BvKYcQFa/LlJWEACpY/hkTXJV/9DSAAJBVro+k+fuoBg5NUp33oXxMzeIj4GCxpfHW6Te8BjgrqpcmAP3QtK/dUPgFXHyIEcGMeTosR5lMQhyrxtj4VuY6F2poP2lzOlWTWO7bacm1VWqJg8xaOvmLmvesVHU3tpj9u7R97bRQVtNBZQsSZqfjBWTh2frGqm+6dWZ1t2qPSXnDLX8FEyMIl+M54D58zWcwymQ+9A+9JQcld0/w2ldwR1QfOHmo/VXERs6bapqjimo7d+SGbglFwHVCy3Zd5eqL638fkqAb/Cd0u3/wq115Jl5o67Znwx8I6w9F18FiX+gKgtgNJLbY3kcmpjjIiInqM8YJoMsUcKdJwZR7lBTIYUlejPY03e0HkZ1fnep+hCncmX7/RKjSM1nPy7JwKJKmsZQZ6WeN/70V12pJLrv1jI+sgxG/5Xp5cwPE0GC+e7CmfJdKCVl8KktLQIk0z5hfZZ5wbITPa+NJrCR3tNmMoLSFRmAMZ25hNHXq2ZG0auPdwneE8YKPxICBiMAHYVAf2nNqotuAAvFK5KvcEB7KcZKnmPVj0N5yXU7ODE21TtgDAFlU/RFNrMRDdfvSQ1guz3/OGALrkkn5OoU03VM6FLR9u1QHKZLOctsdYzdSJku436rFlUYMryvRrir7PPdOIIA+L123nSswNjLLzhzdII3sOolbaXqm7Cu0Z9CzApIyuMp7vJFPii+PQXsWWtuFh4QbNmuUiBA5u1UyNVcqIOAX7p3MDP8D6YqCDePQOmSjU6+Dg51dZM3bzpvZtZ63ik1vwkI5UT2qfymiAl9vldTA14TxIRZT1Wcy+mNDBEarr+/qswm3vhbPQCrlSTyx9K85ulmBJJcOOtXQLmesKA==
+              template:
+                metadata:
+                  name: authentik-owner
                 type: Opaque
 
   destination:
