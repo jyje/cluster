@@ -32,6 +32,7 @@ spec:
           # ConfigMap (not a SealedSecret) is the right home for it.
           configMaps:
             - authentik-rbac-groups
+            - authentik-hermes-dashboard
 
         server:
           # Keep the SSO endpoint available if one server process is restarted.
@@ -232,6 +233,57 @@ spec:
                       username: jyje
                     model: authentik_core.user
                     state: absent
+
+          # Sign-in for the Hermes agent dashboard (hermes-agent-henry). Hermes
+          # registers as a public PKCE client, so there is no client secret and
+          # a plain ConfigMap is enough (unlike the Argo CD blueprint, which
+          # carries one). The dashboard shows API keys and gives shell access to
+          # its pod, so the application is bound to AuthentikAdmin (and, through
+          # the group hierarchy, ClusterAdmin) only.
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: authentik-hermes-dashboard
+            data:
+              hermes-dashboard.yaml: |
+                version: 1
+                metadata:
+                  name: Hermes dashboard
+                entries:
+                  - model: authentik_providers_oauth2.oauth2provider
+                    id: hermes-henry-provider
+                    identifiers:
+                      name: Hermes henry dashboard
+                    attrs:
+                      client_type: public
+                      client_id: hermes-henry-dashboard
+                      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+                      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+                      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+                      issuer_mode: per_provider
+                      redirect_uris:
+                        - matching_mode: strict
+                          url: https://hermes-henry.app.jyje.online/auth/callback
+                      property_mappings:
+                        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+                        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+                        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+
+                  - model: authentik_core.application
+                    id: hermes-henry-app
+                    identifiers:
+                      slug: hermes-henry
+                    attrs:
+                      name: Hermes henry
+                      provider: !KeyOf hermes-henry-provider
+                      meta_launch_url: https://hermes-henry.app.jyje.online
+
+                  - model: authentik_policies.policybinding
+                    identifiers:
+                      target: !KeyOf hermes-henry-app
+                      order: 0
+                    attrs:
+                      group: !Find [authentik_core.group, [name, AuthentikAdmin]]
 
           - apiVersion: postgresql.cnpg.io/v1
             kind: Cluster
