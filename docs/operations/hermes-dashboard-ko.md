@@ -69,6 +69,7 @@ Homer는 Ingress 어노테이션으로 카드를 찾습니다. 차트가 모든 
 | 증상 | 가능한 원인 |
 | --- | --- |
 | `GET /auth/login`이 503 | issuer가 틀렸습니다. 대시보드 응답 본문에 이유가 나오지만(예: "OIDC discovery returned 404") 커스텀 오류 페이지가 있는 프록시는 일반 503으로 바꿀 수 있으니 Service에 직접 요청해서 보세요. 끝의 슬래시 차이는 허용됩니다. |
+| 로그인이 `/auth/callback?error=invalid_request`("The request is otherwise malformed")로 돌아옴 | provider가 허용하는 grant type이 없습니다. 블루프린트로 만든 provider는 `grant_types`를 지정하지 않으면 비어 있습니다. authentik 서버 로그에 `Invalid grant_type for provider`가 남습니다. provider에 `grant_types: [authorization_code, refresh_token]`을 추가하세요. |
 | authentik이 "Unregistered redirect_uri"를 표시 | 블루프린트의 redirect URI가 `public_url` + `/auth/callback`과 다릅니다. host를 바꾼 뒤에 흔합니다. |
 | host를 바꾼 뒤 콜백 실패 | `config.yaml`의 `public_url`이 오래되었습니다. `bootstrap.overwrite: true`로 한 번 동기화하세요. |
 | 롤아웃 직후 Ingress가 502 | 파드가 아직 시작 중입니다(skill 동기화). Ready가 될 때까지 기다리세요. readiness probe가 그때까지 Ingress를 붙이지 않습니다. |

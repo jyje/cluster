@@ -110,6 +110,7 @@ Without a session, `GET /` redirects to the sign-in page, and `/api/env` and
 | Symptom | Likely cause |
 | --- | --- |
 | `GET /auth/login` answers 503 | The issuer is wrong. The dashboard's own body names the reason (for example "OIDC discovery returned 404"), but a proxy with custom error pages can replace it with a generic 503, so read it from the Service directly. A trailing slash difference is tolerated. |
+| Sign-in comes back to `/auth/callback` with `error=invalid_request` ("The request is otherwise malformed") | The provider allows no grant type. A provider created from a blueprint has an empty `grant_types` unless the blueprint sets it. The authentik server log says `Invalid grant_type for provider`. Add `grant_types: [authorization_code, refresh_token]` to the provider. |
 | authentik shows "Unregistered redirect_uri" | The redirect URI in the blueprint does not equal `public_url` + `/auth/callback`. Common after changing the host. |
 | The callback fails after a host change | `public_url` in `config.yaml` is stale. Sync once with `bootstrap.overwrite: true`. |
 | 502 from the Ingress right after rollout | The pod is still starting (skills sync). Wait for Ready; the readiness probe keeps the Ingress off it until then. |

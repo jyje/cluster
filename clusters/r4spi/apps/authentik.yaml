@@ -257,6 +257,12 @@ spec:
                     attrs:
                       client_type: public
                       client_id: hermes-henry-dashboard
+                      # Without grant_types a blueprint-created provider allows
+                      # none, and the authorize request is answered with
+                      # invalid_request ("The request is otherwise malformed").
+                      grant_types:
+                        - authorization_code
+                        - refresh_token
                       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
                       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
                       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
