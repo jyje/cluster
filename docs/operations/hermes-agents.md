@@ -204,6 +204,7 @@ helm template <name> oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent \
 
 ## Related
 
+- Management dashboard behind authentik: [hermes-dashboard.md](hermes-dashboard.md)
 - Chart repo: <https://github.com/jyje/hermes-agent-helm>
 - LiteLLM proxy & model catalog: `clusters/r4spi/apps/litellm.yaml`
 - Sealed Secrets pattern: [introduction.md → Secrets](../introduction.md#secrets)
