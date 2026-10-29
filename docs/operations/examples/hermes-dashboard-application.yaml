@@ -20,6 +20,14 @@ spec:
       valuesObject:
         fullnameOverride: hermes-agent-example
         config:
+          # The model backend, so a copy of this file is a working agent. The
+          # key arrives as OPENAI_API_KEY from the SealedSecret named under
+          # extraEnvFrom below (see hermes-agents.md for the sealing pattern).
+          providers:
+            litellm:
+              base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
+              key_env: OPENAI_API_KEY
+              discover_models: true
           model:
             provider: litellm
             default: openai/gpt-oss-120b
@@ -70,15 +78,21 @@ spec:
             - secretName: hermes-example.app.jyje.online
               hosts:
                 - hermes-example.app.jyje.online
-        # Only for the sync that enables the dashboard, or that changes its
-        # host, trusted proxies or issuer. These are written into config.yaml
-        # when the volume is first seeded, so the file has to be replaced
-        # once. It also drops edits the agent made at runtime. Remove it (or
-        # set false) in the next change.
-        bootstrap:
-          overwrite: true
+        # NOT needed for a new instance: its volume is seeded with these
+        # values on the first start. Uncomment it only for the one sync that
+        # enables the dashboard on an agent that already has a volume, or that
+        # changes its host, trusted proxies or issuer. Those are written into
+        # config.yaml when the volume is first seeded, so the file has to be
+        # replaced once. It also drops edits the agent made at runtime, and it
+        # replaces the file on every pod start while it is on, so remove it in
+        # the next change.
+        # bootstrap:
+        #   overwrite: true
         nodeSelector:
           app.jyje.online/raspi.type: 5b
+        extraEnvFrom:
+          - secretRef:
+              name: hermes-agent-example-creds
   destination:
     server: https://kubernetes.default.svc
     namespace: hermes-agent-example

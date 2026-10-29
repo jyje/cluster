@@ -28,7 +28,7 @@
 
 - 대시보드는 이미지 안의 s6 서비스이고 `dashboard.enabled`로 켭니다. 이 값이 `HERMES_DASHBOARD=1`을 렌더링합니다. `env`에 `HERMES_DASHBOARD`를 직접 넣는 것보다 차트 값을 쓰세요. 차트 값을 써야 readiness probe, 자동으로 만들어지는 `public_url`과 `trusted_proxies`, 인증 provider 검사가 함께 적용됩니다.
 - Hermes는 authentik에 PKCE를 쓰는 **공개** 클라이언트로 등록됩니다. 클라이언트 시크릿이 없으므로 블루프린트는 평범한 ConfigMap이고 봉인할 것이 없습니다. issuer와 client id도 비밀이 아닙니다.
-- 차트는 모두 `values`로 렌더링하므로 차트를 바꿀 필요가 없습니다. 차트 1.21.0부터 쓸 수 있습니다.
+- 차트는 모두 `values`로 렌더링하므로 차트를 바꿀 필요가 없습니다. 차트 1.21.0에서 쓸 수 있고, 예시도 이 버전을 씁니다.
 
 ## 중요한 값
 
@@ -84,4 +84,4 @@ Homer는 Ingress 어노테이션으로 카드를 찾습니다. 차트가 모든 
 2. `authentik.yaml`의 `additionalObjects`에 블루프린트 ConfigMap을 추가하고 `blueprints.configMaps`에도 올립니다.
 3. DNS 레코드를 만듭니다(적용 순서 1단계).
 4. Homer `ingressSelector`에는 이미 `hermes-agent`가 들어 있습니다.
-5. `bootstrap.overwrite`를 되돌리는 후속 변경까지 포함해서 위 적용 순서를 따릅니다.
+5. 위 적용 순서를 따릅니다. 새 인스턴스는 첫 시작에 이 값들로 볼륨이 시드되므로 `bootstrap.overwrite`가 필요 없어서 예시에서도 주석 처리해 두었습니다. 이미 볼륨이 있는 에이전트만 이 값이 필요하고, 그 경우 되돌리는 후속 변경까지 함께 합니다.

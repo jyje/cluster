@@ -46,7 +46,7 @@ browser ──https──> ingress-nginx ──> Service :9119 ──> hermes da
   client secret, so the blueprint is a plain ConfigMap and nothing is sealed.
   The issuer and client id are not secrets either.
 - The chart renders everything from `values`, so no chart change is needed. It
-  is available since chart 1.21.0.
+  is available in chart 1.21.0, the version these examples use.
 
 ## Values that matter
 
@@ -127,5 +127,7 @@ Without a session, `GET /` redirects to the sign-in page, and `/api/env` and
    and list it under `blueprints.configMaps`.
 3. Create the DNS record (rollout step 1).
 4. The Homer `ingressSelector` already includes `hermes-agent`.
-5. Follow the rollout order above, including the follow-up that clears
-   `bootstrap.overwrite`.
+5. Follow the rollout order above. A brand new instance does not need
+   `bootstrap.overwrite` (its volume is seeded with these values on the first
+   start), so the example keeps it commented out. Only an agent that already has
+   a volume needs it, together with the follow-up that clears it.
