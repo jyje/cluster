@@ -20,6 +20,13 @@ entries:
       client_type: public
       # Must equal config.dashboard.oauth.self_hosted.client_id.
       client_id: hermes-example-dashboard
+      # Required. A provider created from a blueprint allows no grant types by
+      # default, and sign-in then fails with invalid_request ("The request is
+      # otherwise malformed"). The authentik log says "Invalid grant_type for
+      # provider".
+      grant_types:
+        - authorization_code
+        - refresh_token
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       # A public client has no secret to sign with, so tokens need a key pair.
