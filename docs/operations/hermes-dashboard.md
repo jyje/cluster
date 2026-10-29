@@ -110,6 +110,7 @@ Without a session, `GET /` redirects to the sign-in page, and `/api/env` and
 | Symptom | Likely cause |
 | --- | --- |
 | `GET /auth/login` answers 503 | The issuer is wrong. The dashboard's own body names the reason (for example "OIDC discovery returned 404"), but a proxy with custom error pages can replace it with a generic 503, so read it from the Service directly. A trailing slash difference is tolerated. |
+| authentik shows "Permission denied" right after a successful sign-in | The account is not in a group bound to the application. The dashboard is bound to `AuthentikAdmin`, which the owner is always in; see [authentik-access.md](authentik-access.md) for the rule and the fix. |
 | Sign-in comes back to `/auth/callback` with `error=invalid_request` ("The request is otherwise malformed") | The provider allows no grant type. A provider created from a blueprint has an empty `grant_types` unless the blueprint sets it. The authentik server log says `Invalid grant_type for provider`. Add `grant_types: [authorization_code, refresh_token]` to the provider. |
 | authentik shows "Unregistered redirect_uri" | The redirect URI in the blueprint does not equal `public_url` + `/auth/callback`. Common after changing the host. |
 | The callback fails after a host change | `public_url` in `config.yaml` is stale. Sync once with `bootstrap.overwrite: true`. |

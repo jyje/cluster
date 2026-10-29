@@ -225,14 +225,25 @@ spec:
                       groups:
                         - !KeyOf group-authentikadmin
 
-                  # jyje was a blueprint-precreated shortcut account
-                  # (bypassed the real Unknown-default enrollment flow) —
-                  # deleted so the next Google login goes through actual
-                  # enrollment instead.
+                  # jyje is the owner and is always an authentik superuser. The
+                  # account itself still comes from the Google enrollment flow
+                  # (so it lands in Unknown first); this entry promotes it
+                  # whenever the blueprint is applied, so nobody has to
+                  # promote it by hand. The groups list replaces direct
+                  # memberships, and Viewer/Developer/Unknown still apply
+                  # through the group hierarchy. If the account is ever
+                  # deleted, this entry recreates it empty, and Google
+                  # sign-in then has nothing to attach to.
+                  #
+                  # New authentik applications must admit this group. See
+                  # docs/operations/authentik-access.md.
                   - identifiers:
                       username: jyje
                     model: authentik_core.user
-                    state: absent
+                    state: present
+                    attrs:
+                      groups:
+                        - !KeyOf group-authentikadmin
 
           # Sign-in for the Hermes agent dashboard (hermes-agent-henry). Hermes
           # registers as a public PKCE client, so there is no client secret and
