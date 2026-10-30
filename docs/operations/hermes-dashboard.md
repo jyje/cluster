@@ -70,8 +70,9 @@ sits behind a sign-in.
 1. **DNS**: add a CNAME for `<host>` to the same target the other
    `*.app.jyje.online` records use. The certificate is issued with HTTP-01, so
    the name has to resolve first. There is no wildcard record.
-2. **Merge** the change. Argo CD syncs the agent, and the authentik worker
-   applies the blueprint.
+2. **Merge** the change. Argo CD syncs the agent. The authentik worker applies a
+   changed blueprint within minutes, and a brand new blueprint file can wait for
+   the hourly discovery task (see [authentik-access.md](authentik-access.md)).
 3. **Check authentik**: the blueprint instance must report success, and the
    application and provider must exist. A missing flow slug or signing key only
    fails this blueprint; authentik keeps running.

@@ -39,9 +39,13 @@ admin interface.
   else to do.
 - **If the owner enrolls first,** the new account lands in `Unknown`, and the next
   time the blueprint is applied it finds the account by email and promotes it.
-  authentik applies a blueprint when its file changes, and a sign-in does not
-  trigger that. To promote at once, apply the blueprint instance again in the
-  admin interface (System, Blueprints).
+  A sign-in does not trigger an apply. authentik finds new and changed blueprint
+  files in a discovery task that runs about once an hour. After the merge that
+  added `authentik-owner`, the new worker did not pick the file up at start, and
+  the owner was promoted about 30 minutes later, when that task ran. To promote
+  at once, apply the blueprint instance again in the admin interface (System,
+  Blueprints). A file that has no instance yet only appears after a discovery
+  run.
 - The `groups` list replaces the user's direct memberships. The lower groups
   still apply through the hierarchy.
 - It depends on two assumptions about the Google source: it returns only
@@ -90,5 +94,5 @@ and the Hermes specific steps are in [hermes-dashboard.md](hermes-dashboard.md).
 | Symptom | Likely cause |
 | --- | --- |
 | "Permission denied" right after a successful sign-in | The account is not in a group bound to the application. Add the `AuthentikAdmin` binding, or put the user in the group. |
-| The owner is not a superuser after signing in | The owner enrolled before the blueprint was applied, so the account is in `Unknown`. Apply the blueprint instance again (System, Blueprints). If it fails with "multiple users", two accounts share the owner's email and one has to be removed. |
+| The owner is not a superuser after signing in | The owner enrolled before the blueprint was applied, or the blueprint is new and the hourly discovery has not run yet, so the account is in `Unknown`. Wait for the next discovery, or apply the blueprint instance again (System, Blueprints). If it fails with "multiple users", two accounts share the owner's email and one has to be removed. |
 | Sign-in answers `invalid_request` | The OAuth2 provider has no `grant_types`. See rule 3. |
