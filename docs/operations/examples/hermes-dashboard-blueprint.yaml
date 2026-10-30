@@ -54,7 +54,10 @@ entries:
   # The dashboard shows API keys and gives shell level access to the pod.
   # authentik has no allowlist of its own here: whoever may use this
   # application may sign in, so keep the binding narrow. AuthentikAdmin also
-  # admits ClusterAdmin through the group hierarchy.
+  # admits ClusterAdmin through the group hierarchy. Keep this binding on every
+  # application: superusers are not admitted automatically, and this group is
+  # how the owner (jyje, always in AuthentikAdmin) gets in. See
+  # docs/operations/authentik-access.md.
   - model: authentik_policies.policybinding
     identifiers:
       target: !KeyOf hermes-example-app
