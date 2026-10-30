@@ -105,7 +105,12 @@ spec:
               item.homer.rajsingh.info/type: "Ping"
               # Readiness reflects whether Authentik can serve traffic; the
               # homepage may redirect to login and is not a health signal.
-              item.homer.rajsingh.info/endpoint: "https://authentik.app.jyje.online/-/health/ready/"
+              # The trailing "?" is deliberate: Homer cuts a trailing "/" off
+              # the endpoint, and authentik 2026.8 answers /-/health/ready
+              # (no slash) with a 404 that carries no CORS header, so the
+              # browser reports the card as offline. With "?" the request
+              # still reaches /-/health/ready/ and gets the CORS headers.
+              item.homer.rajsingh.info/endpoint: "https://authentik.app.jyje.online/-/health/ready/?"
               # Grouped with Argo CD/Portainer — occasionally-visited admin
               # tools, not daily-use apps.
               service.homer.rajsingh.info/name: "3. Management"
