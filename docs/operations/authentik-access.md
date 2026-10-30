@@ -42,6 +42,12 @@ admin interface.
   authentik applies a blueprint when its file changes, and a sign-in does not
   trigger that. To promote at once, apply the blueprint instance again in the
   admin interface (System, Blueprints).
+- **The account type must be `internal`.** Accounts made by the Google
+  enrollment flow are `external`, and the admin interface refuses them with
+  "Interface can only be accessed by internal users", even for a superuser. The
+  blueprint sets `type: internal` on the owner. Until that is applied the owner
+  cannot open the admin interface to apply it by hand, so it waits for the next
+  discovery run.
 - The `groups` list replaces the user's direct memberships. The lower groups
   still apply through the hierarchy.
 - It depends on two assumptions about the Google source: it returns only
@@ -91,4 +97,5 @@ and the Hermes specific steps are in [hermes-dashboard.md](hermes-dashboard.md).
 | --- | --- |
 | "Permission denied" right after a successful sign-in | The account is not in a group bound to the application. Add the `AuthentikAdmin` binding, or put the user in the group. |
 | The owner is not a superuser after signing in | The owner enrolled before the blueprint was applied, so the account is in `Unknown`. Apply the blueprint instance again (System, Blueprints). If it fails with "multiple users", two accounts share the owner's email and one has to be removed. |
+| The admin interface says "Interface can only be accessed by internal users" | The account is type `external`. The owner blueprint sets `internal`. For any other admin, change the type in the admin interface (Directory, Users) or in a sealed blueprint on purpose. |
 | Sign-in answers `invalid_request` | The OAuth2 provider has no `grant_types`. See rule 3. |
