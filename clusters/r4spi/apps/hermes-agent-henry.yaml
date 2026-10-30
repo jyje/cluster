@@ -111,13 +111,6 @@ spec:
             - secretName: hermes-henry.app.jyje.online
               hosts:
                 - hermes-henry.app.jyje.online
-        # ONE-SHOT: public_url, trusted_proxies and the OIDC issuer are written
-        # into config.yaml only when the volume is first seeded, so this sync
-        # has to replace the file. It also drops runtime edits made through
-        # the agent. Set back to false (or remove) in a follow-up change once
-        # the dashboard answers, otherwise every later sync replaces it again.
-        bootstrap:
-          overwrite: true
         nodeSelector:
           app.jyje.online/raspi.type: 5b
         extraEnvFrom:
