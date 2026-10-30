@@ -93,13 +93,25 @@ spec:
           className: nginx
           annotations:
             cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            # Homer pings from the browser, so the response needs CORS headers
+            # (same annotations as every other "online" card).
+            nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
+            nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
+            nginx.ingress.kubernetes.io/enable-cors: "true"
             # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchExpressions: app.kubernetes.io/name in [...]). The chart
             # stamps app.kubernetes.io/name=hermes-agent, matched there.
             item.homer.rajsingh.info/name: "Hermes Agent"
-            item.homer.rajsingh.info/subtitle: "Multi-provider LLM agent (henry)"
+            item.homer.rajsingh.info/subtitle: "Multi-provider LLM agent"
             item.homer.rajsingh.info/logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
             item.homer.rajsingh.info/tag: "hermes-agent #llm #agent #dashboard"
+            item.homer.rajsingh.info/type: "Ping"
+            # The page itself redirects to the sign-in, so ping the dashboard's
+            # unauthenticated health endpoint. It answers GET only (HEAD is a
+            # 405), and Homer pings with HEAD unless told otherwise.
+            item.homer.rajsingh.info/endpoint: "https://hermes-henry.app.jyje.online/api/health"
+            item.homer.rajsingh.info/method: "GET"
             service.homer.rajsingh.info/name: "1. Applications"
             service.homer.rajsingh.info/icon: "fas fa-rocket"
           hosts:
