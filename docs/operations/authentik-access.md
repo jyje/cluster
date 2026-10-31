@@ -66,9 +66,12 @@ admin interface.
 
 ## Rule for every new application
 
-Binding an application to a group is how access is decided. **Superusers are
-not admitted automatically**, so a new application that binds only a narrow
-group would lock out the owner. Every application blueprint must therefore:
+Binding an application to a group is how access is decided. An application with
+no bindings is open to every signed-in user. Once it has a binding, only matching
+users get in, and **superusers are not admitted automatically**: authentik's
+policy engine has no superuser bypass (checked in its source), so a new
+application that binds only a narrow group would lock out the owner. Every
+application blueprint that adds a binding must therefore:
 
 1. **Keep a binding for `AuthentikAdmin`.** This is how the owner gets in, and
    it also admits `ClusterAdmin`.
@@ -81,6 +84,12 @@ group would lock out the owner. Every application blueprint must therefore:
 4. Check it as the owner before calling it done: open the application and sign
    in. A "Permission denied" screen after a successful login means the binding
    is missing or too narrow.
+
+Checked on this cluster with authentik's own policy engine: `hermes-henry` is
+bound to `AuthentikAdmin` and admits the owner while denying an ordinary Google
+account, and `argocd` and `mungchilog` have no bindings and are open to every
+signed-in user, so the owner is not locked out of any of them. Argo CD and
+mungchilog then apply their own rules after sign-in.
 
 ```yaml
 - model: authentik_policies.policybinding
