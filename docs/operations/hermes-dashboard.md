@@ -58,6 +58,7 @@ browser ──https──> ingress-nginx ──> Service :9119 ──> hermes da
 | `config.dashboard.oauth.self_hosted.client_id` | Must equal the provider's `client_id` in the blueprint. |
 | `dashboard.trustedProxies` | Networks allowed to send `X-Forwarded-*`. ingress-nginx runs on the host network of several nodes, so list the node network **and** the pod network (`10.0.4.0/24` and `10.1.0.0/16` here). With only one of them the session cookies lose `Secure` depending on the node a request enters through, and nothing warns you. |
 | `service.enabled: true` and `ingress` | The chart does not expose a listener by itself. |
+| `nginx.ingress.kubernetes.io/proxy-read-timeout`, `proxy-send-timeout` and `proxy-body-size` | The Chat tab is a terminal over a websocket and streams model output, and the Files tab uploads. nginx closes a connection that is quiet for 60 seconds and rejects bodies over 1 MB by default. The cluster sets one hour and 64 MB. |
 | `ingress.hosts[0].host` and `tls` | `public_url` is derived from the first host (https once `tls` is set). It must equal the redirect URI registered in authentik, apart from the `/auth/callback` suffix. |
 
 Homer finds the card through the Ingress annotations. The chart stamps

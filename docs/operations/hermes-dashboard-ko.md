@@ -40,6 +40,7 @@
 | `config.dashboard.oauth.self_hosted.client_id` | 블루프린트 provider의 `client_id`와 같아야 합니다. |
 | `dashboard.trustedProxies` | `X-Forwarded-*`를 보내도 되는 네트워크입니다. ingress-nginx가 여러 노드의 호스트 네트워크에서 돌기 때문에 노드 네트워크 **와** 파드 네트워크를 모두 넣으세요(여기서는 `10.0.4.0/24`와 `10.1.0.0/16`). 하나만 넣으면 요청이 들어온 노드에 따라 세션 쿠키에서 `Secure`가 빠지는데, 경고도 없습니다. |
 | `service.enabled: true`와 `ingress` | 차트는 리스너를 스스로 노출하지 않습니다. |
+| `nginx.ingress.kubernetes.io/proxy-read-timeout`, `proxy-send-timeout`, `proxy-body-size` | Chat 탭은 websocket 위의 터미널이고 모델 출력을 스트리밍하며, Files 탭은 업로드합니다. nginx는 기본적으로 60초 동안 조용한 연결을 닫고 1MB를 넘는 본문을 거부합니다. 이 클러스터는 1시간과 64MB로 설정했습니다. |
 | `ingress.hosts[0].host`와 `tls` | `public_url`은 첫 host에서 만들어집니다(`tls`가 있으면 https). `/auth/callback`만 뺀 값이 authentik에 등록한 redirect URI와 같아야 합니다. |
 
 Homer는 Ingress 어노테이션으로 카드를 찾습니다. 차트가 모든 인스턴스에 `app.kubernetes.io/name: hermes-agent` 라벨을 붙이므로, Homer `ingressSelector`에 한 줄이면 전부 포함됩니다. Ping `type`은 넣지 마세요. 페이지가 로그인 뒤에 있습니다.
