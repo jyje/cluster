@@ -99,6 +99,12 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
+            # The Chat tab is a terminal over a websocket and streams model
+            # output, and the Files tab uploads. nginx closes a connection that
+            # is quiet for 60 seconds and rejects bodies over 1 MB by default.
+            nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+            nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+            nginx.ingress.kubernetes.io/proxy-body-size: "64m"
             # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchExpressions: app.kubernetes.io/name in [...]). The chart
             # stamps app.kubernetes.io/name=hermes-agent, matched there.
