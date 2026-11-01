@@ -1,62 +1,125 @@
-name: 🧪 verify nvidia nim model
+name: 🧪 verify configured NVIDIA NIM models
 
-# On-demand check of whether a given NVIDIA NIM model id is actually live,
-# vs. merely rate-limited or genuinely retired. Run this before deleting a
-# model_list entry from clusters/r4spi/apps/litellm.yaml on the strength of
-# a stale "429 during verification" comment — 429 means "try again later",
-# not "gone". Never prints the API key; GitHub also auto-redacts any
-# occurrence of a registered secret value in logs.
-
+# Manually check every NVIDIA-hosted chat and embedding model currently
+# configured in the LiteLLM Application. Image models are checked against the
+# NVIDIA catalog only: generation would incur image inference cost, and the
+# in-cluster FLUX adapter is not a direct NVIDIA endpoint.
 on:
   workflow_dispatch:
-    inputs:
-      model:
-        description: "NVIDIA NIM model id, e.g. z-ai/glm-5.2"
-        required: true
-        default: "z-ai/glm-5.2"
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     steps:
-      - name: Call NVIDIA NIM chat completions
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify configured NVIDIA NIM models
         env:
-          NIM_API_KEY: ${{ secrets.NIM_API_KEY }}
-          MODEL: ${{ inputs.model }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
-          if [ -z "$NIM_API_KEY" ]; then
-            echo "::error::NIM_API_KEY secret is not set on this repository (Settings → Secrets and variables → Actions)."
-            exit 1
-          fi
+          ruby <<'RUBY'
+          require 'json'
+          require 'net/http'
+          require 'openssl'
+          require 'timeout'
+          require 'yaml'
 
-          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
-            https://integrate.api.nvidia.com/v1/chat/completions \
-            -H "Authorization: Bearer ${NIM_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"model\": \"${MODEL}\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 5}")
+          api_key = ENV.fetch('NVIDIA_API_KEY', '')
+          abort('::error::NVIDIA_API_KEY repository secret is not configured.') if api_key.empty?
 
-          echo "HTTP status: $HTTP_CODE"
-          echo "Response body:"
-          cat /tmp/resp.json
-          echo
+          app = YAML.load_file('clusters/r4spi/apps/litellm.yaml')
+          models = app.dig('spec', 'source', 'helm', 'valuesObject', 'proxy_config', 'model_list') || []
+          api_host = 'integrate.api.nvidia.com'
+          api_base = "https://#{api_host}/v1"
 
-          case "$HTTP_CODE" in
-            200)
-              echo "✅ $MODEL is live and responding — do not delete it."
-              ;;
-            404)
-              echo "❌ $MODEL was not found on NVIDIA NIM — looks genuinely retired/down."
-              exit 1
-              ;;
-            429)
-              echo "⏳ $MODEL is rate-limited right now, not confirmed down. Re-run later before deleting."
-              exit 1
-              ;;
-            *)
-              echo "⚠️ Unexpected status $HTTP_CODE for $MODEL — inspect the response body above."
-              exit 1
-              ;;
-          esac
+          def request_json(uri, api_key, payload = nil)
+            3.times do |attempt|
+              response = Timeout.timeout(45) do
+                http = Net::HTTP.new(uri.host, uri.port)
+                http.use_ssl = true
+                http.open_timeout = 10
+                http.read_timeout = 35
+                request = payload ? Net::HTTP::Post.new(uri) : Net::HTTP::Get.new(uri)
+                request['Authorization'] = "Bearer #{api_key}"
+                request['Content-Type'] = 'application/json'
+                request.body = JSON.generate(payload) if payload
+                http.request(request)
+              end
+              code = response.code.to_i
+              return [code, response.body] unless [429, 500, 502, 503, 504].include?(code) && attempt < 2
+              sleep(2**attempt)
+            end
+          rescue Timeout::Error, IOError, SystemCallError, OpenSSL::SSL::SSLError
+            return ['TIMEOUT/NETWORK', nil]
+          end
+
+          catalog_code, catalog_body = request_json(URI("#{api_base}/models"), api_key)
+          catalog_ids = if catalog_code == 200
+            JSON.parse(catalog_body).fetch('data', []).map { |entry| entry['id'] }
+          else
+            []
+          end
+
+          results = []
+          models.each do |entry|
+            params = entry.fetch('litellm_params', {})
+            base = params['api_base'].to_s
+            configured_model = params['model'].to_s
+            type = entry.dig('model_info', 'type') || 'chat'
+
+            unless base == api_base
+              results << [entry['model_name'], type, 'SKIP: non-NVIDIA endpoint']
+              next
+            end
+
+            upstream_model = configured_model.sub(/\A(?:nvidia_nim|openai)\//, '')
+            if type == 'image_generation'
+              status = catalog_code == 200 && catalog_ids.include?(upstream_model) ?
+                'CATALOG: listed; inference not run' : 'UNVERIFIED: not listed or catalog unavailable; inference not run'
+              results << [entry['model_name'], type, status]
+              next
+            end
+
+            endpoint, payload = if type == 'embedding'
+              ['embeddings', {
+                model: upstream_model,
+                input: ['availability probe'],
+                input_type: 'passage',
+                encoding_format: 'float'
+              }]
+            else
+              ['chat/completions', {
+                model: upstream_model,
+                messages: [{ role: 'user', content: 'Reply with one character.' }],
+                max_tokens: 1
+              }]
+            end
+
+            code, = request_json(URI("#{api_base}/#{endpoint}"), api_key, payload)
+            status = case code
+            when 200 then 'PASS: HTTP 200'
+            when 410 then 'UNAVAILABLE: HTTP 410'
+            when 404 then 'UNAVAILABLE: HTTP 404'
+            when 429 then 'INCONCLUSIVE: HTTP 429 after retries'
+            else "FAIL/INCONCLUSIVE: HTTP #{code}"
+            end
+            results << [entry['model_name'], type, status]
+          end
+
+          results.each { |name, type, status| puts "#{status}\t#{type}\t#{name}" }
+          summary = [
+            '| Model | Type | Result |',
+            '|---|---|---|',
+            *results.map { |name, type, status| "| `#{name}` | #{type} | #{status} |" }
+          ].join("\n")
+          File.open(ENV.fetch('GITHUB_STEP_SUMMARY'), 'a') { |file| file.puts(summary) }
+
+          actionable = results.any? do |_name, _type, status|
+            status.start_with?('UNAVAILABLE:', 'INCONCLUSIVE:', 'FAIL/INCONCLUSIVE:')
+          end
+          exit(1) if actionable
+          RUBY
