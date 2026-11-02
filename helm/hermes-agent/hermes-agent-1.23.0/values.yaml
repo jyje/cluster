@@ -220,6 +220,9 @@ team:
     size: 10Gi
     # -- Keep a chart-created shared claim when the owning release is removed.
     retain: true
+    # -- Annotations to add to the shared PVC, used only when `create=true`. With
+    #    `retain: true` the `helm.sh/resource-policy: keep` annotation is always set.
+    annotations: {}
     permissions:
       # -- On the leader, chown the shared volume before Hermes starts. Enable
       # only when the storage backend permits ownership changes. This init
@@ -344,6 +347,9 @@ externalSecret:
   #    Requires the External Secrets Operator CRDs to already be installed
   #    in-cluster.
   enabled: false
+  # -- Annotations to add to the ExternalSecret, for example an Argo CD sync wave
+  #    so the Secret exists before the workload starts.
+  annotations: {}
   # -- How often ESO resyncs the target Secret from the provider.
   refreshInterval: 1h
   # -- Which SecretStore/ClusterSecretStore to pull from. `name` is required
@@ -421,7 +427,7 @@ auth:
     #    Hermes image so auth.json persistence and refresh stay version-aligned.
     image:
       repository: python
-      tag: "3.13-slim"
+      tag: "3.14-slim"
     # -- Resources for the login init container.
     resources: {}
     # Catalog of interactive-login profiles. `flow` selects the handler;
@@ -479,6 +485,11 @@ persistence:
   # -- Use an existing PVC instead of creating a new one.
   # When specified, the chart will use this PVC and skip creating its own.
   existingClaim: ""
+  # -- Annotations to add to the PVC, or to the StatefulSet's volumeClaimTemplate
+  #    (for example backup tool hints or `helm.sh/resource-policy: keep`). They are
+  #    not applied to `existingClaim`. Kubernetes does not allow changing a
+  #    StatefulSet's volumeClaimTemplates, so set them at install time.
+  annotations: {}
 
 # ---------------------------------------------------------------------------
 # Networking. `hermes gateway run` uses outbound messenger connections by
@@ -647,6 +658,8 @@ httpRoute:
 # which on most managed clusters hands out node IAM credentials.
 # ---------------------------------------------------------------------------
 networkPolicy:
+  # -- Annotations to add to the NetworkPolicy.
+  annotations: {}
   # -- Create a NetworkPolicy isolating both directions. Ingress is denied
   #    entirely by default - not an oversight: `hermes gateway run` is
   #    outbound-only, so nothing needs to reach this Pod unless a listener
@@ -742,6 +755,10 @@ terminationGracePeriodSeconds: ""
 tests:
   # -- Render the chart test Job.
   enabled: true
+  # -- Extra annotations to add to the test Job. The chart's own Helm and Argo CD
+  #    hook annotations are always set, and a key here that repeats one of them
+  #    is ignored.
+  annotations: {}
   # -- Image used by the test Job. Empty fields fall back to the main
   # `image.*` (so the hermes CLI + doctor are available and arch matches).
   image:
@@ -785,10 +802,16 @@ tests:
       memory: 128Mi
     limits:
       cpu: "1"
-      memory: 512Mi
+      memory: 1Gi
 
 # -- Annotations to add to the Pod.
 podAnnotations: {}
+# -- Annotations to add to every ConfigMap the chart renders (config, login
+#    script, team skill), for example Argo CD sync waves.
+configMapAnnotations: {}
+# -- Annotations to add to the chart's env Secret. With `externalSecret.enabled`
+#    the Secret is created by ESO, so use `externalSecret.annotations` instead.
+secretAnnotations: {}
 # -- Annotations to add to the Deployment or StatefulSet object.
 deploymentAnnotations: {}
 # -- Labels to add to the Pod.

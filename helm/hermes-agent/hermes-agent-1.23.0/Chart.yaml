@@ -1,0 +1,38 @@
+annotations:
+  artifacthub.io/category: ai-machine-learning
+  artifacthub.io/changes: |
+    - kind: "fixed"
+      description: "Fix(values): Validate annotation and label values as strings The values schema now requires string values in `serviceAccount.annotations`, `service.annotatio..."
+    - kind: "added"
+      description: "Feature(values): ConfigMap, Secret and ExternalSecret annotations Set `configMapAnnotations` to add annotations to every ConfigMap the chart renders (config,..."
+    - kind: "added"
+      description: "Feature(values): NetworkPolicy and test Job annotations Set `networkPolicy.annotations` to add annotations to the NetworkPolicy, and `tests.annotations` to a..."
+    - kind: "added"
+      description: "Feature(values): PVC annotations Set `persistence.annotations` to add annotations to the PersistentVolumeClaim, or to the StatefulSet's volumeClaimTemplate,..."
+    - kind: "fixed"
+      description: "Fix(chart): give the Helm test Job 1Gi of memory Raise the test Job's default memory limit from 512Mi to 1Gi. `hermes doctor` was killed with `OOMKilled` at..."
+  artifacthub.io/license: MIT
+apiVersion: v2
+appVersion: v0.22.5
+description: "\U0001F469\U0001F3FB\U0001F4BB Hermes Agent on Kubernetes - sign in
+  with Codex/Copilot, run agent teams, stay lightweight.  Run [Hermes Agent](https://github.com/NousResearch/hermes-agent)
+  - a multi-provider LLM agent framework - on Kubernetes. Configure any provider Hermes
+  supports (OpenAI, Anthropic, Gemini, OpenRouter, NVIDIA, or any OpenAI-compatible
+  proxy such as LiteLLM/vLLM) entirely via values.yaml, with a built-in helm test
+  health check. "
+home: https://github.com/jyje/hermes-agent-helm
+icon: https://hermes-agent.nousresearch.com/docs/img/logo.png
+keywords:
+- hermes
+- agent
+- llm
+- openai-compatible
+maintainers:
+- email: jyjeon@outlook.com
+  name: jyje
+name: hermes-agent
+sources:
+- https://github.com/jyje/hermes-agent-helm
+- https://github.com/NousResearch/hermes-agent
+type: application
+version: 1.23.0
