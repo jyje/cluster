@@ -10,8 +10,6 @@ on:
         default: "full"
   schedule:
     - cron: "0 21 * * *" # 06:00 KST
-  push:
-    branches: [codex/cluster-helm-vendoring]
 
 permissions:
   contents: read
@@ -107,16 +105,9 @@ jobs:
           LOG_FILE_LEVEL: debug
         run: |
           install -d -m 777 "$RUNNER_TEMP/renovate-out"
-          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
-            # The test branch carries the catalog and the native manager configuration.
-            export RENOVATE_BASE_BRANCH_PATTERNS='["codex/cluster-helm-vendoring"]'
-            export RENOVATE_USE_BASE_BRANCH_CONFIG=merge
-            export RENOVATE_PACKAGE_RULES='[{"matchManagers":["!helm-vendor"],"enabled":false},{"matchManagers":["helm-vendor"],"schedule":[],"dependencyDashboardApproval":false}]'
-          fi
           docker run --rm \
             --env RENOVATE_TOKEN --env RENOVATE_REPOSITORIES --env RENOVATE_DRY_RUN \
             --env RENOVATE_ONBOARDING --env RENOVATE_REQUIRE_CONFIG \
-            --env RENOVATE_BASE_BRANCH_PATTERNS --env RENOVATE_USE_BASE_BRANCH_CONFIG --env RENOVATE_PACKAGE_RULES \
             --env LOG_LEVEL --env LOG_FILE --env LOG_FILE_LEVEL \
             --volume "$RUNNER_TEMP/renovate-out:/renovate-out" \
             "$RENOVATE_IMAGE_ID" renovate
