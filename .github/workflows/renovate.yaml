@@ -1,0 +1,72 @@
+name: 🤖 renovate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "full: log only. off: create branches and PRs"
+        type: choice
+        options: ["full", "lookup", "off"]
+        default: "full"
+  schedule:
+    # Daily at 01:00 KST. renovate.json5 limits regular PR creation to Monday morning.
+    - cron: "0 16 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Prepare Renovate log directory
+        run: install -d -m 777 /tmp/renovate-out
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Check Dependabot alerts access
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if gh api --silent "repos/${GITHUB_REPOSITORY}/dependabot/alerts?per_page=1"; then
+            echo 'Dependabot alerts API is accessible to the GitHub App.'
+          else
+            echo '::warning::Dependabot alerts API access failed. Check the GitHub App and installation permissions.'
+          fi
+
+      - uses: renovatebot/github-action@230ce922b08968d0a4f6f70f295601daff09ef1d # v46.3.7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          renovate-version: 44.149.2
+          additional-env-list: |
+            LOG_FILE
+            LOG_FILE_LEVEL
+          docker-volumes: |
+            /tmp/renovate-out:/renovate-out
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run != 'off' && inputs.dry-run || '' }}
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          LOG_LEVEL: debug
+          LOG_FILE: /renovate-out/renovate-log.jsonl
+          LOG_FILE_LEVEL: debug
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: renovate-log
+          path: /tmp/renovate-out/renovate-log.jsonl
+          retention-days: 7
