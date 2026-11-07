@@ -26,8 +26,16 @@
   // (node_modules, test, tests, examples, vendor), which is fine here.
   ignorePaths: ["helm/**"],
 
-  // Only what Renovate can really own here.
-  enabledManagers: ["github-actions", "pip_requirements"],
+  // Stock Renovate shares this policy. The cluster runtime registers the catalog manager.
+  enabledManagers: [],
+  includePaths: [
+    ".github/workflows/**",
+    "action.yml",
+    "action.yaml",
+    "docs/diagrams/requirements.txt",
+    "helm-sources/catalog.yaml",
+    "tools/renovate/comparison/helm/Chart.yaml",
+  ],
 
   packageRules: [
     {
@@ -50,6 +58,16 @@
       matchManagers: ["pip_requirements"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "diagram Python dependencies",
+    },
+    {
+      matchFileNames: ["helm-sources/catalog.yaml"],
+      commitMessageAction: "Vendor",
+      commitMessageTopic: "{{depName}} Helm chart",
+      commitMessageExtra: "{{newVersion}}",
+      rebaseWhen: "behind-base-branch",
+      prBodyNotes: [
+        "Adds the selected upstream chart as a new versioned directory. The Argo CD promotion is reviewed separately.",
+      ],
     },
   ],
 }
