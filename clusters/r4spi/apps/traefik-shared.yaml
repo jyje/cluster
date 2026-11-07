@@ -1,0 +1,171 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik-shared
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/traefik/traefik-42.3.1
+    helm:
+      skipCrds: true
+      valuesObject:
+        fullnameOverride: traefik-shared
+        deployment:
+          replicas: 1
+        api:
+          dashboard: false
+          insecure: false
+        ingressClass:
+          enabled: false
+          isDefaultClass: false
+        providers:
+          kubernetesCRD:
+            enabled: false
+          kubernetesIngress:
+            enabled: false
+          kubernetesIngressNGINX:
+            enabled: false
+          kubernetesGateway:
+            enabled: true
+            experimentalChannel: false
+            labelSelector: networking.jyje.io/gateway-scope=shared
+            # Keep this list, the listener allowlist, and RoleBindings aligned.
+            namespaces:
+              - traefik-system
+              - hermes-agent-henry
+            gateways:
+              - name: traefik-shared
+        gatewayClass:
+          name: traefik-shared
+          labels:
+            networking.jyje.io/gateway-scope: shared
+        gateway:
+          name: traefik-shared
+          listeners:
+            web:
+              port: 8000
+              protocol: HTTP
+              hostname: "*.gateway.invalid"
+              namespacePolicy:
+                from: Selector
+                selector:
+                  matchExpressions:
+                    - key: kubernetes.io/metadata.name
+                      operator: In
+                      values:
+                        - hermes-agent-henry
+        service:
+          spec:
+            type: ClusterIP
+        ports:
+          websecure:
+            expose:
+              default: false
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        # Gateway informers need global namespace/class discovery, but namespaced
+        # informers can use RoleBindings instead of the chart's broad binding.
+        rbac:
+          enabled: false
+        extraObjects:
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: "{{ .Release.Namespace }}"
+              annotations:
+                argocd.argoproj.io/sync-wave: "-2"
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: traefik-shared-discovery
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            rules:
+              - apiGroups: [""]
+                resources: [namespaces]
+                verbs: [list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [gatewayclasses]
+                verbs: [list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [gatewayclasses/status]
+                resourceNames: [traefik-shared]
+                verbs: [update]
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: traefik-shared-discovery
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik-shared-discovery
+            subjects:
+              - kind: ServiceAccount
+                name: traefik-shared
+                namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: traefik-shared-namespaced
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps, secrets, services]
+                verbs: [get, list, watch]
+              - apiGroups: [discovery.k8s.io]
+                resources: [endpointslices]
+                verbs: [get, list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [backendtlspolicies, gateways, grpcroutes, httproutes, referencegrants, tlsroutes]
+                verbs: [get, list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [backendtlspolicies/status, gateways/status, grpcroutes/status, httproutes/status, tlsroutes/status]
+                verbs: [update]
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: traefik-shared
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik-shared-namespaced
+            subjects:
+              - kind: ServiceAccount
+                name: traefik-shared
+                namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: traefik-shared
+              namespace: hermes-agent-henry
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik-shared-namespaced
+            subjects:
+              - kind: ServiceAccount
+                name: traefik-shared
+                namespace: "{{ .Release.Namespace }}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik-system
+  # Manual until the shared path is verified. Do not adopt the existing pilot.
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true
