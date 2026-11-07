@@ -1,0 +1,12 @@
+repositories:
+  tarampampam:
+    type: oci
+    url: oci://ghcr.io/tarampampam/error-pages/charts
+
+charts:
+  error-pages:
+    repository: tarampampam
+    group: error-pages
+    chart: error-pages
+    applications:
+      - clusters/r4spi/apps/error-pages.yaml

@@ -16,18 +16,23 @@ security fixes on any run. Dependabot remains enabled.
 
 Approve major dependency updates and Ubuntu runner changes in the Dependency Dashboard before Renovate opens PRs.
 
-## Vendored Helm charts
+## Native Helm vendoring
 
-The [error-pages catalog entry](../../helm-sources/error-pages.json) tracks the newest vendored version of the
-OCI chart. Renovate reads this entry and runs `ruby scripts/vendor-helm-chart.rb` after updating its version.
-The script downloads the exact chart, adds the resource injection patch if needed, and validates the chart before
-adding a versioned directory under `helm/error-pages/`. Existing versions stay in Git. Renovate still excludes
-`helm/**` from dependency extraction.
+The workflow builds a pinned Renovate release with the native manager under `tools/renovate/helm-vendor/`.
+The [catalog](../../helm-sources/catalog.yaml) lists official Helm sources and opted-in charts. The manager
+reads the newest vendored release, uses Renovate's Helm or OCI lookup, downloads the exact selected version,
+applies the canonical `extraResources` patch, and renders the chart with the listed Application values.
+The generated PR adds one versioned chart directory. Promotion follows the separate
+[Helm vendoring review](../../.claude/skills/helm-chart-vendor/SKILL.md).
 
-To reproduce the vendor operation locally, set the target version in the catalog and run the script from the
-repository root with Helm and Ruby installed. `ruby scripts/vendor-helm-chart.rb --check` verifies the catalog and
-chart against the Application values without downloading anything. Review the values and dependency summary in the
-**Verify Helm vendoring** workflow before merging a chart PR.
+## Bot comparison
 
-Promotion is a separate PR. Follow the [Helm vendoring rules](../../.claude/skills/helm-chart-vendor/SKILL.md) to
-review the chart changes, obtain approval, and update the Application path and any applicable floating image tags.
+Record the author, dependency, manifest, old and proposed versions, first PR time, grouping and CI result.
+Record each bot's result before merging a shared update. Group security candidates by advisory as well as
+dependency. Treat whole-chart vendoring as a separate `jyje-bot` case.
+
+| Runner | GitHub author | Observed starting point |
+| --- | --- | --- |
+| GitHub Dependabot | `dependabot[bot]` | [Checkout 4 to 7](https://github.com/jyje/cluster/pull/205) |
+| Mend-hosted Renovate | `renovate[bot]` | Hosted execution and PR evidence are collected separately. |
+| Cluster Renovate | `jyje-bot[bot]` | The native-manager canary supplies the whole-chart PR. |

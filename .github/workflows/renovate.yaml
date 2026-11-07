@@ -9,8 +9,9 @@ on:
         options: ["full", "lookup", "off"]
         default: "full"
   schedule:
-    # Daily at 06:00 KST. renovate.json5 limits regular PR creation to Monday morning.
-    - cron: "0 21 * * *"
+    - cron: "0 21 * * *" # 06:00 KST
+  push:
+    branches: [codex/cluster-helm-vendoring]
 
 permissions:
   contents: read
@@ -21,11 +22,58 @@ concurrency:
 
 jobs:
   renovate:
+    if: ${{ github.repository == 'jyje/cluster' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
-      - name: Prepare Renovate log directory
-        run: install -d -m 777 /tmp/renovate-out
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          path: cluster
+
+      - uses: actions/checkout@v7
+        with:
+          repository: renovatebot/renovate
+          ref: 182de2759f0bb31ee6216f4076875948d39c4c1b # 44.149.2
+          persist-credentials: false
+          path: upstream
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.21.0
+
+      - name: Build and validate the native Renovate manager
+        shell: bash
+        run: |
+          git -C upstream apply --check --unidiff-zero ../cluster/tools/renovate/artifact-only.patch
+          git -C upstream apply --unidiff-zero ../cluster/tools/renovate/artifact-only.patch
+          mkdir upstream/lib/modules/manager/helm-vendor
+          cp cluster/tools/renovate/helm-vendor/*.ts upstream/lib/modules/manager/helm-vendor/
+          cd upstream
+          corepack pnpm install --frozen-lockfile --ignore-scripts
+          node tools/generate-imports.mjs
+          node_modules/.bin/vitest run lib/modules/manager/helm-vendor/index.spec.ts
+          node_modules/.bin/tsdown
+          node dist/config-validator.js --strict --no-global ../cluster/renovate.json5
+
+      - name: Build the Renovate runtime image
+        shell: bash
+        run: |
+          archive=helm-v3.21.4-linux-amd64.tar.gz
+          mkdir "$RUNNER_TEMP/helm"
+          curl --fail --silent --show-error --location "https://get.helm.sh/$archive" -o "$RUNNER_TEMP/helm/$archive"
+          curl --fail --silent --show-error --location "https://get.helm.sh/$archive.sha256" -o "$RUNNER_TEMP/helm/$archive.sha256"
+          (
+            cd "$RUNNER_TEMP/helm"
+            printf '%s  %s\n' "$(cat "$archive.sha256")" "$archive" | sha256sum --check
+            tar -xzf "$archive"
+          )
+          mkdir "$RUNNER_TEMP/renovate-image"
+          cp "$RUNNER_TEMP/helm/linux-amd64/helm" "$RUNNER_TEMP/renovate-image/helm"
+          cp -R upstream/dist "$RUNNER_TEMP/renovate-image/dist"
+          docker build --file cluster/tools/renovate/Dockerfile --tag cluster-renovate:ci "$RUNNER_TEMP/renovate-image"
+          image=$(docker image inspect --format '{{.Id}}' cluster-renovate:ci)
+          echo "RENOVATE_IMAGE_ID=$image" >> "$GITHUB_ENV"
 
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
@@ -46,28 +94,36 @@ jobs:
             echo '::warning::Dependabot alerts API access failed. Check the GitHub App and installation permissions.'
           fi
 
-      - uses: renovatebot/github-action@230ce922b08968d0a4f6f70f295601daff09ef1d # v46.3.7
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          renovate-version: 44.149.2
-          additional-env-list: |
-            LOG_FILE
-            LOG_FILE_LEVEL
-          docker-volumes: |
-            /tmp/renovate-out:/renovate-out
+      - name: Run Renovate
+        shell: bash
         env:
+          RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run != 'off' && inputs.dry-run || '' }}
           RENOVATE_ONBOARDING: "false"
           RENOVATE_REQUIRE_CONFIG: required
-          RENOVATE_ALLOWED_COMMANDS: '["^ruby scripts/vendor-helm-chart[.]rb$"]'
-          LOG_LEVEL: debug
+          LOG_LEVEL: info
           LOG_FILE: /renovate-out/renovate-log.jsonl
           LOG_FILE_LEVEL: debug
+        run: |
+          install -d -m 777 "$RUNNER_TEMP/renovate-out"
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            # The test branch carries the catalog and the native manager configuration.
+            export RENOVATE_BASE_BRANCH_PATTERNS='["codex/cluster-helm-vendoring"]'
+            export RENOVATE_USE_BASE_BRANCH_CONFIG=merge
+            export RENOVATE_PACKAGE_RULES='[{"matchManagers":["!helm-vendor"],"enabled":false},{"matchManagers":["helm-vendor"],"schedule":[],"dependencyDashboardApproval":false}]'
+          fi
+          docker run --rm \
+            --env RENOVATE_TOKEN --env RENOVATE_REPOSITORIES --env RENOVATE_DRY_RUN \
+            --env RENOVATE_ONBOARDING --env RENOVATE_REQUIRE_CONFIG \
+            --env RENOVATE_BASE_BRANCH_PATTERNS --env RENOVATE_USE_BASE_BRANCH_CONFIG --env RENOVATE_PACKAGE_RULES \
+            --env LOG_LEVEL --env LOG_FILE --env LOG_FILE_LEVEL \
+            --volume "$RUNNER_TEMP/renovate-out:/renovate-out" \
+            "$RENOVATE_IMAGE_ID" renovate
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: renovate-log
-          path: /tmp/renovate-out/renovate-log.jsonl
+          path: ${{ runner.temp }}/renovate-out/renovate-log.jsonl
           retention-days: 7
