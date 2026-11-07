@@ -3,7 +3,7 @@
   extends: ["config:recommended"],
 
   timezone: "Asia/Seoul",
-  schedule: ["before 6am on monday"],
+  schedule: ["* 6-11 * * 1"],
   prConcurrentLimit: 3,
   prHourlyLimit: 2,
   automerge: false,

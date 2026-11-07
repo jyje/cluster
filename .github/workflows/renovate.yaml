@@ -9,8 +9,8 @@ on:
         options: ["full", "lookup", "off"]
         default: "full"
   schedule:
-    # Daily at 01:00 KST. renovate.json5 limits regular PR creation to Monday morning.
-    - cron: "0 16 * * *"
+    # Daily at 06:00 KST. renovate.json5 limits regular PR creation to Monday morning.
+    - cron: "0 21 * * *"
 
 permissions:
   contents: read

@@ -1,8 +1,9 @@
 # Renovate in cluster
 
-The [Renovate workflow](../../.github/workflows/renovate.yaml) runs daily at 01:00 KST with a GitHub App
+The [Renovate workflow](../../.github/workflows/renovate.yaml) is scheduled daily at 06:00 KST with a GitHub App
 installation token scoped to this repository. [Repository policy](../../renovate.json5) limits regular PR creation
-to Monday before 06:00 KST. Renovate can propose security fixes on any run. Dependabot remains enabled.
+to Monday from 06:00 until noon KST, allowing time for GitHub Actions scheduling delays. Renovate can propose
+security fixes on any run. Dependabot remains enabled.
 
 ## Setup and verification
 
