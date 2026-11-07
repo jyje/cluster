@@ -17,17 +17,23 @@
   semanticCommits: "disabled",
   commitMessagePrefix: "🤖 ci(deps):",
 
-  // helm/<group>/<chart>-<version>/ holds vendored upstream charts (several
-  // versions of the same chart side by side). An unconfigured scan reads their
-  // values.yaml, subchart Chart.yaml and even upstream .github/workflows, and
-  // wants to "update" each of them. They are changed only by the
-  // helm-chart-vendor skill (helm pull + rename), which Renovate cannot do.
-  // Setting ignorePaths replaces the list from config:recommended
-  // (node_modules, test, tests, examples, vendor), which is fine here.
+  // Scan the source catalog rather than the contents of upstream chart copies.
   ignorePaths: ["helm/**"],
 
-  // Only what Renovate can really own here.
-  enabledManagers: ["github-actions", "pip_requirements"],
+  enabledManagers: ["github-actions", "pip_requirements", "custom.regex"],
+
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["helm-sources/error-pages.json"],
+      matchStrings: [
+        '"source"\\s*:\\s*"oci://(?<packageName>[^"\\s]+)"\\s*,\\s*"version"\\s*:\\s*"(?<currentValue>[^"\\s]+)"',
+      ],
+      depNameTemplate: "error-pages Helm chart",
+      datasourceTemplate: "docker",
+      versioningTemplate: "semver",
+    },
+  ],
 
   packageRules: [
     {
@@ -50,6 +56,17 @@
       matchManagers: ["pip_requirements"],
       matchUpdateTypes: ["minor", "patch"],
       groupName: "diagram Python dependencies",
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchFileNames: ["helm-sources/error-pages.json"],
+      pinDigests: false,
+      constraints: { helm: "3.21.4", ruby: "3.4.9" },
+      postUpgradeTasks: {
+        commands: ["ruby scripts/vendor-helm-chart.rb"],
+        installTools: { helm: "3.21.4", ruby: "3.4.9" },
+        fileFilters: ["helm/error-pages/error-pages-*/**"],
+      },
     },
   ],
 }

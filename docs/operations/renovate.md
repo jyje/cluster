@@ -15,5 +15,19 @@ security fixes on any run. Dependabot remains enabled.
    JSONL artifact for the `jyje/cluster` scan. The workflow retains the artifact for seven days.
 
 Approve major dependency updates and Ubuntu runner changes in the Dependency Dashboard before Renovate opens PRs.
-Keep chart updates in the [repository's Helm vendoring workflow](../../.claude/skills/helm-chart-vendor/SKILL.md).
-Renovate excludes the existing chart directories under `helm/`.
+
+## Vendored Helm charts
+
+The [error-pages catalog entry](../../helm-sources/error-pages.json) tracks the newest vendored version of the
+OCI chart. Renovate reads this entry and runs `ruby scripts/vendor-helm-chart.rb` after updating its version.
+The script downloads the exact chart, adds the resource injection patch if needed, and validates the chart before
+adding a versioned directory under `helm/error-pages/`. Existing versions stay in Git. Renovate still excludes
+`helm/**` from dependency extraction.
+
+To reproduce the vendor operation locally, set the target version in the catalog and run the script from the
+repository root with Helm and Ruby installed. `ruby scripts/vendor-helm-chart.rb --check` verifies the catalog and
+chart against the Application values without downloading anything. Review the values and dependency summary in the
+**Verify Helm vendoring** workflow before merging a chart PR.
+
+Promotion is a separate PR. Follow the [Helm vendoring rules](../../.claude/skills/helm-chart-vendor/SKILL.md) to
+review the chart changes, obtain approval, and update the Application path and any applicable floating image tags.

@@ -1,0 +1,17 @@
+name: Verify Helm vendoring
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check the vendored chart and Application values
+        shell: bash
+        run: ruby scripts/vendor-helm-chart.rb --check | tee -a "$GITHUB_STEP_SUMMARY"

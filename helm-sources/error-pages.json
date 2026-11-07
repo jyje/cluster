@@ -1,0 +1,7 @@
+{
+  "group": "error-pages",
+  "chart": "error-pages",
+  "source": "oci://ghcr.io/tarampampam/error-pages/charts/error-pages",
+  "version": "4.2.7",
+  "application": "clusters/r4spi/apps/error-pages.yaml"
+}

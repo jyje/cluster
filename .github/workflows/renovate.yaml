@@ -60,6 +60,7 @@ jobs:
           RENOVATE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run != 'off' && inputs.dry-run || '' }}
           RENOVATE_ONBOARDING: "false"
           RENOVATE_REQUIRE_CONFIG: required
+          RENOVATE_ALLOWED_COMMANDS: '["^ruby scripts/vendor-helm-chart[.]rb$"]'
           LOG_LEVEL: debug
           LOG_FILE: /renovate-out/renovate-log.jsonl
           LOG_FILE_LEVEL: debug
