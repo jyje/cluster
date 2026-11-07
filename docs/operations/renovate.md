@@ -35,4 +35,4 @@ dependency. Treat whole-chart vendoring as a separate `jyje-bot` case.
 | --- | --- | --- |
 | GitHub Dependabot | `dependabot[bot]` | [Checkout 4 to 7](https://github.com/jyje/cluster/pull/205) |
 | Mend-hosted Renovate | `renovate[bot]` | Hosted execution and PR evidence are collected separately. |
-| Cluster Renovate | `jyje-bot[bot]` | The native-manager canary supplies the whole-chart PR. |
+| Cluster Renovate | `jyje-bot[bot]` | [error-pages 4.2.7](https://github.com/jyje/cluster/pull/212), a whole-chart PR produced by [GitHub Actions](https://github.com/jyje/cluster/actions/runs/42399110990). |

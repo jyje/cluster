@@ -10,7 +10,8 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
+import { isDeepStrictEqual, promisify } from "node:util";
+import { valid } from "semver";
 import { parseDocument } from "yaml";
 import { z } from "zod/v4";
 import { GlobalConfig } from "../../../config/global.ts";
@@ -46,7 +47,11 @@ const applicationSchema = z.object({
     }),
   }),
 });
-const metadataSchema = z.object({ name: z.string(), version: z.string() });
+const metadataSchema = z.object({
+  name: z.string(),
+  version: z.string(),
+  dependencies: z.array(z.unknown()).optional(),
+});
 type Chart = { group: string; chart: string; applications: string[] };
 type Source = { type: "http" | "oci"; url: string };
 
@@ -110,8 +115,12 @@ async function patchResources(
   }
 }
 
-function validateIdentities(rendered: string): void {
+function renderSummary(rendered: string): {
+  identities: string[];
+  crds: unknown[];
+} {
   const seen = new Set<string>();
+  const crds: unknown[] = [];
   for (const doc of parseYaml<Record<string, unknown> | null>(rendered)) {
     if (!doc) {
       continue;
@@ -130,7 +139,11 @@ function validateIdentities(rendered: string): void {
       throw new Error("Helm rendered duplicate resource identities");
     }
     seen.add(id);
+    if (doc.kind === "CustomResourceDefinition") {
+      crds.push(doc);
+    }
   }
+  return { identities: Array.from(seen).sort(), crds };
 }
 
 async function verifyApplication(
@@ -138,35 +151,37 @@ async function verifyApplication(
   directory: string,
   chart: Chart,
   path: string,
-): Promise<void> {
+): Promise<string> {
   const content = await readLocalFile(path, "utf8");
   if (!content) {
     throw new Error("Missing Application for Helm rendering");
   }
   const app = parseYaml(content, { customSchema: applicationSchema })[0];
-  if (
-    !app.spec.source.path.startsWith(
-      "helm/" + chart.group + "/" + chart.chart + "-",
-    )
-  ) {
+  const prefix = "helm/" + chart.group + "/" + chart.chart + "-";
+  const deployed = app.spec.source.path;
+  if (!deployed.startsWith(prefix) || !valid(deployed.slice(prefix.length))) {
     throw new Error("Application does not point at this vendored chart");
   }
+  const previous = join(GlobalConfig.get("localDir"), deployed);
   const config = app.spec.source.helm;
   const values = config?.valuesObject ?? {};
   const valuesPath = join(stage, "application-values.json");
   const namespace = app.spec.destination.namespace;
-  const args = [
-    "template",
-    config?.releaseName ?? app.metadata.name,
-    directory,
-    "--namespace",
-    namespace,
-    "--include-crds",
-    "-f",
-    valuesPath,
-  ];
+  const render = (chartPath: string): Promise<string> =>
+    helm(
+      stage,
+      "template",
+      config?.releaseName ?? app.metadata.name,
+      chartPath,
+      "--namespace",
+      namespace,
+      "--include-crds",
+      "-f",
+      valuesPath,
+    );
   await writeFile(valuesPath, JSON.stringify(values), { mode: 0o600 });
-  validateIdentities(await helm(stage, ...args));
+  const before = renderSummary(await render(previous));
+  const after = renderSummary(await render(directory));
 
   await writeFile(
     valuesPath,
@@ -182,14 +197,73 @@ async function verifyApplication(
       ],
     }),
   );
-  const probes = await helm(stage, ...args);
-  validateIdentities(probes);
+  const probes = await render(directory);
+  renderSummary(probes);
   if (
     !probes.includes("name: helm-vendor-object-probe") ||
     !probes.includes("name: helm-vendor-string-probe-" + namespace)
   ) {
     throw new Error("Canonical resource injection probes did not render");
   }
+
+  const oldValues = await chartValues(previous);
+  const newValues = await chartValues(directory);
+  const removed = Object.keys(oldValues).filter(
+    (key) => !Object.hasOwn(newValues, key),
+  );
+  const added = Object.keys(newValues).filter(
+    (key) => !Object.hasOwn(oldValues, key),
+  );
+  const changed = Object.keys(oldValues).filter(
+    (key) =>
+      Object.hasOwn(newValues, key) &&
+      !isDeepStrictEqual(oldValues[key], newValues[key]),
+  );
+  const affected = [...removed, ...changed].filter((key) =>
+    Object.hasOwn(values, key),
+  );
+  const oldMetadata = await chartMetadata(previous);
+  const newMetadata = await chartMetadata(directory);
+  const list = (keys: string[]): string =>
+    keys.length
+      ? keys
+          .sort()
+          .slice(0, 20)
+          .map((key) => JSON.stringify(key))
+          .join(", ")
+      : "none";
+  return [
+    "Helm lint and rendering passed with the Application values. The object and string injection probes also passed.",
+    "- Added default keys - " + list(added),
+    "- Removed default keys - " + list(removed),
+    "- Changed default keys - " + list(changed),
+    "- Changed or removed keys overridden by the Application - " +
+      list(affected),
+    "- Chart dependencies - " +
+      (isDeepStrictEqual(oldMetadata.dependencies, newMetadata.dependencies)
+        ? "unchanged"
+        : "changed"),
+    "- Rendered resource identities - " +
+      (isDeepStrictEqual(before.identities, after.identities)
+        ? "unchanged"
+        : "changed"),
+    "- Rendered CRDs - " +
+      (isDeepStrictEqual(before.crds, after.crds) ? "unchanged" : "changed"),
+  ].join("\n");
+}
+
+async function chartMetadata(directory: string) {
+  return parseYaml(await readFile(join(directory, "Chart.yaml"), "utf8"), {
+    customSchema: metadataSchema,
+  })[0];
+}
+
+async function chartValues(
+  directory: string,
+): Promise<Record<string, unknown>> {
+  return parseYaml(await readFile(join(directory, "values.yaml"), "utf8"), {
+    customSchema: z.record(z.string(), z.unknown()),
+  })[0];
 }
 
 export async function materialize(
@@ -224,10 +298,7 @@ export async function materialize(
     );
     const directory = join(stage, chart.chart);
     const files = await chartFiles(directory);
-    const metadata = parseYaml(
-      await readFile(join(directory, "Chart.yaml"), "utf8"),
-      { customSchema: metadataSchema },
-    )[0];
+    const metadata = await chartMetadata(directory);
     if (metadata.name !== chart.chart || metadata.version !== version) {
       throw new Error(
         "Fetched chart metadata does not match the selected release",
@@ -236,10 +307,16 @@ export async function materialize(
 
     await patchResources(directory, files);
     await helm(stage, "lint", directory);
-    for (const application of chart.applications) {
-      await verifyApplication(stage, directory, chart, application);
-    }
     const additions: UpdateArtifactsResult[] = [];
+    for (const application of chart.applications) {
+      const message = await verifyApplication(
+        stage,
+        directory,
+        chart,
+        application,
+      );
+      additions.push({ notice: { file: application, message } });
+    }
     for (const path of await chartFiles(directory)) {
       additions.push({
         file: {

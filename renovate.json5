@@ -58,5 +58,14 @@
       matchUpdateTypes: ["minor", "patch"],
       groupName: "diagram Python dependencies",
     },
+    {
+      matchFileNames: ["helm-sources/catalog.yaml"],
+      commitMessageAction: "Vendor",
+      commitMessageTopic: "{{depName}} Helm chart",
+      commitMessageExtra: "{{newVersion}}",
+      prBodyNotes: [
+        "Adds the selected upstream chart as a new versioned directory. The Argo CD promotion is reviewed separately.",
+      ],
+    },
   ],
 }
