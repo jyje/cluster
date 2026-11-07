@@ -1,0 +1,97 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik-henry-pilot
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/traefik/traefik-42.3.1
+    helm:
+      skipCrds: true
+      valuesObject:
+        fullnameOverride: traefik-henry-pilot
+        deployment:
+          replicas: 1
+        api:
+          dashboard: false
+          insecure: false
+        ingressClass:
+          enabled: false
+          isDefaultClass: false
+        providers:
+          kubernetesCRD:
+            enabled: false
+          kubernetesIngress:
+            enabled: false
+          kubernetesIngressNGINX:
+            enabled: false
+          kubernetesGateway:
+            enabled: true
+            experimentalChannel: false
+            labelSelector: networking.jyje.io/gateway-scope=henry-pilot
+            namespaces:
+              - traefik-henry-pilot
+              - hermes-agent-henry
+            gateways:
+              - name: henry-pilot
+        gatewayClass:
+          name: traefik-henry-pilot
+          labels:
+            networking.jyje.io/gateway-scope: henry-pilot
+        gateway:
+          name: henry-pilot
+          listeners:
+            web:
+              port: 8000
+              protocol: HTTP
+              hostname: henry-pilot.invalid
+              namespacePolicy:
+                from: Selector
+                selector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: hermes-agent-henry
+        service:
+          spec:
+            type: ClusterIP
+        ports:
+          websecure:
+            expose:
+              default: false
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        extraObjects:
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: henry-pilot
+              namespace: hermes-agent-henry
+            spec:
+              parentRefs:
+                - name: henry-pilot
+                  namespace: traefik-henry-pilot
+                  sectionName: web
+              hostnames:
+                - henry-pilot.invalid
+              rules:
+                - matches:
+                    - method: GET
+                      path:
+                        type: Exact
+                        value: /
+                  backendRefs:
+                    - name: hermes-agent-henry
+                      port: 9119
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik-henry-pilot
+  # Manual sync only: the pilot is not a production cutover.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
