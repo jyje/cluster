@@ -34,6 +34,7 @@
     "action.yaml",
     "docs/diagrams/requirements.txt",
     "helm-sources/catalog.yaml",
+    "tools/renovate/comparison/helm/Chart.yaml",
   ],
 
   packageRules: [
@@ -63,6 +64,7 @@
       commitMessageAction: "Vendor",
       commitMessageTopic: "{{depName}} Helm chart",
       commitMessageExtra: "{{newVersion}}",
+      rebaseWhen: "behind-base-branch",
       prBodyNotes: [
         "Adds the selected upstream chart as a new versioned directory. The Argo CD promotion is reviewed separately.",
       ],

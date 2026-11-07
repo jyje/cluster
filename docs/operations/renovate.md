@@ -34,5 +34,12 @@ dependency. Treat whole-chart vendoring as a separate `jyje-bot` case.
 | Runner | GitHub author | Observed starting point |
 | --- | --- | --- |
 | GitHub Dependabot | `dependabot[bot]` | [Checkout 4 to 7](https://github.com/jyje/cluster/pull/205) |
-| Mend-hosted Renovate | `renovate[bot]` | Hosted execution and PR evidence are collected separately. |
+| Mend-hosted Renovate | `renovate[bot]` | The [Mend dashboard](https://developer.mend.io/github/jyje/cluster) showed a completed Silent-mode scan at 03:05 KST on November 8, 2026 using 44.220.0. It found five Actions dependencies and three pip dependencies. The dashboard reported zero branch updates. |
 | Cluster Renovate | `jyje-bot[bot]` | [error-pages 4.2.7](https://github.com/jyje/cluster/pull/212), a whole-chart PR produced by [GitHub Actions](https://github.com/jyje/cluster/actions/runs/42399110990). |
+
+These are three observed cases across different baselines. They do not measure relative PR latency. The same-input
+comparison records candidates before any of the competing updates is merged.
+
+The [comparison chart](../../tools/renovate/comparison/helm/Chart.yaml) is a standalone Helm manifest outside the
+deployment tree. Dependabot and both Renovate runners can use the same `podinfo` dependency as a version update
+input. Treat the hosted runner's detected candidates as scan evidence while it is in Silent mode.
