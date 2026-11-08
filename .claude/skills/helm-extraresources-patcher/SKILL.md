@@ -9,7 +9,8 @@ This skill ensures that all vendored top-level Helm charts in the repository sup
 
 > [!IMPORTANT]
 > - **Main Charts Only**: Never patch subcharts (directories inside `charts/`).
-> - **Deterministic patch**: Apply the standard `extraResources` template to every new top-level chart version, including charts that already expose another resource injection feature. Keep each YAML key unique and preserve other upstream injection templates.
+> - **Exact-name rule**: Use only the top-level `extraResources` key in repository-owned Helm values for resource injection. Names such as `extraObjects` and `extraDeploy` do not substitute for it. Keep those upstream features intact and add the standard patch alongside them.
+> - **Preserve native support**: If the chart already declares `extraResources`, keep its values, schema, and renderer unchanged. Run both render probes; if the existing implementation fails either probe, report the incompatibility instead of adding a second renderer for the same key.
 
 ## 1. Audit Phase
 
@@ -18,12 +19,13 @@ This skill ensures that all vendored top-level Helm charts in the repository sup
    find helm -name Chart.yaml -not -path "*/charts/*" | xargs -n 1 dirname | sort -u
    ```
 
-2. **Locate the canonical files**:
-   - Apply the rule to the version being added. Use the canonical template path and upsert the values and schema entries.
+2. **Check the exact key**:
+   - Inspect the top-level `extraResources` key in `values.yaml` for the chart version being added.
+   - If present, skip patching and go directly to verification. If absent, apply the standard patch. Do not overwrite an unrelated template at the canonical path.
 
 ## 2. Patching Phase
 
-For each new chart version:
+For a new chart version without a top-level `extraResources` key:
 
 ### A. Add template file
 Create `<chart-dir>/templates/extra-resources.yaml` with the following content:
@@ -41,7 +43,7 @@ Create `<chart-dir>/templates/extra-resources.yaml` with the following content:
 Each item is rendered through `tpl`, so Helm template expressions (e.g. `{{ .Release.Namespace }}`) inside `extraResources` values are evaluated at render time. Both object and raw string formats are supported (see values.yaml below).
 
 ### B. Update values.yaml
-Append the `extraResources: []` definition if the key is absent. Preserve an existing array value:
+Append the `extraResources: []` definition:
 ```yaml
 
 # -- Extra resources to deploy with the chart.
