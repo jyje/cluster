@@ -17,6 +17,7 @@ updates:
   - package-ecosystem: "helm"
     directories:
       - "/helm/*"
+      - "/tools/renovate/comparison/helm"
     schedule:
       interval: "weekly"
     commit-message:
