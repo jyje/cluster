@@ -1,0 +1,153 @@
+name: 🤖 renovate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "full: log only. off: create branches and PRs"
+        type: choice
+        options: ["full", "lookup", "off"]
+        default: "full"
+      helm-profile:
+        description: "Catalog chart ID for a Helm-only run"
+        type: string
+      expected-version:
+        description: "Exact chart version for the selected Helm profile"
+        type: string
+  schedule:
+    - cron: "0 21 * * *" # 06:00 KST
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    if: ${{ github.repository == 'jyje/cluster' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      HELM_VENDOR_PROFILE: ${{ inputs.helm-profile }}
+      HELM_VENDOR_EXPECTED_VERSION: ${{ inputs.expected-version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          path: cluster
+
+      - uses: actions/checkout@v7
+        with:
+          repository: renovatebot/renovate
+          ref: 182de2759f0bb31ee6216f4076875948d39c4c1b # 44.149.2
+          persist-credentials: false
+          path: upstream
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.21.0
+
+      - name: Build and validate the native Renovate manager
+        shell: bash
+        run: |
+          git -C upstream apply --check --unidiff-zero ../cluster/tools/renovate/artifact-only.patch
+          git -C upstream apply --unidiff-zero ../cluster/tools/renovate/artifact-only.patch
+          mkdir upstream/lib/modules/manager/helm-vendor
+          cp cluster/tools/renovate/helm-vendor/*.ts upstream/lib/modules/manager/helm-vendor/
+          cd upstream
+          corepack pnpm install --frozen-lockfile --ignore-scripts
+          if [[ -n "$HELM_VENDOR_PROFILE" || -n "$HELM_VENDOR_EXPECTED_VERSION" ]]; then
+            node --input-type=module <<'JS'
+            import { readFileSync } from 'node:fs';
+            import { valid } from 'semver';
+            import { parse } from 'yaml';
+
+            const { HELM_VENDOR_PROFILE: profile, HELM_VENDOR_EXPECTED_VERSION: version } = process.env;
+            const catalog = parse(readFileSync('../cluster/helm-sources/catalog.yaml', 'utf8'));
+            if (!profile || !Object.hasOwn(catalog.charts, profile) || !valid(version)) {
+              throw new Error('A Helm run requires a registered profile and an exact expected version.');
+            }
+            console.log('Helm profile ' + profile + ' targeting ' + version);
+          JS
+          fi
+          node tools/generate-imports.mjs
+          node_modules/.bin/vitest run lib/modules/manager/helm-vendor/index.spec.ts
+          node_modules/.bin/tsdown
+          node dist/config-validator.js --strict --no-global ../cluster/renovate.json5
+
+      - name: Build the Renovate runtime image
+        shell: bash
+        run: |
+          archive=helm-v3.21.4-linux-amd64.tar.gz
+          mkdir "$RUNNER_TEMP/helm"
+          curl --fail --silent --show-error --location "https://get.helm.sh/$archive" -o "$RUNNER_TEMP/helm/$archive"
+          curl --fail --silent --show-error --location "https://get.helm.sh/$archive.sha256" -o "$RUNNER_TEMP/helm/$archive.sha256"
+          (
+            cd "$RUNNER_TEMP/helm"
+            printf '%s  %s\n' "$(cat "$archive.sha256")" "$archive" | sha256sum --check
+            tar -xzf "$archive"
+          )
+          mkdir "$RUNNER_TEMP/renovate-image"
+          cp "$RUNNER_TEMP/helm/linux-amd64/helm" "$RUNNER_TEMP/renovate-image/helm"
+          cp -R upstream/dist "$RUNNER_TEMP/renovate-image/dist"
+          docker build --file cluster/tools/renovate/Dockerfile --tag cluster-renovate:ci "$RUNNER_TEMP/renovate-image"
+          image=$(docker image inspect --format '{{.Id}}' cluster-renovate:ci)
+          echo "RENOVATE_IMAGE_ID=$image" >> "$GITHUB_ENV"
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Check Dependabot alerts access
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if gh api --silent "repos/${GITHUB_REPOSITORY}/dependabot/alerts?per_page=1"; then
+            echo 'Dependabot alerts API is accessible to the GitHub App.'
+          else
+            echo '::warning::Dependabot alerts API access failed. Check the GitHub App and installation permissions.'
+          fi
+
+      - name: Run Renovate
+        shell: bash
+        env:
+          RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run != 'off' && inputs.dry-run || '' }}
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          LOG_LEVEL: info
+          LOG_FILE: /renovate-out/renovate-log.jsonl
+          LOG_FILE_LEVEL: debug
+        run: |
+          install -d -m 777 "$RUNNER_TEMP/renovate-out"
+          if [[ -n "$HELM_VENDOR_PROFILE" ]]; then
+            export RENOVATE_PACKAGE_RULES
+            RENOVATE_PACKAGE_RULES=$(jq -cn \
+              --arg profile "$HELM_VENDOR_PROFILE" \
+              --arg version "$HELM_VENDOR_EXPECTED_VERSION" '[
+                {matchManagers: ["!helm-vendor"], enabled: false},
+                {matchManagers: ["helm-vendor"], matchDepNames: [$profile], allowedVersions: ("=" + $version), schedule: []}
+              ]')
+          fi
+          docker run --rm \
+            --env RENOVATE_TOKEN --env RENOVATE_REPOSITORIES --env RENOVATE_DRY_RUN \
+            --env RENOVATE_ONBOARDING --env RENOVATE_REQUIRE_CONFIG \
+            --env HELM_VENDOR_PROFILE --env RENOVATE_PACKAGE_RULES \
+            --env LOG_LEVEL --env LOG_FILE --env LOG_FILE_LEVEL \
+            --volume "$RUNNER_TEMP/renovate-out:/renovate-out" \
+            "$RENOVATE_IMAGE_ID" renovate
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: renovate-log
+          path: ${{ runner.temp }}/renovate-out/renovate-log.jsonl
+          retention-days: 7

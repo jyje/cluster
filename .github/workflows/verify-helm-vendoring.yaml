@@ -1,0 +1,54 @@
+name: Verify Helm vendor PR
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+    paths:
+      - "helm/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: ${{ startsWith(github.head_ref, 'renovate/helm-vendor-') && github.event.pull_request.user.login == 'jyje-bot[bot]' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify that one chart directory was added
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import subprocess
+
+          if os.environ['BASE_REF'] != os.environ['DEFAULT_BRANCH']:
+              raise SystemExit('A Helm vendor PR must target the repository default branch')
+
+          rev = os.environ['BASE_SHA'] + '...' + os.environ['HEAD_SHA']
+          raw = subprocess.check_output(['git', 'diff', '--name-status', '--no-renames', '-z', rev])
+          fields = raw.rstrip(b'\0').split(b'\0')
+          if len(fields) < 2 or len(fields) % 2:
+              raise SystemExit('Expected a non-empty list of file additions')
+          directories = set()
+          for status, raw_path in zip(fields[::2], fields[1::2], strict=True):
+              parts = pathlib.PurePosixPath(os.fsdecode(raw_path)).parts
+              if status != b'A' or len(parts) < 4 or parts[0] != 'helm':
+                  raise SystemExit('A Helm vendor PR may only add chart files')
+              directories.add(pathlib.Path(*parts[:3]))
+          if len(directories) != 1:
+              raise SystemExit('Expected one versioned chart directory')
+          chart, = directories
+          if not (chart / 'templates/extra-resources.yaml').is_file():
+              raise SystemExit('Missing the canonical extraResources template')
+          subprocess.run(['helm', 'lint', str(chart)], check=True)
+          PY

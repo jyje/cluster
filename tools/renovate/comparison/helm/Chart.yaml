@@ -1,0 +1,9 @@
+apiVersion: v2
+name: renovation-comparison
+description: Shared Helm dependency input for comparing Dependabot and Renovate.
+type: application
+version: 0.1.0
+dependencies:
+  - name: podinfo
+    version: 6.9.1
+    repository: https://stefanprodan.github.io/podinfo

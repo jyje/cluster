@@ -1,0 +1,22 @@
+repositories:
+  tarampampam:
+    type: oci
+    url: oci://ghcr.io/tarampampam/error-pages/charts
+  bitnami-sealed-secrets:
+    type: http
+    url: https://bitnami.github.io/sealed-secrets
+
+charts:
+  error-pages:
+    repository: tarampampam
+    group: error-pages
+    chart: error-pages
+    applications:
+      - clusters/r4spi/apps/error-pages.yaml
+  sealed-secrets:
+    repository: bitnami-sealed-secrets
+    group: sealed-secrets
+    chart: sealed-secrets
+    manualOnly: true
+    applications:
+      - clusters/r4spi/apps/sealed-secrets.yaml

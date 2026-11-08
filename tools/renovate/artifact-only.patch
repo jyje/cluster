@@ -1,0 +1,59 @@
+diff --git a/lib/modules/manager/api.ts b/lib/modules/manager/api.ts
+index 89d1b5d..eccaa97 100644
+--- a/lib/modules/manager/api.ts
++++ b/lib/modules/manager/api.ts
+@@ -54,0 +55 @@ import * as helmValues from './helm-values/index.ts';
++import * as helmVendor from './helm-vendor/index.ts';
+@@ -176,0 +178 @@ api.set('helm-values', helmValues);
++api.set('helm-vendor', helmVendor);
+diff --git a/lib/modules/manager/types.ts b/lib/modules/manager/types.ts
+index 8b1fafd..5b2ce9e 100644
+--- a/lib/modules/manager/types.ts
++++ b/lib/modules/manager/types.ts
+@@ -425,0 +426,2 @@ export interface ManagerApiBase extends ModuleApi {
++  /** The manager generates additions while keeping its input package file intact. */
++  supportsArtifactOnlyUpdates?: boolean;
+diff --git a/lib/workers/repository/update/branch/get-updated.ts b/lib/workers/repository/update/branch/get-updated.ts
+index d8aa9b1..913aee0 100644
+--- a/lib/workers/repository/update/branch/get-updated.ts
++++ b/lib/workers/repository/update/branch/get-updated.ts
+@@ -187,0 +188,32 @@ function getPackageFilesForManager<T extends FilePath>(
++async function getArtifactOnlyUpdate(
++  config: BranchConfig,
++  upgrade: BranchUpgradeConfig,
++): Promise<PackageFilesResult> {
++  if (config.upgrades.length !== 1 || !upgrade.packageFile) {
++    throw new Error('An artifact-only manager requires one upgrade per branch');
++  }
++  const content = await getFile(upgrade.packageFile, config.baseBranch);
++  if (content === null) {
++    throw new Error('Artifact-only manager input is missing from the base branch');
++  }
++  const results = await managerUpdateArtifacts(upgrade.manager, {
++    packageFileName: upgrade.packageFile,
++    updatedDeps: [upgrade],
++    newPackageFileContent: content,
++    config: patchConfigForArtifactsUpdate(config, upgrade.manager, upgrade.packageFile),
++  });
++  if (!results?.length || results.some(({ artifactError }) => artifactError)) {
++    throw new Error('Artifact-only update did not produce a complete result');
++  }
++  const updatedArtifacts = results.flatMap(({ file }) => file ? [file] : []);
++  if (!updatedArtifacts.length || updatedArtifacts.some(({ type }) => type !== 'addition')) {
++    throw new Error('Artifact-only update must contain file additions');
++  }
++  return {
++    artifactErrors: [],
++    updatedPackageFiles: [],
++    updatedArtifacts,
++    artifactNotices: results.flatMap(({ notice }) => notice ? [notice] : []),
++  };
++}
++
+@@ -191,0 +224,6 @@ export async function getUpdatedPackageFiles(
++  const artifactOnly = config.upgrades.find(({ manager }) =>
++    get(manager, 'supportsArtifactOnlyUpdates'),
++  );
++  if (artifactOnly) {
++    return getArtifactOnlyUpdate(config, artifactOnly);
++  }

@@ -9,7 +9,7 @@ This skill ensures that all vendored top-level Helm charts in the repository sup
 
 > [!IMPORTANT]
 > - **Main Charts Only**: Never patch subcharts (directories inside `charts/`).
-> - **Semantic Audit**: Before patching, check if the chart already supports a similar feature under a different name (e.g., `extraObjects`, `customResources`, `additionalResources`). If it does, do NOT add a redundant `extraResources` field.
+> - **Deterministic patch**: Apply the standard `extraResources` template to every new top-level chart version, including charts that already expose another resource injection feature. Keep each YAML key unique and preserve other upstream injection templates.
 
 ## 1. Audit Phase
 
@@ -18,15 +18,12 @@ This skill ensures that all vendored top-level Helm charts in the repository sup
    find helm -name Chart.yaml -not -path "*/charts/*" | xargs -n 1 dirname | sort -u
    ```
 
-2. **Evaluate existing support**:
-   For each chart directory `<chart-dir>`:
-   - Check `<chart-dir>/values.yaml` for keys like `extraResources`, `extraObjects`, `extraDeploy`.
-   - If a key exists, search `grep -r` inside `<chart-dir>/templates` to see if that key is actually being used in any template.
-   - If it is already used, the chart satisfies the requirement.
+2. **Locate the canonical files**:
+   - Apply the rule to the version being added. Use the canonical template path and upsert the values and schema entries.
 
 ## 2. Patching Phase
 
-If a chart has NO mechanism for injecting extra external resources:
+For each new chart version:
 
 ### A. Add template file
 Create `<chart-dir>/templates/extra-resources.yaml` with the following content:
@@ -44,7 +41,7 @@ Create `<chart-dir>/templates/extra-resources.yaml` with the following content:
 Each item is rendered through `tpl`, so Helm template expressions (e.g. `{{ .Release.Namespace }}`) inside `extraResources` values are evaluated at render time. Both object and raw string formats are supported (see values.yaml below).
 
 ### B. Update values.yaml
-Append the `extraResources: []` definition at the end of `<chart-dir>/values.yaml`:
+Append the `extraResources: []` definition if the key is absent. Preserve an existing array value:
 ```yaml
 
 # -- Extra resources to deploy with the chart.

@@ -1,27 +1,37 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended"],
+  baseBranchPatterns: ["$default"],
 
   timezone: "Asia/Seoul",
-  schedule: ["before 6am on monday"],
+  schedule: ["* 6-11 * * 1"],
   prConcurrentLimit: 3,
   prHourlyLimit: 2,
+  automerge: false,
+
+  vulnerabilityAlerts: {
+    enabled: true,
+    addLabels: ["security"],
+  },
 
   // jyje/skills git-commit-helper: bot commits are "🤖 ci(deps): <title>".
   semanticCommits: "disabled",
   commitMessagePrefix: "🤖 ci(deps):",
 
-  // helm/<group>/<chart>-<version>/ holds vendored upstream charts (several
-  // versions of the same chart side by side). An unconfigured scan reads their
-  // values.yaml, subchart Chart.yaml and even upstream .github/workflows, and
-  // wants to "update" each of them. They are changed only by the
-  // helm-chart-vendor skill (helm pull + rename), which Renovate cannot do.
-  // Setting ignorePaths replaces the list from config:recommended
-  // (node_modules, test, tests, examples, vendor), which is fine here.
+  // Exclude historical chart trees from general dependency extraction.
+  // The native vendor manager adds new version directories from the catalog.
   ignorePaths: ["helm/**"],
 
-  // Only what Renovate can really own here.
-  enabledManagers: ["github-actions", "pip_requirements"],
+  // Stock Renovate shares this policy. The cluster runtime registers the catalog manager.
+  enabledManagers: [],
+  includePaths: [
+    ".github/workflows/**",
+    "action.yml",
+    "action.yaml",
+    "docs/diagrams/requirements.txt",
+    "helm-sources/catalog.yaml",
+    "tools/renovate/comparison/helm/Chart.yaml",
+  ],
 
   packageRules: [
     {
@@ -29,9 +39,31 @@
       dependencyDashboardApproval: true,
     },
     {
-      // Same weekly grouping the old dependabot.yaml used for actions.
+      // Runner image changes need review regardless of version classification.
+      matchDatasources: ["github-runners"],
+      matchPackageNames: ["ubuntu"],
+      dependencyDashboardApproval: true,
+    },
+    {
       matchManagers: ["github-actions"],
+      matchDatasources: ["!github-runners"],
+      matchUpdateTypes: ["minor", "patch"],
       groupName: "actions",
+    },
+    {
+      matchManagers: ["pip_requirements"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "diagram Python dependencies",
+    },
+    {
+      matchFileNames: ["helm-sources/catalog.yaml"],
+      commitMessageAction: "Vendor",
+      commitMessageTopic: "{{depName}} Helm chart",
+      commitMessageExtra: "{{newVersion}}",
+      rebaseWhen: "behind-base-branch",
+      prBodyNotes: [
+        "Adds the selected upstream chart as a new versioned directory. The Argo CD promotion is reviewed separately.",
+      ],
     },
   ],
 }
