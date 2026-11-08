@@ -9,11 +9,9 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "🤖 ci"
-      prefix-development: "🤖 ci"
-      include: "scope"
+      prefix: "⬆️ dep(github-actions)"
 
-  # Helm charts (all first-level chart directories under helm/)
+  # Dependencies declared in Helm charts, not whole-chart vendoring.
   - package-ecosystem: "helm"
     directories:
       - "/helm/*"
@@ -21,6 +19,4 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "🤖 ci"
-      prefix-development: "🤖 ci"
-      include: "scope"
+      prefix: "⬆️ dep(helm)"
