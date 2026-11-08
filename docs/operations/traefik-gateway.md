@@ -16,27 +16,34 @@ configuration. Neither Application enrolls any workload in Istio Ambient.
 ## Access boundaries
 
 The [pinned Traefik Gateway provider](https://github.com/traefik/traefik/blob/v3.7.17/pkg/provider/kubernetes/gateway/client.go)
-watches all namespaces when its namespace list is empty. This includes
-cluster-wide Secret list/watch, even for an HTTP-only Gateway. Review this
-read access before manually syncing the platform Application. Its
-ServiceAccount cannot write Secrets or change Gateway API resource specs.
-GatewayClass status writes are restricted to the `traefik` class.
+watches Secrets in every configured namespace, even for an HTTP-only
+Gateway. Keep the watch list nonempty: an empty list means all namespaces.
+The cluster-wide binding grants only Namespace and GatewayClass discovery
+and status updates for the `traefik` class. The `traefik-gateway-access`
+role is bound only through RoleBindings in the platform and approved app
+namespaces. Do not attach it to a ClusterRoleBinding.
 
-Any namespace can explicitly attach a compatible Route to this internal
-Gateway without a per-namespace RoleBinding or a controller configuration
-change. The GatewayClass selector and Gateway allowlist limit reconciliation,
-not API authorization. Before opening a public listener, restrict route
-attachment to trusted namespaces or enforce hostname ownership through policy.
+The ServiceAccount can list/watch Secret values in the two watched
+namespaces, but cannot read them outside that scope, write Secrets, or
+change Gateway API resource specs. The listener's namespace selector
+restricts route attachment; it does not restrict API authorization.
+
+Onboard a new namespace once through the platform Application: add its
+RoleBinding, its name to the provider watch list, and its name to the
+listener selector. Review Secret exposure in that namespace before
+approving it. For services in an already-approved namespace, the app only
+needs to add its own `HTTPRoute`.
 
 ## Rollout and checks
 
-1. Confirm the standard Gateway API bundle is synced and review cluster-wide
-   Secret read access. Manually sync `traefik`, then check GatewayClass
+1. Confirm the standard Gateway API bundle is synced and all approved
+   application namespaces exist. Manually sync `traefik`, then check GatewayClass
    `Accepted=True` and Gateway
    `Programmed=True`. The platform Application creates its own Namespace
    before the other resources using a sync wave.
 2. Verify the ServiceAccount's effective permissions using an administrator
-   context. The expected answers are `yes`, `yes`, `no`, and `no`:
+   context. The two namespace-scoped checks must return `yes`; the rest
+   must return `no`:
 
    ```sh
    sa=system:serviceaccount:traefik-system:traefik
@@ -46,8 +53,10 @@ attachment to trusted namespaces or enforce hostname ownership through policy.
        --as-group=system:serviceaccounts \
        --as-group=system:serviceaccounts:traefik-system "$@"
    }
+   can_i list secrets -n traefik-system
+   can_i watch secrets -n hermes-agent-henry
    can_i list secrets --all-namespaces
-   can_i list httproutes.gateway.networking.k8s.io --all-namespaces
+   can_i list secrets -n kube-system
    can_i create secrets -n kube-system
    can_i update gatewayclasses.gateway.networking.k8s.io/traefik-henry-pilot --subresource=status
    ```

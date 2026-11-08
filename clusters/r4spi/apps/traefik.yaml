@@ -32,8 +32,10 @@ spec:
             enabled: true
             experimentalChannel: false
             labelSelector: networking.jyje.io/gateway-scope=traefik
-            # An empty watch list discovers routes cluster-wide.
-            namespaces: []
+            # Keep the watch list, RoleBindings, and listener allowlist aligned.
+            namespaces:
+              - traefik-system
+              - hermes-agent-henry
             gateways:
               - name: traefik
         gatewayClass:
@@ -48,7 +50,13 @@ spec:
               protocol: HTTP
               hostname: "*.gateway.invalid"
               namespacePolicy:
-                from: All
+                from: Selector
+                selector:
+                  matchExpressions:
+                    - key: kubernetes.io/metadata.name
+                      operator: In
+                      values:
+                        - hermes-agent-henry
         service:
           spec:
             type: ClusterIP
@@ -62,8 +70,7 @@ spec:
             memory: 64Mi
           limits:
             memory: 256Mi
-        # Use explicit Gateway-only RBAC. Global discovery includes a
-        # cluster-wide Secret list/watch in the pinned Gateway provider.
+        # Keep cluster-scoped discovery separate from namespaced resource access.
         rbac:
           enabled: false
         extraObjects:
@@ -91,6 +98,27 @@ spec:
                 resources: [gatewayclasses/status]
                 resourceNames: [traefik]
                 verbs: [update]
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: traefik
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik
+            subjects:
+              - kind: ServiceAccount
+                name: traefik
+                namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: traefik-gateway-access
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            rules:
               - apiGroups: [""]
                 resources: [configmaps, services]
                 verbs: [get, list, watch]
@@ -107,15 +135,31 @@ spec:
                 resources: [backendtlspolicies/status, gateways/status, grpcroutes/status, httproutes/status, tlsroutes/status]
                 verbs: [update]
           - apiVersion: rbac.authorization.k8s.io/v1
-            kind: ClusterRoleBinding
+            kind: RoleBinding
             metadata:
               name: traefik
+              namespace: "{{ .Release.Namespace }}"
               annotations:
                 argocd.argoproj.io/sync-wave: "-1"
             roleRef:
               apiGroup: rbac.authorization.k8s.io
               kind: ClusterRole
+              name: traefik-gateway-access
+            subjects:
+              - kind: ServiceAccount
+                name: traefik
+                namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
               name: traefik
+              namespace: hermes-agent-henry
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik-gateway-access
             subjects:
               - kind: ServiceAccount
                 name: traefik
