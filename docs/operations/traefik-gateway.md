@@ -5,7 +5,7 @@ The shared edge has two independent, manual-sync Argo CD Applications:
 
 | Application | Owns |
 | --- | --- |
-| `traefik-shared` | Traefik, its ServiceAccount and RBAC, GatewayClass, and shared Gateway |
+| `traefik` | Traefik in `traefik-system`, its ServiceAccount and RBAC, GatewayClass, and shared Gateway |
 | `hermes-henry-route` | Only the Henry HTTPRoute, in the existing Henry namespace |
 
 The shared listener is internal-only. It uses a ClusterIP Service and an
@@ -16,42 +16,40 @@ configuration. Neither Application enrolls any workload in Istio Ambient.
 ## Access boundaries
 
 The [pinned Traefik Gateway provider](https://github.com/traefik/traefik/blob/v3.7.17/pkg/provider/kubernetes/gateway/client.go)
-watches Namespace and GatewayClass objects cluster-wide. Its ServiceAccount
-can update only the shared GatewayClass's status at cluster scope. The
-namespaced ClusterRole is bound only through RoleBindings in the platform and
-approved application namespaces. Do not bind it with a ClusterRoleBinding.
+watches all namespaces when its namespace list is empty. This includes
+cluster-wide Secret list/watch, even for an HTTP-only Gateway. Review this
+read access before manually syncing the platform Application. Its
+ServiceAccount cannot write Secrets or change Gateway API resource specs.
+GatewayClass status writes are restricted to the `traefik` class.
 
-The pinned provider starts a Secret informer in every watched namespace, even
-for an HTTP-only Gateway. The account can therefore read Secrets in those
-namespaces, but must not be able to list Secrets cluster-wide or read Secrets
-in any other namespace. The GatewayClass selector and Gateway allowlist
-limit reconciliation, not API authorization.
-
-When onboarding another namespace, review its Secret exposure first, then
-update the provider's namespace list, listener namespace selector, and
-RoleBindings together. The application team manages its own HTTPRoute.
+Any namespace can explicitly attach a compatible Route to this internal
+Gateway without a per-namespace RoleBinding or a controller configuration
+change. The GatewayClass selector and Gateway allowlist limit reconciliation,
+not API authorization. Before opening a public listener, restrict route
+attachment to trusted namespaces or enforce hostname ownership through policy.
 
 ## Rollout and checks
 
-1. Confirm the standard Gateway API bundle is synced. Manually sync
-   `traefik-shared`, then check GatewayClass `Accepted=True` and Gateway
+1. Confirm the standard Gateway API bundle is synced and review cluster-wide
+   Secret read access. Manually sync `traefik`, then check GatewayClass
+   `Accepted=True` and Gateway
    `Programmed=True`. The platform Application creates its own Namespace
    before the other resources using a sync wave.
 2. Verify the ServiceAccount's effective permissions using an administrator
    context. The expected answers are `yes`, `yes`, `no`, and `no`:
 
    ```sh
-   sa=system:serviceaccount:traefik-system:traefik-shared
+   sa=system:serviceaccount:traefik-system:traefik
    can_i() {
      kubectl --context microk8s auth can-i --as="$sa" \
        --as-group=system:authenticated \
        --as-group=system:serviceaccounts \
        --as-group=system:serviceaccounts:traefik-system "$@"
    }
-   can_i list secrets -n traefik-system
-   can_i list secrets -n hermes-agent-henry
    can_i list secrets --all-namespaces
-   can_i get secrets -n kube-system
+   can_i list httproutes.gateway.networking.k8s.io --all-namespaces
+   can_i create secrets -n kube-system
+   can_i update gatewayclasses.gateway.networking.k8s.io/traefik-henry-pilot --subresource=status
    ```
 
 3. Manually sync `hermes-henry-route`. Confirm the HTTPRoute has
@@ -61,7 +59,7 @@ RoleBindings together. The application team manages its own HTTPRoute.
 
    ```sh
    kubectl --context microk8s -n traefik-system \
-     port-forward --address localhost svc/traefik-shared 18080:80
+     port-forward --address localhost svc/traefik 18080:80
    ```
 
    ```sh

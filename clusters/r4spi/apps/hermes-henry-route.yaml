@@ -18,11 +18,11 @@ spec:
             apiVersion: gateway.networking.k8s.io/v1
             kind: HTTPRoute
             metadata:
-              name: henry-shared
+              name: hermes-henry
               namespace: "{{ .Release.Namespace }}"
             spec:
               parentRefs:
-                - name: traefik-shared
+                - name: traefik
                   namespace: traefik-system
                   sectionName: web
               hostnames:
