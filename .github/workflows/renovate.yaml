@@ -8,6 +8,12 @@ on:
         type: choice
         options: ["full", "lookup", "off"]
         default: "full"
+      helm-profile:
+        description: "Catalog chart ID for a Helm-only run"
+        type: string
+      expected-version:
+        description: "Exact chart version for the selected Helm profile"
+        type: string
   schedule:
     - cron: "0 21 * * *" # 06:00 KST
 
@@ -23,6 +29,9 @@ jobs:
     if: ${{ github.repository == 'jyje/cluster' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      HELM_VENDOR_PROFILE: ${{ inputs.helm-profile }}
+      HELM_VENDOR_EXPECTED_VERSION: ${{ inputs.expected-version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,6 +58,20 @@ jobs:
           cp cluster/tools/renovate/helm-vendor/*.ts upstream/lib/modules/manager/helm-vendor/
           cd upstream
           corepack pnpm install --frozen-lockfile --ignore-scripts
+          if [[ -n "$HELM_VENDOR_PROFILE" || -n "$HELM_VENDOR_EXPECTED_VERSION" ]]; then
+            node --input-type=module <<'JS'
+            import { readFileSync } from 'node:fs';
+            import { valid } from 'semver';
+            import { parse } from 'yaml';
+
+            const { HELM_VENDOR_PROFILE: profile, HELM_VENDOR_EXPECTED_VERSION: version } = process.env;
+            const catalog = parse(readFileSync('../cluster/helm-sources/catalog.yaml', 'utf8'));
+            if (!profile || !Object.hasOwn(catalog.charts, profile) || !valid(version)) {
+              throw new Error('A Helm run requires a registered profile and an exact expected version.');
+            }
+            console.log('Helm profile ' + profile + ' targeting ' + version);
+          JS
+          fi
           node tools/generate-imports.mjs
           node_modules/.bin/vitest run lib/modules/manager/helm-vendor/index.spec.ts
           node_modules/.bin/tsdown
@@ -105,9 +128,19 @@ jobs:
           LOG_FILE_LEVEL: debug
         run: |
           install -d -m 777 "$RUNNER_TEMP/renovate-out"
+          if [[ -n "$HELM_VENDOR_PROFILE" ]]; then
+            export RENOVATE_PACKAGE_RULES
+            RENOVATE_PACKAGE_RULES=$(jq -cn \
+              --arg profile "$HELM_VENDOR_PROFILE" \
+              --arg version "$HELM_VENDOR_EXPECTED_VERSION" '[
+                {matchManagers: ["!helm-vendor"], enabled: false},
+                {matchManagers: ["helm-vendor"], matchDepNames: [$profile], allowedVersions: ("=" + $version), schedule: []}
+              ]')
+          fi
           docker run --rm \
             --env RENOVATE_TOKEN --env RENOVATE_REPOSITORIES --env RENOVATE_DRY_RUN \
             --env RENOVATE_ONBOARDING --env RENOVATE_REQUIRE_CONFIG \
+            --env HELM_VENDOR_PROFILE --env RENOVATE_PACKAGE_RULES \
             --env LOG_LEVEL --env LOG_FILE --env LOG_FILE_LEVEL \
             --volume "$RUNNER_TEMP/renovate-out:/renovate-out" \
             "$RENOVATE_IMAGE_ID" renovate

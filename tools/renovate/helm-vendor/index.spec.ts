@@ -17,10 +17,21 @@ const catalog = [
   "    applications: [clusters/site/apps/demo.yaml]",
 ].join("\n");
 
+const catalogWithManualProfile = [
+  catalog,
+  "  pilot:",
+  "    repository: vendor",
+  "    group: group",
+  "    chart: demo",
+  "    manualOnly: true",
+  "    applications: [clusters/site/apps/demo.yaml]",
+].join("\n");
+
 describe("Helm vendor manager", () => {
   let directory: string;
 
   beforeEach(async () => {
+    vi.stubEnv("HELM_VENDOR_PROFILE", "");
     directory = await mkdtemp(join(tmpdir(), "helm-vendor-test-"));
     GlobalConfig.set({ localDir: directory });
     for (const version of ["1.9.0", "1.10.0"]) {
@@ -34,6 +45,7 @@ describe("Helm vendor manager", () => {
   });
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     GlobalConfig.reset();
     await rm(directory, { recursive: true, force: true });
   });
@@ -66,6 +78,24 @@ describe("Helm vendor manager", () => {
         },
       ],
     });
+  });
+
+  it("excludes manual profiles from a scheduled run", async () => {
+    const { deps } = await extractPackageFile(catalogWithManualProfile);
+    expect(deps.map(({ depName }) => depName)).toEqual(["demo"]);
+  });
+
+  it("extracts only the selected profile for a manual run", async () => {
+    vi.stubEnv("HELM_VENDOR_PROFILE", "pilot");
+    const { deps } = await extractPackageFile(catalogWithManualProfile);
+    expect(deps.map(({ depName }) => depName)).toEqual(["pilot"]);
+  });
+
+  it("rejects an unknown profile", async () => {
+    vi.stubEnv("HELM_VENDOR_PROFILE", "typo");
+    await expect(extractPackageFile(catalog)).rejects.toThrow(
+      "Unknown Helm vendor profile",
+    );
   });
 
   it("rejects an existing release before running Helm", async () => {

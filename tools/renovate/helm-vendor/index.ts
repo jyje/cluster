@@ -39,6 +39,7 @@ const catalogSchema = z.strictObject({
       repository: identifier,
       group: identifier,
       chart: identifier,
+      manualOnly: z.boolean().optional(),
       applications: z
         .array(
           z.string().regex(/^clusters\/[a-z0-9-]+\/apps\/[a-z0-9-]+\.yaml$/),
@@ -120,8 +121,15 @@ export async function extractPackageFile(
   content: string,
 ): Promise<PackageFileContent> {
   const catalog = parseCatalog(content);
+  const profile = process.env.HELM_VENDOR_PROFILE;
+  if (profile && !Object.hasOwn(catalog.charts, profile)) {
+    throw new Error("Unknown Helm vendor profile");
+  }
   const deps: PackageDependency[] = [];
   for (const [id, chart] of Object.entries(catalog.charts)) {
+    if (profile ? id !== profile : chart.manualOnly) {
+      continue;
+    }
     const source = sourceFor(catalog, chart.repository);
     const currentValue = await latestVendored(chart.group, chart.chart);
     if (!currentValue) {

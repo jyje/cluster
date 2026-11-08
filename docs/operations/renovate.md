@@ -27,6 +27,14 @@ The Helm PR check verifies the target branch and the additions under one version
 Promotion follows the separate
 [Helm vendoring review](../../.claude/skills/helm-chart-vendor/SKILL.md).
 
+## Manual Helm profile
+
+An entry with `manualOnly: true` is available through workflow dispatch. Open **Actions → renovate → Run workflow**
+on `main`, select `sealed-secrets` in **helm-profile**, and enter `2.22.0` as the **expected-version**.
+Start with `full` to inspect the run log. Select `off` with the same inputs to create the chart branch and PR.
+Only this profile can propose a change in the selected run. Its manual schedule override applies to the exact
+version in the inputs. A run without a profile follows the regular repository policy.
+
 ## Bot comparison
 
 Record the author, dependency, manifest, old and proposed versions, first PR time, grouping and CI result.
