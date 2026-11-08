@@ -1,6 +1,7 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended"],
+  baseBranchPatterns: ["$default"],
 
   timezone: "Asia/Seoul",
   schedule: ["* 6-11 * * 1"],
@@ -17,13 +18,8 @@
   semanticCommits: "disabled",
   commitMessagePrefix: "🤖 ci(deps):",
 
-  // helm/<group>/<chart>-<version>/ holds vendored upstream charts (several
-  // versions of the same chart side by side). An unconfigured scan reads their
-  // values.yaml, subchart Chart.yaml and even upstream .github/workflows, and
-  // wants to "update" each of them. They are changed only by the
-  // helm-chart-vendor skill (helm pull + rename), which Renovate cannot do.
-  // Setting ignorePaths replaces the list from config:recommended
-  // (node_modules, test, tests, examples, vendor), which is fine here.
+  // Exclude historical chart trees from general dependency extraction.
+  // The native vendor manager adds new version directories from the catalog.
   ignorePaths: ["helm/**"],
 
   // Stock Renovate shares this policy. The cluster runtime registers the catalog manager.

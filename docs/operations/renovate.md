@@ -22,7 +22,9 @@ The workflow builds a pinned Renovate release with the native manager under `too
 The [catalog](../../helm-sources/catalog.yaml) lists official Helm sources and opted-in charts. The manager
 reads the newest vendored release, uses Renovate's Helm or OCI lookup, downloads the exact selected version,
 applies the canonical `extraResources` patch, and renders the chart with the listed Application values.
-The generated PR adds one versioned chart directory. Promotion follows the separate
+Renovate runs on the default branch and opens generated PRs against that branch (`main`).
+The Helm PR check verifies the target branch and the additions under one versioned chart directory.
+Promotion follows the separate
 [Helm vendoring review](../../.claude/skills/helm-chart-vendor/SKILL.md).
 
 ## Bot comparison
