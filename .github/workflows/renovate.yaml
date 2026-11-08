@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: "full: preview only. off: create branches and retry closed chart PRs"
+        description: "full: preview only. off: create branches and PRs"
         type: choice
         options: ["full", "lookup", "off"]
         default: "full"
@@ -12,6 +12,11 @@ on:
         description: "all or a provider/chart from helm-sources/catalog.yaml"
         type: string
         default: "all"
+      update-mode:
+        description: "normal: honor closed PRs. force: retry closed PRs"
+        type: choice
+        options: ["normal", "force"]
+        default: "normal"
       expected-version:
         description: "Optional exact version when selecting one chart"
         type: string
@@ -180,6 +185,7 @@ jobs:
           HELM_VENDOR_PROFILE: ${{ matrix.profile }}
           HELM_VENDOR_SELECTOR: ${{ matrix.selector }}
           HELM_VENDOR_EXPECTED_VERSION: ${{ inputs.expected-version }}
+          HELM_VENDOR_UPDATE_MODE: ${{ inputs.update-mode || 'normal' }}
           RENOVATE_PRUNE_STALE_BRANCHES: "false"
           RENOVATE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run != 'off' && inputs.dry-run || '' }}
           RENOVATE_ONBOARDING: "false"
@@ -194,11 +200,13 @@ jobs:
             export RENOVATE_DEPENDENCY_DASHBOARD_AUTOCLOSE=true
             export RENOVATE_PACKAGE_RULES
             RENOVATE_PACKAGE_RULES=$(jq -cn \
-              --arg version "$HELM_VENDOR_EXPECTED_VERSION" --arg event "$GITHUB_EVENT_NAME" '[
+              --arg version "$HELM_VENDOR_EXPECTED_VERSION" \
+              --arg event "$GITHUB_EVENT_NAME" --arg mode "$HELM_VENDOR_UPDATE_MODE" '[
                 {matchManagers: ["!helm-vendor"], enabled: false},
                 ({matchManagers: ["helm-vendor"], schedule: [], prHourlyLimit: 0, separateMajorMinor: false} +
                   (if $version == "" then {} else {allowedVersions: ("=" + $version)} end) +
-                  (if $event == "workflow_dispatch" then {recreateWhen: "always"} else {} end))
+                  (if $event == "workflow_dispatch" and $mode == "force"
+                   then {recreateWhen: "always"} else {} end))
               ]')
           else
             export RENOVATE_PACKAGE_RULES='[{"matchManagers":["helm-vendor"],"enabled":false}]'

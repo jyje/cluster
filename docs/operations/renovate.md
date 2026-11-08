@@ -44,10 +44,15 @@ The selector uses the catalog repository key and upstream chart name. Each pair 
 catalog key stable because Renovate uses it in branch names. GitHub Actions accepts the selector as text, so a
 catalog change does not require updating a separate workflow input list.
 
-Start with **full** to preview the run, or choose **off** to allow branches and PRs. Manual runs retry eligible
-updates even if a previous PR for that version was closed. This applies to both **all** and single-chart runs.
+Start with **full** to preview the run, or choose **off** to allow branches and PRs. **update-mode** applies
+to both **all** and single-chart runs:
+
+- **normal** (default) follows the scheduled policy. Closed PRs stay blocked unless a retry is selected in the
+  chart's Dependency Dashboard.
+- **force** retries eligible updates even if a previous PR for that version was closed.
+
 **expected-version** is an optional exact version for one chart. Leave it blank for Renovate to discover available
-versions. Scheduled runs keep honoring closed PRs unless a retry is selected in the chart's Dependency Dashboard.
+versions.
 
 Each chart gets a separate CI job and log artifact. A chart that is already current creates no branch or PR.
 When Renovate proposes an eligible update, it uses that chart's branch and opens a PR against `main`.
@@ -56,8 +61,8 @@ branch pruning is disabled for this workflow because the parallel jobs share the
 
 The **Helm vendoring summary** on the Actions run page lists the outcome and reason for each selected chart,
 with a PR link when available. The matrix job skips the publication verification step when Renovate produces
-no branch or PR changes. This includes charts already up to date and scheduled updates blocked by a previously
-closed PR.
+no branch or PR changes. This includes charts already up to date and updates blocked by a previously closed PR
+in normal mode.
 
 ## Bot comparison
 
