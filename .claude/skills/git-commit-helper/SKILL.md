@@ -18,7 +18,7 @@ All commit messages must strictly follow this format:
 ### Formatting Rules:
 - **Gitmoji**: Must use one of the exactly specified emojis (see mapping below).
 - **Type**: Must be lowercase, chosen from the mapping below.
-- **Domain**: Must be enclosed in parentheses `()`. Identify the primary component or domain affected (e.g., `(nfs)`, `(open-webui)`). Use lowercase and kebab-case. 
+- **Domain**: Must be enclosed in parentheses `()`. Identify the primary component or domain affected (e.g., `(nfs)`, `(open-webui)`). Use lowercase and kebab-case; `helm/chart` is the whole-chart vendoring scope.
 - **Title**: A concise summary of the change in imperative mood. Must start with a lowercase letter directly after the colon and space.
 - **Description**: (Optional) Use this to explain "why" the change was made or provide further context.
 
@@ -45,23 +45,18 @@ Only use the following approved types and emojis:
 | ⚡      | `perf`     | Improve performance |
 | ✅      | `test`     | Add, update, or pass tests |
 | 🔨      | `build`    | Add or update development scripts |
+| 🤖      | `ci`       | Change CI workflow behavior or runner configuration |
 | 🚀      | `release`  | Cut or merge a release (e.g. the release-proposal PR title/merge commit) |
 
 #### Automated / Bot Commits
-Commits created entirely by automation (e.g., Dependabot, Renovate) without direct user or agent involvement use a dedicated pairing, kept separate from the manual mapping above:
+Classify Helm and GitHub Actions updates by what changes, regardless of who runs the update:
 
-| Gitmoji | Type | Description |
-| :------ | :--- | :---------- |
-| 🤖      | `ci` | Added automatically by a bot/automation (e.g., Dependabot), not by direct user intervention |
+- Whole-chart vendoring without a deployment change: `🔧 chore(helm/chart): vendor <chart> <chart-version>`.
+- An Action or reusable workflow reference: `⬆️ dep(github-actions): bump <action> to <version>`.
+- A dependency declared by a Helm chart: `⬆️ dep(helm): bump <dependency> to <version>`.
+- CI workflow behavior or runner configuration is separate from vendoring and dependency version changes.
 
-Configure this pairing directly in the automation tool itself, not by hand-editing bot commits after the fact. For Dependabot, set `commit-message` in `dependabot.yml` for every `package-ecosystem` entry:
-```yaml
-commit-message:
-  prefix: "🤖 ci"
-  prefix-development: "🤖 ci"
-  include: "scope"
-```
-This renders as `🤖 ci(deps): bump <package> from X to Y` for production dependencies and `🤖 ci(deps-dev): ...` for development ones (the `(scope)` comes from `include: "scope"`, not from manually typing a domain). Without this config, Dependabot's default has no gitmoji at all, e.g. `build(deps): bump the production-dependencies group with 6 updates` — that default is the bug to fix, not a format to tolerate.
+Use the commit subject as the PR title. Configure the naming in Renovate or Dependabot; do not add a PR-only title format or rewrite existing bot commits just to change the title.
 
 ---
 

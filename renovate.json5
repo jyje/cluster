@@ -14,8 +14,9 @@
     addLabels: ["security"],
   },
 
-  // jyje/skills git-commit-helper: bot commits are "🤖 ci(deps): <title>".
+  // Use the commit subject as the PR title, without extra PR-only suffixes.
   semanticCommits: "disabled",
+  prTitleStrict: true,
   commitMessagePrefix: "🤖 ci(deps):",
 
   // Exclude historical chart trees from general dependency extraction.
@@ -45,6 +46,14 @@
       dependencyDashboardApproval: true,
     },
     {
+      // A referenced action or reusable workflow is a dependency, not a runner.
+      matchManagers: ["github-actions"],
+      matchDepTypes: ["action", "workflow"],
+      commitMessagePrefix: "⬆️ dep(github-actions):",
+      commitMessageAction: "bump",
+      commitMessageTopic: "{{depName}}",
+    },
+    {
       matchManagers: ["github-actions"],
       matchDatasources: ["!github-runners"],
       matchUpdateTypes: ["minor", "patch"],
@@ -56,9 +65,17 @@
       groupName: "diagram Python dependencies",
     },
     {
+      matchManagers: ["helmv3"],
+      commitMessagePrefix: "⬆️ dep(helm):",
+      commitMessageAction: "bump",
+      commitMessageTopic: "{{depName}}",
+    },
+    {
+      matchManagers: ["helm-vendor"],
       matchFileNames: ["helm-sources/catalog.yaml"],
-      commitMessageAction: "Vendor",
-      commitMessageTopic: "{{depName}} Helm chart",
+      commitMessagePrefix: "🔧 chore(helm/chart):",
+      commitMessageAction: "vendor",
+      commitMessageTopic: "{{depName}}",
       commitMessageExtra: "{{newVersion}}",
       rebaseWhen: "behind-base-branch",
       prBodyNotes: [
