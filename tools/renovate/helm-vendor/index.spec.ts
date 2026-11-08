@@ -2,7 +2,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GlobalConfig } from "../../../config/global.ts";
-import { extractPackageFile, updateArtifacts } from "./index.ts";
+import {
+  extractPackageFile,
+  selectProfiles,
+  updateArtifacts,
+} from "./index.ts";
 
 const catalog = [
   "repositories:",
@@ -17,13 +21,12 @@ const catalog = [
   "    applications: [clusters/site/apps/demo.yaml]",
 ].join("\n");
 
-const catalogWithManualProfile = [
+const catalogWithTwoProfiles = [
   catalog,
-  "  pilot:",
+  "  second:",
   "    repository: vendor",
   "    group: group",
-  "    chart: demo",
-  "    manualOnly: true",
+  "    chart: other",
   "    applications: [clusters/site/apps/demo.yaml]",
 ].join("\n");
 
@@ -80,15 +83,57 @@ describe("Helm vendor manager", () => {
     });
   });
 
-  it("excludes manual profiles from a scheduled run", async () => {
-    const { deps } = await extractPackageFile(catalogWithManualProfile);
-    expect(deps.map(({ depName }) => depName)).toEqual(["demo"]);
+  it("plans one job per provider and chart for all", () => {
+    expect(selectProfiles(catalogWithTwoProfiles, "all")).toEqual([
+      { profile: "demo", selector: "vendor/demo", key: "helm-demo" },
+      { profile: "second", selector: "vendor/other", key: "helm-second" },
+    ]);
+  });
+
+  it("selects one chart by provider and chart name", () => {
+    expect(selectProfiles(catalogWithTwoProfiles, "vendor/other")).toEqual([
+      { profile: "second", selector: "vendor/other", key: "helm-second" },
+    ]);
+  });
+
+  it("rejects an unregistered provider and chart name", () => {
+    expect(() => selectProfiles(catalogWithTwoProfiles, "other")).toThrow(
+      "No Helm profiles matched",
+    );
+  });
+
+  it("rejects duplicate provider and chart names", () => {
+    const duplicate = catalogWithTwoProfiles.replace(
+      "chart: other",
+      "chart: demo",
+    );
+    expect(() => selectProfiles(duplicate, "all")).toThrow(
+      "Duplicate Helm chart selector vendor/demo",
+    );
+  });
+
+  it("rejects two sources writing to the same chart directory", () => {
+    const duplicate = catalogWithTwoProfiles
+      .replace(
+        "charts:",
+        "  another:\n    type: oci\n    url: oci://ghcr.io/another/charts\ncharts:",
+      )
+      .replace(
+        "repository: vendor\n    group: group\n    chart: other",
+        "repository: another\n    group: group\n    chart: demo",
+      );
+    expect(() => selectProfiles(duplicate, "all")).toThrow(
+      "Duplicate Helm chart destination group/demo",
+    );
   });
 
   it("extracts only the selected profile for a manual run", async () => {
-    vi.stubEnv("HELM_VENDOR_PROFILE", "pilot");
-    const { deps } = await extractPackageFile(catalogWithManualProfile);
-    expect(deps.map(({ depName }) => depName)).toEqual(["pilot"]);
+    const chart = join(directory, "helm", "group", "other-1.9.0");
+    await mkdir(chart, { recursive: true });
+    await writeFile(join(chart, "Chart.yaml"), "name: other\nversion: 1.9.0\n");
+    vi.stubEnv("HELM_VENDOR_PROFILE", "second");
+    const { deps } = await extractPackageFile(catalogWithTwoProfiles);
+    expect(deps.map(({ depName }) => depName)).toEqual(["second"]);
   });
 
   it("rejects an unknown profile", async () => {
