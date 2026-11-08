@@ -27,6 +27,7 @@ export const defaultConfig = {
 };
 
 const identifier = z.string().regex(/^[a-z0-9][a-z0-9.-]*$/);
+const branchId = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const chartVersion = z.string().refine((version) => valid(version) !== null);
 const catalogSchema = z.strictObject({
   repositories: z.record(
@@ -34,12 +35,11 @@ const catalogSchema = z.strictObject({
     z.strictObject({ type: z.enum(["http", "oci"]), url: z.string() }),
   ),
   charts: z.record(
-    identifier,
+    branchId,
     z.strictObject({
       repository: identifier,
       group: identifier,
       chart: identifier,
-      manualOnly: z.boolean().optional(),
       applications: z
         .array(
           z.string().regex(/^clusters\/[a-z0-9-]+\/apps\/[a-z0-9-]+\.yaml$/),
@@ -56,7 +56,44 @@ function parseCatalog(content: string): Catalog {
   if (documents.length !== 1) {
     throw new Error("Expected one Helm vendor catalog document");
   }
-  return documents[0];
+  const catalog = documents[0];
+  const selectors = new Set<string>();
+  const destinations = new Set<string>();
+  for (const chart of Object.values(catalog.charts)) {
+    if (!Object.hasOwn(catalog.repositories, chart.repository)) {
+      throw new Error("Helm chart references an unknown repository");
+    }
+    const selector = chart.repository + "/" + chart.chart;
+    const destination = chart.group + "/" + chart.chart;
+    if (selectors.has(selector)) {
+      throw new Error("Duplicate Helm chart selector " + selector);
+    }
+    if (destinations.has(destination)) {
+      throw new Error("Duplicate Helm chart destination " + destination);
+    }
+    selectors.add(selector);
+    destinations.add(destination);
+  }
+  return catalog;
+}
+
+export function selectProfiles(content: string, selector: string) {
+  const catalog = parseCatalog(content);
+  const profiles = Object.entries(catalog.charts).map(([profile, chart]) => ({
+    profile,
+    selector: chart.repository + "/" + chart.chart,
+    key: "helm-" + profile,
+  }));
+  const selected =
+    selector === "all"
+      ? profiles
+      : profiles.filter((profile) => profile.selector === selector);
+  if (!selected.length) {
+    throw new Error(
+      "No Helm profiles matched. Use all or a registered provider/chart.",
+    );
+  }
+  return selected;
 }
 
 function sourceFor(
@@ -127,7 +164,7 @@ export async function extractPackageFile(
   }
   const deps: PackageDependency[] = [];
   for (const [id, chart] of Object.entries(catalog.charts)) {
-    if (profile ? id !== profile : chart.manualOnly) {
+    if (profile && id !== profile) {
       continue;
     }
     const source = sourceFor(catalog, chart.repository);

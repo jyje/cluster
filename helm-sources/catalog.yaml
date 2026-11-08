@@ -17,6 +17,5 @@ charts:
     repository: bitnami-sealed-secrets
     group: sealed-secrets
     chart: sealed-secrets
-    manualOnly: true
     applications:
       - clusters/r4spi/apps/sealed-secrets.yaml

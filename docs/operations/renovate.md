@@ -1,7 +1,7 @@
 # Renovate in cluster
 
 The [Renovate workflow](../../.github/workflows/renovate.yaml) is scheduled daily at 06:00 KST with a GitHub App
-installation token scoped to this repository. [Repository policy](../../renovate.json5) limits regular PR creation
+installation token scoped to this repository. [Repository policy](../../renovate.json5) limits ordinary dependency PR creation
 to Monday from 06:00 until noon KST, allowing time for GitHub Actions scheduling delays. Renovate can propose
 security fixes on any run. Dependabot remains enabled.
 
@@ -15,6 +15,7 @@ security fixes on any run. Dependabot remains enabled.
    JSONL artifact for the `jyje/cluster` scan. The workflow retains the artifact for seven days.
 
 Approve major dependency updates and Ubuntu runner changes in the Dependency Dashboard before Renovate opens PRs.
+Major chart releases use their own Dependency Dashboard, named for the chart.
 
 ## Native Helm vendoring
 
@@ -27,13 +28,29 @@ The Helm PR check verifies the target branch and the additions under one version
 Promotion follows the separate
 [Helm vendoring review](../../.claude/skills/helm-chart-vendor/SKILL.md).
 
-## Manual Helm profile
+## Scheduled and manual Helm scans
 
-An entry with `manualOnly: true` is available through workflow dispatch. Open **Actions → renovate → Run workflow**
-on `main`, select `sealed-secrets` in **helm-profile**, and enter `2.22.0` as the **expected-version**.
-Start with `full` to inspect the run log. Select `off` with the same inputs to create the chart branch and PR.
-Only this profile can propose a change in the selected run. Its manual schedule override applies to the exact
-version in the inputs. A run without a profile follows the regular repository policy.
+The daily run scans every catalog chart and runs ordinary dependency and vulnerability checks in a separate job.
+Open **Actions → renovate → Run workflow** on `main` to scan all charts manually or enter a single catalog selector
+in **helm-profile**. The current values are:
+
+| Value | Scope |
+| --- | --- |
+| `all` | Every registered chart (default) |
+| `tarampampam/error-pages` | error-pages |
+| `bitnami-sealed-secrets/sealed-secrets` | sealed-secrets |
+
+The selector uses the catalog repository key and upstream chart name. Each pair must be unique. Keep each chart's
+catalog key stable because Renovate uses it in branch names. GitHub Actions accepts the selector as text, so a
+catalog change does not require updating a separate workflow input list.
+
+Start with **full** to inspect the run, or choose **off** to allow branches and PRs. **expected-version** is an
+optional exact version for one chart. Leave it blank for Renovate to discover available versions.
+
+Each chart gets a separate CI job and log artifact. A chart that is already current creates no branch or PR.
+When Renovate proposes an eligible update, it uses that chart's branch and opens a PR against `main`.
+Helm updates can create PRs during any scheduled or manual run, subject to the major-release approval rule. Each scan proposes at most one version per chart. Automatic stale
+branch pruning is disabled for this workflow because the parallel jobs share the Renovate branch namespace.
 
 ## Bot comparison
 
