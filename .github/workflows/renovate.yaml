@@ -96,6 +96,7 @@ jobs:
         working-directory: upstream
         shell: bash
         run: |
+          node --test ../cluster/tools/renovate/helm-vendor/run-summary.test.mjs
           node_modules/.bin/vitest run lib/modules/manager/helm-vendor/index.spec.ts
           node_modules/.bin/tsdown
           node dist/config-validator.js --strict --no-global ../cluster/renovate.json5
@@ -171,6 +172,7 @@ jobs:
           fi
 
       - name: Run Renovate
+        id: run
         shell: bash
         env:
           RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -216,9 +218,67 @@ jobs:
             --volume "$RUNNER_TEMP/renovate-out:/renovate-out" \
             "$RENOVATE_IMAGE_ID" renovate
 
+      - name: Record Helm result
+        if: ${{ !cancelled() && matrix.profile != '' }}
+        id: result
+        env:
+          HELM_VENDOR_PROFILE: ${{ matrix.profile }}
+          EXPECTED_VERSION: ${{ inputs.expected-version }}
+          RENOVATE_MODE: ${{ github.event_name == 'pull_request' && 'lookup' || inputs.dry-run || 'off' }}
+          RENOVATE_OUTCOME: ${{ steps.run.outcome }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/renovate-out"
+          node cluster/tools/renovate/helm-vendor/run-summary.mjs record "$RUNNER_TEMP/renovate-out"
+
+      - name: Verify published Helm branch and PR
+        if: steps.result.outputs.branch != ''
+        id: verify
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.result.outputs.branch }}
+          COMMIT: ${{ steps.result.outputs.commit }}
+          PR: ${{ steps.result.outputs.pr }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          branch_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$BRANCH" --jq .object.sha)
+          if [[ -n "$COMMIT" ]]; then
+            test "$branch_sha" = "$COMMIT"
+          fi
+          if [[ -n "$PR" ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" |
+              jq -e --arg base "$DEFAULT_BRANCH" --arg branch "$BRANCH" --arg sha "$branch_sha" \
+                '.base.ref == $base and .head.ref == $branch and .head.sha == $sha'
+          fi
+
+      - name: Record failed publication verification
+        if: ${{ failure() && steps.verify.outcome == 'failure' }}
+        run: node cluster/tools/renovate/helm-vendor/run-summary.mjs verification-failed "$RUNNER_TEMP/renovate-out"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: renovate-log-${{ matrix.key }}
-          path: ${{ runner.temp }}/renovate-out/renovate-log.jsonl
+          path: |
+            ${{ runner.temp }}/renovate-out/renovate-log.jsonl
+            ${{ runner.temp }}/renovate-out/result.json
           retention-days: 7
+
+  summary:
+    name: Helm vendoring summary
+    needs: [prepare, renovate]
+    if: ${{ !cancelled() && needs.prepare.outputs.matrix != '' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: renovate-log-helm-*
+          path: ${{ runner.temp }}/renovate-results
+      - name: Write the chart results table
+        if: ${{ !cancelled() }}
+        env:
+          RENOVATE_MATRIX: ${{ needs.prepare.outputs.matrix }}
+        run: node tools/renovate/helm-vendor/run-summary.mjs summary "$RUNNER_TEMP/renovate-results"

@@ -52,6 +52,11 @@ When Renovate proposes an eligible update, it uses that chart's branch and opens
 Helm updates can create PRs during any scheduled or manual run, subject to the major-release approval rule. Each scan proposes at most one version per chart. Automatic stale
 branch pruning is disabled for this workflow because the parallel jobs share the Renovate branch namespace.
 
+The **Helm vendoring summary** on the Actions run page lists the outcome and reason for each selected chart,
+with a PR link when available. The matrix job skips the publication verification step when Renovate produces
+no branch or PR changes. This includes charts already up to date and versions blocked by a previously closed PR.
+To retry a closed update, select it in the chart's Dependency Dashboard before running again.
+
 ## Bot comparison
 
 Record the author, dependency, manifest, old and proposed versions, first PR time, grouping and CI result.
