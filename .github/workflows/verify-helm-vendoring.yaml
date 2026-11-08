@@ -27,8 +27,10 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python3 - <<'PY'
+          import json
           import os
           import pathlib
+          import re
           import subprocess
 
           if os.environ['BASE_REF'] != os.environ['DEFAULT_BRANCH']:
@@ -48,7 +50,21 @@ jobs:
           if len(directories) != 1:
               raise SystemExit('Expected one versioned chart directory')
           chart, = directories
-          if not (chart / 'templates/extra-resources.yaml').is_file():
-              raise SystemExit('Missing the canonical extraResources template')
           subprocess.run(['helm', 'lint', str(chart)], check=True)
+          # A native renderer may use any filename. Test the exact values
+          # key and both supported payload formats instead of its path.
+          namespace = 'helm-vendor-probe'
+          probes = [
+              {'apiVersion': 'v1', 'kind': 'ConfigMap',
+               'metadata': {'name': 'helm-vendor-object-probe'}},
+              'apiVersion: v1\nkind: ConfigMap\nmetadata:\n'
+              '  name: helm-vendor-string-probe-{{ .Release.Namespace }}\n',
+          ]
+          rendered = subprocess.check_output([
+              'helm', 'template', 'probe', str(chart), '--namespace', namespace,
+              '--set-json', 'extraResources=' + json.dumps(probes),
+          ], text=True)
+          for name in ['helm-vendor-object-probe', 'helm-vendor-string-probe-' + namespace]:
+              if not re.search(r'^\s*name:\s*["\']?' + re.escape(name) + r'["\']?\s*$', rendered, re.M):
+                  raise SystemExit('extraResources probe did not render: ' + name)
           PY

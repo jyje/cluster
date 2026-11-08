@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GlobalConfig } from "../../../config/global.ts";
@@ -7,6 +7,7 @@ import {
   selectProfiles,
   updateArtifacts,
 } from "./index.ts";
+import { patchResources } from "./vendor.ts";
 
 const catalog = [
   "repositories:",
@@ -51,6 +52,64 @@ describe("Helm vendor manager", () => {
     vi.unstubAllEnvs();
     GlobalConfig.reset();
     await rm(directory, { recursive: true, force: true });
+  });
+
+  it("adds extraResources without changing a differently named upstream hook", async () => {
+    const chart = join(directory, "helm", "group", "demo-1.10.0");
+    const templates = join(chart, "templates");
+    const upstream = join(templates, "extra-objects.yaml");
+    const upstreamTemplate = "{{ toYaml .Values.extraObjects }}\n";
+    await mkdir(templates);
+    await writeFile(upstream, upstreamTemplate);
+    await writeFile(join(chart, "values.yaml"), "extraObjects: []\n");
+
+    await patchResources(chart, ["templates/extra-objects.yaml"]);
+
+    await expect(readFile(upstream, "utf8")).resolves.toBe(upstreamTemplate);
+    await expect(readFile(join(chart, "values.yaml"), "utf8")).resolves.toBe(
+      "extraObjects: []\nextraResources: []\n",
+    );
+    await expect(
+      readFile(join(templates, "extra-resources.yaml"), "utf8"),
+    ).resolves.toContain(".Values.extraResources");
+  });
+
+  it("preserves native extraResources values, template and schema unchanged", async () => {
+    const chart = join(directory, "helm", "group", "demo-1.10.0");
+    const templates = join(chart, "templates");
+    await mkdir(templates);
+    const files = {
+      "values.yaml": "# Keep this comment\nextraResources: []\n",
+      "values.schema.json":
+        '{"properties":{"extraResources":{"type":"array","description":"Native"}}}\n',
+      "templates/native.yaml": "{{ toYaml .Values.extraResources }}\n",
+    };
+    for (const [path, content] of Object.entries(files)) {
+      await writeFile(join(chart, path), content);
+    }
+
+    await patchResources(chart, Object.keys(files));
+
+    for (const [path, content] of Object.entries(files)) {
+      await expect(readFile(join(chart, path), "utf8")).resolves.toBe(content);
+    }
+    await expect(
+      readFile(join(templates, "extra-resources.yaml"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("does not overwrite a template at the standard patch path", async () => {
+    const chart = join(directory, "helm", "group", "demo-1.10.0");
+    const templates = join(chart, "templates");
+    const template = join(templates, "extra-resources.yaml");
+    await mkdir(templates);
+    await writeFile(template, "# Upstream template\n");
+    await writeFile(join(chart, "values.yaml"), "extraObjects: []\n");
+
+    await expect(
+      patchResources(chart, ["templates/extra-resources.yaml"]),
+    ).rejects.toMatchObject({ code: "EEXIST" });
+    await expect(readFile(template, "utf8")).resolves.toBe("# Upstream template\n");
   });
 
   it("discovers the newest vendored version and the OCI package name", async () => {

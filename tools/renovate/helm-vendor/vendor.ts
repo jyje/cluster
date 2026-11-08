@@ -85,24 +85,28 @@ async function chartFiles(directory: string, relative = ""): Promise<string[]> {
   return files.sort();
 }
 
-async function patchResources(
+export async function patchResources(
   directory: string,
   files: string[],
 ): Promise<void> {
-  await mkdir(join(directory, "templates"), { recursive: true });
-  await writeFile(
-    join(directory, "templates", "extra-resources.yaml"),
-    extraResources,
-  );
   const valuesPath = join(directory, "values.yaml");
   const values = parseDocument(await readFile(valuesPath, "utf8"));
   if (values.errors.length) {
     throw new Error("Invalid chart values.yaml");
   }
-  if (!values.has("extraResources")) {
-    values.set("extraResources", []);
-    await writeFile(valuesPath, values.toString());
+  // Preserve the exact upstream contract. Rendering probes below validate it
+  // without installing a competing renderer or replacing the upstream schema.
+  if (values.has("extraResources")) {
+    return;
   }
+  await mkdir(join(directory, "templates"), { recursive: true });
+  await writeFile(
+    join(directory, "templates", "extra-resources.yaml"),
+    extraResources,
+    { flag: "wx" },
+  );
+  values.set("extraResources", []);
+  await writeFile(valuesPath, values.toString());
   if (files.includes("values.schema.json")) {
     const path = join(directory, "values.schema.json");
     const schema = JSON.parse(await readFile(path, "utf8"));
