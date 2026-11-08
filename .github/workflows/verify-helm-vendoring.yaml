@@ -12,7 +12,7 @@ permissions:
 jobs:
   verify:
     if: ${{ startsWith(github.head_ref, 'renovate/helm-vendor-') && github.event.pull_request.user.login == 'jyje-bot[bot]' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v7
         with:

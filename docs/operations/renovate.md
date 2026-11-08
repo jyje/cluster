@@ -39,6 +39,7 @@ in **helm-profile**. The current values are:
 | `all` | Every registered chart (default) |
 | `tarampampam/error-pages` | error-pages |
 | `bitnami-sealed-secrets/sealed-secrets` | sealed-secrets |
+| `argo/argocd-image-updater` | Argo CD Image Updater |
 
 The selector uses the catalog repository key and upstream chart name. Each pair must be unique. Keep each chart's
 catalog key stable because Renovate uses it in branch names. GitHub Actions accepts the selector as text, so a
