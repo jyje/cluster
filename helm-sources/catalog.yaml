@@ -1,4 +1,7 @@
 repositories:
+  argo:
+    type: http
+    url: https://argoproj.github.io/argo-helm
   tarampampam:
     type: oci
     url: oci://ghcr.io/tarampampam/error-pages/charts
@@ -19,3 +22,9 @@ charts:
     chart: sealed-secrets
     applications:
       - clusters/r4spi/apps/sealed-secrets.yaml
+  argocd-image-updater:
+    repository: argo
+    group: argo
+    chart: argocd-image-updater
+    applications:
+      - clusters/r4spi/apps/argocd-image-updater.yaml
