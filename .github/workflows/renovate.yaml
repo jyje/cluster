@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: "full: log only. off: create branches and PRs"
+        description: "full: preview only. off: create branches and retry closed chart PRs"
         type: choice
         options: ["full", "lookup", "off"]
         default: "full"
@@ -194,10 +194,11 @@ jobs:
             export RENOVATE_DEPENDENCY_DASHBOARD_AUTOCLOSE=true
             export RENOVATE_PACKAGE_RULES
             RENOVATE_PACKAGE_RULES=$(jq -cn \
-              --arg version "$HELM_VENDOR_EXPECTED_VERSION" '[
+              --arg version "$HELM_VENDOR_EXPECTED_VERSION" --arg event "$GITHUB_EVENT_NAME" '[
                 {matchManagers: ["!helm-vendor"], enabled: false},
                 ({matchManagers: ["helm-vendor"], schedule: [], prHourlyLimit: 0, separateMajorMinor: false} +
-                  (if $version == "" then {} else {allowedVersions: ("=" + $version)} end))
+                  (if $version == "" then {} else {allowedVersions: ("=" + $version)} end) +
+                  (if $event == "workflow_dispatch" then {recreateWhen: "always"} else {} end))
               ]')
           else
             export RENOVATE_PACKAGE_RULES='[{"matchManagers":["helm-vendor"],"enabled":false}]'
