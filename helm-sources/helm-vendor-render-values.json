@@ -1,0 +1,10 @@
+{
+  "helm/github-actions-runner-controller/gha-runner-scale-set": {
+    "controllerServiceAccount": {
+      "name": "helm-vendor-probe-controller",
+      "namespace": "helm-vendor-probe"
+    },
+    "githubConfigUrl": "https://github.com/example-org/example-repo",
+    "githubConfigSecret": "helm-vendor-probe-existing-secret"
+  }
+}

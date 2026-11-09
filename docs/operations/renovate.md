@@ -32,6 +32,12 @@ only LiteLLM as object-only because its native hook does not evaluate strings or
 The manager rejects those inputs for LiteLLM and verifies object rendering. All other charts
 must pass both object and templated-string probes. The Helm vendor PR check reads the same policy
 from the PR base revision.
+The [render values fixtures](../../helm-sources/helm-vendor-render-values.json) supply test-only
+values to the same PR check when a chart cannot render offline with defaults alone.
+The check matches fixtures by versioned chart directory and reads them from the base revision,
+not the incoming chart or production Application. For ARC runner scale sets, the fixture uses
+a placeholder controller ServiceAccount, a dummy repository URL, and a Secret name reference.
+It does not require a cluster or GitHub credentials.
 Renovate runs on the default branch and opens generated PRs against that branch (`main`).
 The Helm PR check verifies the target branch and the additions under one versioned chart directory.
 Promotion follows the separate
