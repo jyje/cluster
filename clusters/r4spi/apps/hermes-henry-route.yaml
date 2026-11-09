@@ -1,0 +1,45 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hermes-henry-route
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/jyje/manifest-group-0.1.0
+    helm:
+      valuesObject:
+        manifests:
+          # Keep the leading newline after the manifest-group document separator.
+          - |
+
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: hermes-henry
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              parentRefs:
+                - name: traefik
+                  namespace: traefik-system
+                  sectionName: web
+              hostnames:
+                - henry.gateway.invalid
+              rules:
+                - matches:
+                    - method: GET
+                      path:
+                        type: Exact
+                        value: /
+                  backendRefs:
+                    - name: hermes-agent-henry
+                      port: 9119
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hermes-agent-henry
+  # Sync after the shared Gateway is programmed.
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true

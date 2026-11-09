@@ -1,0 +1,173 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/traefik/traefik-42.3.1
+    helm:
+      skipCrds: true
+      valuesObject:
+        fullnameOverride: traefik
+        deployment:
+          replicas: 1
+        api:
+          dashboard: false
+          insecure: false
+        ingressClass:
+          enabled: false
+          isDefaultClass: false
+        providers:
+          kubernetesCRD:
+            enabled: false
+          kubernetesIngress:
+            enabled: false
+          kubernetesIngressNGINX:
+            enabled: false
+          kubernetesGateway:
+            enabled: true
+            experimentalChannel: false
+            labelSelector: networking.jyje.io/gateway-scope=traefik
+            # Keep the watch list, RoleBindings, and listener allowlist aligned.
+            namespaces:
+              - traefik-system
+              - hermes-agent-henry
+            gateways:
+              - name: traefik
+        gatewayClass:
+          name: traefik
+          labels:
+            networking.jyje.io/gateway-scope: traefik
+        gateway:
+          name: traefik
+          listeners:
+            web:
+              port: 8000
+              protocol: HTTP
+              hostname: "*.gateway.invalid"
+              namespacePolicy:
+                from: Selector
+                selector:
+                  matchExpressions:
+                    - key: kubernetes.io/metadata.name
+                      operator: In
+                      values:
+                        - hermes-agent-henry
+        service:
+          spec:
+            type: ClusterIP
+        ports:
+          websecure:
+            expose:
+              default: false
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        # Keep cluster-scoped discovery separate from namespaced resource access.
+        rbac:
+          enabled: false
+        extraObjects:
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: "{{ .Release.Namespace }}"
+              annotations:
+                argocd.argoproj.io/sync-wave: "-2"
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: traefik
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            rules:
+              - apiGroups: [""]
+                resources: [namespaces]
+                verbs: [list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [gatewayclasses]
+                verbs: [list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [gatewayclasses/status]
+                resourceNames: [traefik]
+                verbs: [update]
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: traefik
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik
+            subjects:
+              - kind: ServiceAccount
+                name: traefik
+                namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: traefik-gateway-access
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            rules:
+              - apiGroups: [""]
+                resources: [configmaps, services]
+                verbs: [get, list, watch]
+              - apiGroups: [""]
+                resources: [secrets]
+                verbs: [list, watch]
+              - apiGroups: [discovery.k8s.io]
+                resources: [endpointslices]
+                verbs: [get, list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [backendtlspolicies, gateways, grpcroutes, httproutes, referencegrants, tlsroutes]
+                verbs: [get, list, watch]
+              - apiGroups: [gateway.networking.k8s.io]
+                resources: [backendtlspolicies/status, gateways/status, grpcroutes/status, httproutes/status, tlsroutes/status]
+                verbs: [update]
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: traefik
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik-gateway-access
+            subjects:
+              - kind: ServiceAccount
+                name: traefik
+                namespace: "{{ .Release.Namespace }}"
+          - apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: traefik
+              namespace: hermes-agent-henry
+              annotations:
+                argocd.argoproj.io/sync-wave: "-1"
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: traefik-gateway-access
+            subjects:
+              - kind: ServiceAccount
+                name: traefik
+                namespace: "{{ .Release.Namespace }}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik-system
+  # Manual until the shared path is verified. Do not adopt the existing pilot.
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true
