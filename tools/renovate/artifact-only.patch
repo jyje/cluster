@@ -98,3 +98,48 @@ index ec1c5be..6c0ab4d 100644
 @@ -1146 +1146 @@ export async function processBranch(
 -        if (config.artifactNotices?.length) {
 +        if (config.artifactNotices?.length && !GlobalConfig.get('dryRun')) {
+diff --git a/lib/workers/repository/dependency-dashboard.ts b/lib/workers/repository/dependency-dashboard.ts
+index 26a56b4..65b0648 100644
+--- a/lib/workers/repository/dependency-dashboard.ts
++++ b/lib/workers/repository/dependency-dashboard.ts
+@@ -11,0 +12,4 @@ import { logger } from '../../logger/index.ts';
++import {
++  helmDashboardPresentation,
++  openHelmDashboardTitle,
++} from '../../modules/manager/helm-vendor/dashboard.ts';
+@@ -197 +201,3 @@ export async function readDashboardBody(
+-    const issue = await platform.findIssue(config.dependencyDashboardTitle);
++    const title =
++      (await openHelmDashboardTitle(config)) ?? config.dependencyDashboardTitle;
++    const issue = await platform.findIssue(title);
+@@ -385 +391,3 @@ export async function ensureDependencyDashboard(
+-      await platform.ensureIssueClosing(config.dependencyDashboardTitle!);
++      await platform.ensureIssueClosing(
++        (await openHelmDashboardTitle(config)) ?? config.dependencyDashboardTitle!,
++      );
+@@ -451 +459,3 @@ export async function ensureDependencyDashboard(
+-      await platform.ensureIssueClosing(config.dependencyDashboardTitle!);
++      await platform.ensureIssueClosing(
++        (await openHelmDashboardTitle(config)) ?? config.dependencyDashboardTitle!,
++      );
+@@ -639,0 +650 @@ export async function ensureDependencyDashboard(
++  const presentation = await helmDashboardPresentation(config, branches);
+@@ -646 +657,4 @@ export async function ensureDependencyDashboard(
+-    if (cachedIssue?.body === issueBody) {
++    if (
++      cachedIssue?.body === issueBody &&
++      (!presentation || cachedIssue.title === presentation.title)
++    ) {
+@@ -683,2 +697,2 @@ export async function ensureDependencyDashboard(
+-      title: config.dependencyDashboardTitle!,
+-      reuseTitle,
++      title: presentation?.title ?? config.dependencyDashboardTitle!,
++      reuseTitle: presentation?.reuseTitle ?? reuseTitle,
+diff --git a/lib/workers/repository/index.ts b/lib/workers/repository/index.ts
+index 136eb03..16223b4 100644
+--- a/lib/workers/repository/index.ts
++++ b/lib/workers/repository/index.ts
+@@ -14,0 +15 @@ import { resetRepositoryLogLevelRemaps } from '../../logger/remap.ts';
++import { prepareHelmDashboard } from '../../modules/manager/helm-vendor/dashboard.ts';
+@@ -138,0 +140 @@ export async function renovateRepository(
++          await prepareHelmDashboard(config, branches);

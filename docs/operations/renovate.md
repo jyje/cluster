@@ -66,6 +66,10 @@ versions.
 
 Each chart gets a separate CI job and log artifact. A chart that is already current creates no branch or PR.
 When Renovate proposes an eligible update, it uses that chart's branch and opens a PR against `main`.
+Chart tracking issues use the title `Helm: <catalog key> <target version>`.
+Renovate reuses existing Helm dashboards, including those with the old title, so their issue numbers and approval
+checkboxes stay in place. A live run prepares the issue before opening a PR and adds `Tracking issue: #<number>`
+to the PR body. The reference does not close the issue on merge; Renovate manages its lifecycle.
 Helm updates can create PRs during any scheduled or manual run, subject to the major-release approval rule. Each scan proposes at most one version per chart. Automatic stale
 branch pruning is disabled for this workflow because the parallel jobs share the Renovate branch namespace.
 

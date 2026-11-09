@@ -104,8 +104,10 @@ jobs:
         run: |
           node --test ../cluster/tools/renovate/helm-vendor/run-summary.test.mjs
           node_modules/.bin/vitest run \
-            lib/modules/manager/helm-vendor/index.spec.ts \
+            lib/modules/manager/helm-vendor \
             lib/workers/repository/update/branch/index.spec.ts
+          node_modules/.bin/vitest run --testTimeout=15000 \
+            lib/workers/repository/dependency-dashboard.spec.ts
           node_modules/.bin/tsdown
           node dist/config-validator.js --strict --no-global ../cluster/renovate.json5
 
