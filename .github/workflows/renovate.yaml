@@ -103,7 +103,9 @@ jobs:
         shell: bash
         run: |
           node --test ../cluster/tools/renovate/helm-vendor/run-summary.test.mjs
-          node_modules/.bin/vitest run lib/modules/manager/helm-vendor/index.spec.ts
+          node_modules/.bin/vitest run \
+            lib/modules/manager/helm-vendor/index.spec.ts \
+            lib/workers/repository/update/branch/index.spec.ts
           node_modules/.bin/tsdown
           node dist/config-validator.js --strict --no-global ../cluster/renovate.json5
 
