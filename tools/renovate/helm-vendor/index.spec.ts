@@ -1,4 +1,12 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GlobalConfig } from "../../../config/global.ts";
@@ -7,7 +15,13 @@ import {
   selectProfiles,
   updateArtifacts,
 } from "./index.ts";
-import { patchResources } from "./vendor.ts";
+import {
+  assertObjectOnlyResources,
+  chartValueFileArgs,
+  extraResourceProbes,
+  patchResources,
+  usesObjectOnlyResources,
+} from "./vendor.ts";
 
 const catalog = [
   "repositories:",
@@ -125,6 +139,99 @@ describe("Helm vendor manager", () => {
         },
       ],
     });
+  });
+
+  it("keeps the vendored directory prefix independent from the upstream name", async () => {
+    const local = join(directory, "helm", "group", "local-demo-1.11.0");
+    await mkdir(local);
+    await writeFile(join(local, "Chart.yaml"), "name: demo\nversion: 1.11.0\n");
+    const aliased = catalog.replace(
+      "    chart: demo",
+      "    chart: demo\n    directoryName: local-demo",
+    );
+    await expect(extractPackageFile(aliased)).resolves.toMatchObject({
+      deps: [
+        { packageName: "ghcr.io/vendor/charts/demo", currentValue: "1.11.0" },
+      ],
+    });
+    expect(selectProfiles(aliased, "vendor/demo")).toHaveLength(1);
+  });
+
+  it("passes chart-local valueFiles to Helm in the declared order", async () => {
+    const chart = join(directory, "helm", "group", "demo-1.10.0");
+    await mkdir(join(chart, "config"));
+    await writeFile(join(chart, "values.yaml"), "{}\n");
+    await writeFile(join(chart, "config", "overrides.yml"), "{}\n");
+    const root = await realpath(chart);
+
+    await expect(
+      chartValueFileArgs(chart, ["values.yaml", "config/overrides.yml"]),
+    ).resolves.toEqual([
+      "-f",
+      join(root, "values.yaml"),
+      "-f",
+      join(root, "config", "overrides.yml"),
+    ]);
+  });
+
+  it.each([
+    "../values.yaml",
+    "/tmp/values.yaml",
+    "$values/base.yaml",
+    "https://example.org/values.yaml",
+  ])("rejects an external Helm value file: %s", async (file) => {
+    const chart = join(directory, "helm", "group", "demo-1.10.0");
+    await expect(chartValueFileArgs(chart, [file])).rejects.toThrow(
+      "Only chart-local YAML valueFiles are supported",
+    );
+  });
+
+  it("rejects a chart-local value file symlink that escapes the chart", async () => {
+    const chart = join(directory, "helm", "group", "demo-1.10.0");
+    const outside = join(directory, "outside.yaml");
+    await writeFile(outside, "{}\n");
+    await symlink(outside, join(chart, "values.yaml"));
+    await expect(chartValueFileArgs(chart, ["values.yaml"])).rejects.toThrow(
+      "Helm valueFiles must be regular files inside the chart",
+    );
+  });
+
+  it("uses the object-only contract only for an exact vendored chart prefix", async () => {
+    const policyDir = join(directory, "helm-sources");
+    await mkdir(policyDir);
+    await writeFile(
+      join(policyDir, "extra-resources-policy.json"),
+      JSON.stringify({ objectOnly: ["helm/litellm/litellm"] }),
+    );
+    await expect(usesObjectOnlyResources("helm/litellm/litellm")).resolves.toBe(true);
+    await expect(usesObjectOnlyResources("helm/litellm/litellm-other")).resolves.toBe(false);
+    await expect(usesObjectOnlyResources("helm/group/demo")).resolves.toBe(false);
+  });
+
+  it("omits the string probe only in object-only mode", () => {
+    const [object, template] = extraResourceProbes(false);
+    expect(typeof template).toBe("string");
+    expect(extraResourceProbes(true)).toEqual([object]);
+  });
+
+  it("accepts literal manifests, not raw strings or nested Helm expressions", () => {
+    const manifest = {
+      apiVersion: "v1",
+      kind: "ConfigMap",
+      metadata: { name: "literal" },
+      data: { key: "value" },
+    };
+    expect(() => assertObjectOnlyResources([manifest])).not.toThrow();
+    for (const invalid of [
+      "not a list",
+      ["apiVersion: v1\nkind: ConfigMap"],
+      [{ ...manifest, data: { key: "{{ .Release.Namespace }}" } }],
+      [{ ...manifest, data: { "{{ .Release.Name }}": "value" } }],
+    ]) {
+      expect(() => assertObjectOnlyResources(invalid)).toThrow(
+        "Object-only extraResources requires Kubernetes objects without Helm expressions",
+      );
+    }
   });
 
   it("uses the Helm datasource for a traditional repository", async () => {

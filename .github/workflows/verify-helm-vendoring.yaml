@@ -51,20 +51,30 @@ jobs:
               raise SystemExit('Expected one versioned chart directory')
           chart, = directories
           subprocess.run(['helm', 'lint', str(chart)], check=True)
-          # A native renderer may use any filename. Test the exact values
-          # key and both supported payload formats instead of its path.
+          policy = json.loads(subprocess.check_output([
+              'git', 'show', os.environ['BASE_SHA'] + ':helm-sources/extra-resources-policy.json',
+          ]))
+          version = r'v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?'
+          object_only = any(
+              re.fullmatch(re.escape(prefix) + '-' + version, chart.as_posix())
+              for prefix in policy['objectOnly']
+          )
+          # Read exceptions from the base revision, never from chart files in the PR.
           namespace = 'helm-vendor-probe'
           probes = [
               {'apiVersion': 'v1', 'kind': 'ConfigMap',
                'metadata': {'name': 'helm-vendor-object-probe'}},
-              'apiVersion: v1\nkind: ConfigMap\nmetadata:\n'
-              '  name: helm-vendor-string-probe-{{ .Release.Namespace }}\n',
           ]
+          names = ['helm-vendor-object-probe']
+          if not object_only:
+              probes.append('apiVersion: v1\nkind: ConfigMap\nmetadata:\n'
+                            '  name: helm-vendor-string-probe-{{ .Release.Namespace }}\n')
+              names.append('helm-vendor-string-probe-' + namespace)
           rendered = subprocess.check_output([
               'helm', 'template', 'probe', str(chart), '--namespace', namespace,
               '--set-json', 'extraResources=' + json.dumps(probes),
           ], text=True)
-          for name in ['helm-vendor-object-probe', 'helm-vendor-string-probe-' + namespace]:
+          for name in names:
               if not re.search(r'^\s*name:\s*["\']?' + re.escape(name) + r'["\']?\s*$', rendered, re.M):
                   raise SystemExit('extraResources probe did not render: ' + name)
           PY

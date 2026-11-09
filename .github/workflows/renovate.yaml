@@ -26,6 +26,7 @@ on:
     paths:
       - ".github/workflows/renovate.yaml"
       - "helm-sources/catalog.yaml"
+      - "helm-sources/extra-resources-policy.json"
       - "tools/renovate/**"
 
 permissions:

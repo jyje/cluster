@@ -40,6 +40,7 @@ const catalogSchema = z.strictObject({
       repository: identifier,
       group: identifier,
       chart: identifier,
+      directoryName: identifier.optional(),
       applications: z
         .array(
           z.string().regex(/^clusters\/[a-z0-9-]+\/apps\/[a-z0-9-]+\.yaml$/),
@@ -64,7 +65,7 @@ function parseCatalog(content: string): Catalog {
       throw new Error("Helm chart references an unknown repository");
     }
     const selector = chart.repository + "/" + chart.chart;
-    const destination = chart.group + "/" + chart.chart;
+    const destination = chart.group + "/" + (chart.directoryName ?? chart.chart);
     if (selectors.has(selector)) {
       throw new Error("Duplicate Helm chart selector " + selector);
     }
@@ -124,6 +125,7 @@ function sourceFor(
 async function latestVendored(
   group: string,
   chart: string,
+  directoryName = chart,
 ): Promise<string | undefined> {
   const directory = join("helm", group);
   const paths = await readdir(join(GlobalConfig.get("localDir"), directory), {
@@ -131,10 +133,10 @@ async function latestVendored(
   });
   const versions: string[] = [];
   for (const path of paths) {
-    if (!path.isDirectory() || !path.name.startsWith(chart + "-")) {
+    if (!path.isDirectory() || !path.name.startsWith(directoryName + "-")) {
       continue;
     }
-    const version = path.name.slice(chart.length + 1);
+    const version = path.name.slice(directoryName.length + 1);
     if (!valid(version)) {
       continue;
     }
@@ -168,7 +170,11 @@ export async function extractPackageFile(
       continue;
     }
     const source = sourceFor(catalog, chart.repository);
-    const currentValue = await latestVendored(chart.group, chart.chart);
+    const currentValue = await latestVendored(
+      chart.group,
+      chart.chart,
+      chart.directoryName,
+    );
     if (!currentValue) {
       throw new Error(
         "Each Helm vendor catalog entry needs a vendored baseline",
