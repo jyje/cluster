@@ -50,16 +50,31 @@ jobs:
           if len(directories) != 1:
               raise SystemExit('Expected one versioned chart directory')
           chart, = directories
-          subprocess.run(['helm', 'lint', str(chart)], check=True)
-          policy = json.loads(subprocess.check_output([
-              'git', 'show', os.environ['BASE_SHA'] + ':helm-sources/extra-resources-policy.json',
-          ]))
+
+          def base_json(path):
+              return json.loads(subprocess.check_output([
+                  'git', 'show', os.environ['BASE_SHA'] + ':' + path,
+              ]))
+
           version = r'v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?'
-          object_only = any(
-              re.fullmatch(re.escape(prefix) + '-' + version, chart.as_posix())
-              for prefix in policy['objectOnly']
+
+          def matches_chart(prefix):
+              return re.fullmatch(re.escape(prefix) + '-' + version, chart.as_posix()) is not None
+
+          # Fixtures and exceptions are trusted base-revision inputs, not PR files.
+          fixtures = base_json('helm-sources/helm-vendor-render-values.json')
+          matching_values = [values for prefix, values in fixtures.items() if matches_chart(prefix)]
+          if len(matching_values) > 1 or any(not isinstance(values, dict) for values in matching_values):
+              raise SystemExit('Expected at most one render values object for ' + chart.as_posix())
+          values_args = ['--values', '-'] if matching_values else []
+          values_input = json.dumps(matching_values[0]) if matching_values else None
+          subprocess.run(
+              ['helm', 'lint', str(chart), *values_args],
+              input=values_input, text=True, check=True,
           )
-          # Read exceptions from the base revision, never from chart files in the PR.
+
+          policy = base_json('helm-sources/extra-resources-policy.json')
+          object_only = any(matches_chart(prefix) for prefix in policy['objectOnly'])
           namespace = 'helm-vendor-probe'
           probes = [
               {'apiVersion': 'v1', 'kind': 'ConfigMap',
@@ -72,8 +87,9 @@ jobs:
               names.append('helm-vendor-string-probe-' + namespace)
           rendered = subprocess.check_output([
               'helm', 'template', 'probe', str(chart), '--namespace', namespace,
+              *values_args,
               '--set-json', 'extraResources=' + json.dumps(probes),
-          ], text=True)
+          ], input=values_input, text=True)
           for name in names:
               if not re.search(r'^\s*name:\s*["\']?' + re.escape(name) + r'["\']?\s*$', rendered, re.M):
                   raise SystemExit('extraResources probe did not render: ' + name)
