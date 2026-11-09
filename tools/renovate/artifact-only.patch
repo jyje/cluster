@@ -57,3 +57,44 @@ index d8aa9b1..913aee0 100644
 +  if (artifactOnly) {
 +    return getArtifactOnlyUpdate(config, artifactOnly);
 +  }
+diff --git a/lib/workers/repository/update/branch/index.spec.ts b/lib/workers/repository/update/branch/index.spec.ts
+index 15e5f6c..906ba44 100644
+--- a/lib/workers/repository/update/branch/index.spec.ts
++++ b/lib/workers/repository/update/branch/index.spec.ts
+@@ -1718,0 +1719,29 @@ describe('workers/repository/update/branch/index', () => {
++    it.each([0, 123])(
++      'does not post artifact notices in a full dry run for PR #%i',
++      async (number) => {
++        GlobalConfig.set({ ...adminConfig, dryRun: 'full' });
++        getUpdated.getUpdatedPackageFiles.mockResolvedValueOnce({
++          ...updatedPackageFiles,
++          updatedArtifacts: [partial<FileChange>()],
++          artifactNotices: [{ file: 'Chart.yaml', message: 'some notice' }],
++        });
++        npmPostExtract.getAdditionalFiles.mockResolvedValueOnce({
++          artifactErrors: [],
++          updatedArtifacts: [],
++        });
++        scm.branchExists.mockResolvedValue(true);
++        commit.commitFilesToBranch.mockResolvedValueOnce(null);
++        prWorker.ensurePr.mockResolvedValueOnce({
++          type: 'with-pr',
++          pr: partial<Pr>({ number }),
++        });
++
++        await expect(branchWorker.processBranch(config)).resolves.toMatchObject({
++          result: 'done',
++        });
++        expect(getUpdated.getUpdatedPackageFiles).toHaveBeenCalledTimes(1);
++        expect(prWorker.ensurePr).toHaveBeenCalledTimes(1);
++        expect(platform.ensureComment).not.toHaveBeenCalled();
++      },
++    );
++
+diff --git a/lib/workers/repository/update/branch/index.ts b/lib/workers/repository/update/branch/index.ts
+index ec1c5be..6c0ab4d 100644
+--- a/lib/workers/repository/update/branch/index.ts
++++ b/lib/workers/repository/update/branch/index.ts
+@@ -1146 +1146 @@ export async function processBranch(
+-        if (config.artifactNotices?.length) {
++        if (config.artifactNotices?.length && !GlobalConfig.get('dryRun')) {
