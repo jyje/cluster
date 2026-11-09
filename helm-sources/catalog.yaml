@@ -8,6 +8,48 @@ repositories:
   bitnami-sealed-secrets:
     type: http
     url: https://bitnami.github.io/sealed-secrets
+  metrics-server:
+    type: http
+    url: https://kubernetes-sigs.github.io/metrics-server
+  grafana-operator:
+    type: oci
+    url: oci://ghcr.io/grafana/helm-charts
+  goauthentik:
+    type: http
+    url: https://charts.goauthentik.io/
+  prometheus-community:
+    type: http
+    url: https://prometheus-community.github.io/helm-charts
+  jetstack:
+    type: oci
+    url: oci://quay.io/jetstack/charts
+  cnpg:
+    type: http
+    url: https://cloudnative-pg.github.io/charts
+  actions:
+    type: oci
+    url: oci://ghcr.io/actions/actions-runner-controller-charts
+  rajsinghtech:
+    type: oci
+    url: oci://ghcr.io/rajsinghtech/homer-operator/charts
+  berriai:
+    type: oci
+    url: oci://docker.litellm.ai/berriai
+  8gears:
+    type: oci
+    url: oci://8gears.container-registry.com/library
+  nfs-subdir-external-provisioner:
+    type: http
+    url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+  open-webui:
+    type: http
+    url: https://helm.openwebui.com/
+  portainer:
+    type: http
+    url: https://portainer.github.io/k8s/
+  qdrant:
+    type: http
+    url: https://qdrant.github.io/qdrant-helm
 
 charts:
   error-pages:
@@ -28,3 +70,106 @@ charts:
     chart: argocd-image-updater
     applications:
       - clusters/r4spi/apps/argocd-image-updater.yaml
+  metrics-server:
+    repository: metrics-server
+    group: metrics-server
+    chart: metrics-server
+    applications:
+      - clusters/r4spi/apps/metrics-server.yaml
+  grafana-operator:
+    repository: grafana-operator
+    group: grafana
+    chart: grafana-operator
+    applications:
+      - clusters/r4spi/apps/grafana-operator.yaml
+  argo-cd:
+    repository: argo
+    group: argo
+    chart: argo-cd
+    applications:
+      - clusters/r4spi/apps/argocd.yaml
+  authentik:
+    repository: goauthentik
+    group: authentik
+    chart: authentik
+    applications:
+      - clusters/r4spi/apps/authentik.yaml
+  kube-prometheus-stack:
+    repository: prometheus-community
+    group: prometheus
+    chart: kube-prometheus-stack
+    applications:
+      - clusters/r4spi/apps/lgtm-prometheus.yaml
+  cert-manager:
+    repository: jetstack
+    group: cert-manager
+    chart: cert-manager
+    applications:
+      - clusters/r4spi/apps/cert-manager.yaml
+  cloudnative-pg:
+    repository: cnpg
+    group: cnpg
+    chart: cloudnative-pg
+    applications:
+      - clusters/r4spi/apps/cnpg.yaml
+  plugin-barman-cloud:
+    repository: cnpg
+    group: cnpg
+    chart: plugin-barman-cloud
+    applications:
+      - clusters/r4spi/apps/cnpg-plugin.yaml
+  gha-runner-scale-set-controller:
+    repository: actions
+    group: github-actions-runner-controller
+    chart: gha-runner-scale-set-controller
+    applications:
+      - clusters/r4spi/apps/github-arc-controller.yaml
+  gha-runner-scale-set:
+    repository: actions
+    group: github-actions-runner-controller
+    chart: gha-runner-scale-set
+    applications:
+      - clusters/r4spi/apps/github-arc-scale-set-jyje-pifanctl.yaml
+  homer-operator:
+    repository: rajsinghtech
+    group: homer-operator
+    chart: homer-operator
+    applications:
+      - clusters/r4spi/apps/homer-operator.yaml
+  litellm-helm:
+    repository: berriai
+    group: litellm
+    chart: litellm-helm
+    directoryName: litellm
+    applications:
+      - clusters/r4spi/apps/litellm.yaml
+  n8n:
+    repository: 8gears
+    group: n8n
+    chart: n8n
+    applications:
+      - clusters/r4spi/apps/n8n.yaml
+  nfs-subdir-external-provisioner:
+    repository: nfs-subdir-external-provisioner
+    group: nfs-subdir-external-provisioner
+    chart: nfs-subdir-external-provisioner
+    applications:
+      - clusters/r4spi/apps/nfs-subdir-external-provisioner-usb.yaml
+  open-webui:
+    repository: open-webui
+    group: open-webui
+    chart: open-webui
+    applications:
+      - clusters/r4spi/apps/open-webui.yaml
+  portainer:
+    repository: portainer
+    group: portainer
+    chart: portainer
+    applications:
+      - clusters/r4spi/apps/portainer.yaml
+  qdrant:
+    repository: qdrant
+    group: qdrant
+    chart: qdrant
+    applications:
+      - clusters/r4spi/apps/qdrant.yaml

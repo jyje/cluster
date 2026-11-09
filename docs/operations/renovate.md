@@ -22,7 +22,16 @@ Major chart releases use their own Dependency Dashboard, named for the chart.
 The workflow builds a pinned Renovate release with the native manager under `tools/renovate/helm-vendor/`.
 The [catalog](../../helm-sources/catalog.yaml) lists official Helm sources and opted-in charts. The manager
 reads the newest vendored release, uses Renovate's Helm or OCI lookup, downloads the exact selected version,
-applies the canonical `extraResources` patch, and renders the chart with the listed Application values.
+preserves native `extraResources` support or applies the canonical patch, and renders the chart with the listed
+Application values. Chart-local YAML `valueFiles` are passed to Helm in their declared order before `valuesObject`.
+Other values sources, such as `$values` from a separate repository, are not supported by this verifier.
+A chart may set `directoryName` if its established vendored directory prefix differs from its upstream package
+name (for example, `litellm` for `litellm-helm`).
+The [extraResources verification policy](../../helm-sources/extra-resources-policy.json) lists
+only LiteLLM as object-only because its native hook does not evaluate strings or Helm expressions.
+The manager rejects those inputs for LiteLLM and verifies object rendering. All other charts
+must pass both object and templated-string probes. The Helm vendor PR check reads the same policy
+from the PR base revision.
 Renovate runs on the default branch and opens generated PRs against that branch (`main`).
 The Helm PR check verifies the target branch and the additions under one versioned chart directory.
 Promotion follows the separate
@@ -32,7 +41,7 @@ Promotion follows the separate
 
 The daily run scans every catalog chart and runs ordinary dependency and vulnerability checks in a separate job.
 Open **Actions → renovate → Run workflow** on `main` to scan all charts manually or enter a single catalog selector
-in **helm-profile**. The current values are:
+in **helm-profile**. The catalog is the source of truth for all selectors. Examples:
 
 | Value | Scope |
 | --- | --- |

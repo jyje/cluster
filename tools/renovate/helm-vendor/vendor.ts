@@ -5,11 +5,12 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  realpath,
   rm,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { isDeepStrictEqual, promisify } from "node:util";
 import { valid } from "semver";
 import { parseDocument } from "yaml";
@@ -41,6 +42,7 @@ const applicationSchema = z.object({
       helm: z
         .strictObject({
           releaseName: z.string().optional(),
+          valueFiles: z.array(z.string()).optional(),
           valuesObject: z.record(z.string(), z.unknown()).optional(),
         })
         .optional(),
@@ -52,8 +54,69 @@ const metadataSchema = z.object({
   version: z.string(),
   dependencies: z.array(z.unknown()).optional(),
 });
-type Chart = { group: string; chart: string; applications: string[] };
+type Chart = {
+  group: string;
+  chart: string;
+  directoryName?: string;
+  applications: string[];
+};
 type Source = { type: "http" | "oci"; url: string };
+const extraResourcesPolicySchema = z.strictObject({
+  objectOnly: z.array(
+    z.string().regex(/^helm\/[a-z0-9][a-z0-9.-]*\/[a-z0-9][a-z0-9.-]*$/),
+  ),
+});
+
+export async function usesObjectOnlyResources(
+  chartPrefix: string,
+): Promise<boolean> {
+  const content = await readLocalFile(
+    "helm-sources/extra-resources-policy.json",
+    "utf8",
+  );
+  if (!content) {
+    throw new Error("Missing Helm extraResources verification policy");
+  }
+  const policy = extraResourcesPolicySchema.parse(JSON.parse(content));
+  return policy.objectOnly.includes(chartPrefix);
+}
+
+const literalManifest = z.object({
+  apiVersion: z.string().min(1),
+  kind: z.string().min(1),
+});
+
+export function assertObjectOnlyResources(resources: unknown): void {
+  if (resources === undefined || resources === null) {
+    return;
+  }
+  if (
+    !Array.isArray(resources) ||
+    resources.some(
+      (resource) =>
+        !literalManifest.safeParse(resource).success ||
+        JSON.stringify(resource).includes("{{"),
+    )
+  ) {
+    throw new Error(
+      "Object-only extraResources requires Kubernetes objects without Helm expressions",
+    );
+  }
+}
+
+export function extraResourceProbes(objectOnly: boolean) {
+  const object = {
+    apiVersion: "v1",
+    kind: "ConfigMap",
+    metadata: { name: "helm-vendor-object-probe" },
+  };
+  return objectOnly
+    ? [object]
+    : [
+        object,
+        "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: helm-vendor-string-probe-{{ .Release.Namespace }}\n",
+      ];
+}
 
 async function helm(cwd: string, ...args: string[]): Promise<string> {
   try {
@@ -150,18 +213,50 @@ function renderSummary(rendered: string): {
   return { identities: Array.from(seen).sort(), crds };
 }
 
+export async function chartValueFileArgs(
+  directory: string,
+  valueFiles: string[] = [],
+): Promise<string[]> {
+  if (!valueFiles.length) {
+    return [];
+  }
+  const chartRoot = await realpath(directory);
+  const args: string[] = [];
+  for (const file of valueFiles) {
+    if (!/^(?:[\w-][\w.-]*\/)*[\w-][\w.-]*\.ya?ml$/.test(file)) {
+      throw new Error("Only chart-local YAML valueFiles are supported");
+    }
+    const candidate = join(chartRoot, file);
+    const resolved = await realpath(candidate);
+    const within = relative(chartRoot, resolved);
+    if (
+      !within ||
+      within === ".." ||
+      within.startsWith(".." + sep) ||
+      isAbsolute(within) ||
+      !(await lstat(candidate)).isFile()
+    ) {
+      throw new Error("Helm valueFiles must be regular files inside the chart");
+    }
+    args.push("-f", candidate);
+  }
+  return args;
+}
+
 async function verifyApplication(
   stage: string,
   directory: string,
   chart: Chart,
   path: string,
+  objectOnly: boolean,
 ): Promise<string> {
   const content = await readLocalFile(path, "utf8");
   if (!content) {
     throw new Error("Missing Application for Helm rendering");
   }
   const app = parseYaml(content, { customSchema: applicationSchema })[0];
-  const prefix = "helm/" + chart.group + "/" + chart.chart + "-";
+  const prefix =
+    "helm/" + chart.group + "/" + (chart.directoryName ?? chart.chart) + "-";
   const deployed = app.spec.source.path;
   if (!deployed.startsWith(prefix) || !valid(deployed.slice(prefix.length))) {
     throw new Error("Application does not point at this vendored chart");
@@ -171,7 +266,27 @@ async function verifyApplication(
   const values = config?.valuesObject ?? {};
   const valuesPath = join(stage, "application-values.json");
   const namespace = app.spec.destination.namespace;
-  const render = (chartPath: string): Promise<string> =>
+  const oldValues = await chartValues(previous);
+  const newValues = await chartValues(directory);
+  const oldFiles = await chartValueFileArgs(previous, config?.valueFiles);
+  const newFiles = await chartValueFileArgs(directory, config?.valueFiles);
+  if (objectOnly) {
+    for (const source of [values, oldValues, newValues]) {
+      assertObjectOnlyResources(source.extraResources);
+    }
+    const uniqueFiles = new Set(
+      [...oldFiles, ...newFiles].filter((file) => file !== "-f"),
+    );
+    for (const file of uniqueFiles) {
+      const documents = parseYaml<Record<string, unknown> | null>(
+        await readFile(file, "utf8"),
+      );
+      for (const document of documents) {
+        assertObjectOnlyResources(document?.extraResources);
+      }
+    }
+  }
+  const render = (chartPath: string, files: string[]): Promise<string> =>
     helm(
       stage,
       "template",
@@ -180,38 +295,31 @@ async function verifyApplication(
       "--namespace",
       namespace,
       "--include-crds",
+      ...files,
       "-f",
       valuesPath,
     );
   await writeFile(valuesPath, JSON.stringify(values), { mode: 0o600 });
-  const before = renderSummary(await render(previous));
-  const after = renderSummary(await render(directory));
+  const before = renderSummary(await render(previous, oldFiles));
+  const after = renderSummary(await render(directory, newFiles));
 
   await writeFile(
     valuesPath,
     JSON.stringify({
       ...values,
-      extraResources: [
-        {
-          apiVersion: "v1",
-          kind: "ConfigMap",
-          metadata: { name: "helm-vendor-object-probe" },
-        },
-        "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: helm-vendor-string-probe-{{ .Release.Namespace }}\n",
-      ],
+      extraResources: extraResourceProbes(objectOnly),
     }),
   );
-  const probes = await render(directory);
+  const probes = await render(directory, newFiles);
   renderSummary(probes);
   if (
     !probes.includes("name: helm-vendor-object-probe") ||
-    !probes.includes("name: helm-vendor-string-probe-" + namespace)
+    (!objectOnly &&
+      !probes.includes("name: helm-vendor-string-probe-" + namespace))
   ) {
     throw new Error("Canonical resource injection probes did not render");
   }
 
-  const oldValues = await chartValues(previous);
-  const newValues = await chartValues(directory);
   const removed = Object.keys(oldValues).filter(
     (key) => !Object.hasOwn(newValues, key),
   );
@@ -237,7 +345,10 @@ async function verifyApplication(
           .join(", ")
       : "none";
   return [
-    "Helm lint and rendering passed with the Application values. The object and string injection probes also passed.",
+    "Helm lint and rendering passed with the Application values.",
+    objectOnly
+      ? "The object injection probe passed (object-only policy)."
+      : "The object and string injection probes also passed.",
     "- Added default keys - " + list(added),
     "- Removed default keys - " + list(removed),
     "- Changed default keys - " + list(changed),
@@ -275,7 +386,9 @@ export async function materialize(
   source: Source,
   version: string,
 ): Promise<UpdateArtifactsResult[]> {
-  const target = "helm/" + chart.group + "/" + chart.chart + "-" + version;
+  const chartPrefix =
+    "helm/" + chart.group + "/" + (chart.directoryName ?? chart.chart);
+  const target = chartPrefix + "-" + version;
   try {
     await lstat(join(GlobalConfig.get("localDir"), target));
     throw new Error("Target chart directory already exists");
@@ -284,6 +397,7 @@ export async function materialize(
       throw error;
     }
   }
+  const objectOnly = await usesObjectOnlyResources(chartPrefix);
   const stage = await mkdtemp(join(tmpdir(), "renovate-helm-vendor-"));
   try {
     const sourceArgs =
@@ -318,6 +432,7 @@ export async function materialize(
         directory,
         chart,
         application,
+        objectOnly,
       );
       additions.push({ notice: { file: application, message } });
     }

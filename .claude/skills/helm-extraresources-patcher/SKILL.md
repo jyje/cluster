@@ -10,7 +10,8 @@ This skill ensures that all vendored top-level Helm charts in the repository sup
 > [!IMPORTANT]
 > - **Main Charts Only**: Never patch subcharts (directories inside `charts/`).
 > - **Exact-name rule**: Use only the top-level `extraResources` key in repository-owned Helm values for resource injection. Names such as `extraObjects` and `extraDeploy` do not substitute for it. Keep those upstream features intact and add the standard patch alongside them.
-> - **Preserve native support**: If the chart already declares `extraResources`, keep its values, schema, and renderer unchanged. Run both render probes; if the existing implementation fails either probe, report the incompatibility instead of adding a second renderer for the same key.
+> - **Preserve native support**: If the chart already declares `extraResources`, keep its values, schema, and renderer unchanged. If a required probe fails, report the incompatibility instead of adding a second renderer for the same key.
+> - **Probe contract**: Both formats are required by default. Only charts listed in the [object-only policy](../../../helm-sources/extra-resources-policy.json) use the object probe alone. For those charts, reject YAML strings and Helm expressions inside objects.
 
 ## 1. Audit Phase
 
@@ -92,7 +93,7 @@ Failure to update the schema will cause `helm template` to fail if `additionalPr
    helm template . --set "extraResources[0].apiVersion=v1,extraResources[0].kind=ConfigMap,extraResources[0].metadata.name=test"
    ```
 
-3. **Test string format with Helm expression**:
+3. **Test string format with Helm expression** (unless the object-only policy applies):
    ```bash
    helm template . --set-string 'extraResources[0]=apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n  namespace: "{{ .Release.Namespace }}"'
    ```
