@@ -1,0 +1,34 @@
+{{- if .Values.highAvailability.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "homer-operator.fullname" . }}
+  namespace: {{ include "homer-operator.namespace" . }}
+  labels:
+    {{- include "homer-operator.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "homer-operator.managerName" . }}
+  minReplicas: {{ .Values.highAvailability.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.highAvailability.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.highAvailability.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.highAvailability.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.highAvailability.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.highAvailability.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

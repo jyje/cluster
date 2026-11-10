@@ -1,0 +1,222 @@
+# Default values for homer-operator
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/rajsinghtech/homer-operator
+  pullPolicy: Always
+  tag: ""
+  # Set by the release workflow for immutable production images.
+  digest: "sha256:1baa44fdcb6b27d2672fedaed749e938a97e472348fb19c7e5ffbd50799ee483"
+
+homer:
+  image:
+    repository: b4bz/homer
+    tag: latest
+  # Image used by Dashboard pods to copy ConfigMap content into Homer assets.
+  configSyncImage: alpine:3.18
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Operator configuration
+operator:
+  enableGatewayAPI: false
+  leaderElection:
+    enabled: true
+  # Metrics configuration. Secured directly by controller-runtime's built-in
+  # authn/authz filter (TokenReview/SubjectAccessReview) - no sidecar proxy.
+  metrics:
+    enabled: true
+    # Bind address for metrics server
+    bindAddress: ":8443"
+    # Secure metrics serving
+    secureMetrics: true
+  healthProbe:
+    bindAddress: ":8081"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+  annotations: {}
+
+# Custom Resource Definition configuration
+crd:
+  create: true
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+# Service configurations
+services:
+  # The metrics Service is rendered only when both this flag and
+  # operator.metrics.enabled are true.
+  metrics:
+    enabled: true
+    type: ClusterIP
+    port: 8443
+    annotations: {}
+
+# ServiceMonitor configuration for Prometheus Operator
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  annotations: {}
+  # When secure metrics and the ServiceMonitor are enabled, the chart creates
+  # a dedicated ServiceAccount, service-account-token Secret, metrics reader
+  # ClusterRole, and ClusterRoleBinding for Prometheus scraping.
+  auth:
+    serviceAccountName: ""
+    tokenSecretName: ""
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# Startup probe configuration
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 30
+
+# Scheduling and placement
+scheduling:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+
+# Additional volumes and mounts
+volumes: []
+volumeMounts: []
+
+# High availability and scaling
+highAvailability:
+  podDisruptionBudget:
+    enabled: true
+    # Configure one of these. If both are supplied through merged values,
+    # maxUnavailable takes precedence so the rendered PDB remains valid.
+    minAvailable: 1
+    maxUnavailable: null
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+# VerticalPodAutoscaler configuration
+vpa:
+  enabled: false
+  updateMode: "Auto"
+  controlledResources: [ "cpu", "memory" ]
+  maxAllowed:
+    cpu: 1
+    memory: 512Mi
+  minAllowed:
+    cpu: 10m
+    memory: 32Mi
+  labels: {}
+  annotations: {}
+
+# Topology spread constraints
+topologySpreadConstraints: []
+# Example:
+# - maxSkew: 1
+#   topologyKey: topology.kubernetes.io/zone
+#   whenUnsatisfiable: DoNotSchedule
+#   labelSelector:
+#     matchLabels:
+#       app.kubernetes.io/name: homer-operator
+
+# PrometheusRule configuration
+prometheusRule:
+  enabled: false
+  additionalRules: []
+  labels: {}
+  annotations: {}
+
+# Grafana Dashboard configuration
+grafanaDashboard:
+  enabled: false
+  labels: {}
+  annotations: {}
+
+# Deployment strategy configuration
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+# Termination grace period
+terminationGracePeriodSeconds: 10
+
+# Environment variables
+env: []
+# Example:
+# - name: LOG_LEVEL
+#   value: "info"
+# LOG_LEVEL accepts the controller-runtime zap levels: debug, info, error,
+# panic, or a positive integer for a custom logr verbosity.
+# - name: SECRET_VALUE
+#   valueFrom:
+#     secretKeyRef:
+#       name: my-secret
+#       key: password
+
+envFrom: []
+extraResources: []
+
+# Example:
+# - configMapRef:
+#     name: my-config
+# - secretRef:
+#     name: my-secret
