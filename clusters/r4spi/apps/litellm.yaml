@@ -76,12 +76,14 @@ spec:
         proxy_config:
           model_list:
             # Text Models
-            -
-              model_name: "upstage/solar-open2"
-              litellm_params:
-                model: "openai/solar-open2"
-                api_base: "https://api.upstage.ai/v1"
-                api_key: "os.environ/UPSTAGE_API_KEY"
+            # Disabled: the Upstage account is suspended for insufficient credit
+            # (403 on every request). Re-enable after the billing is restored.
+            # -
+            #   model_name: "upstage/solar-open2"
+            #   litellm_params:
+            #     model: "openai/solar-open2"
+            #     api_base: "https://api.upstage.ai/v1"
+            #     api_key: "os.environ/UPSTAGE_API_KEY"
             -
               model_name: "google/gemma-4-31b-it"
               litellm_params:
