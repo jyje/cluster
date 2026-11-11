@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/litellm/litellm-1.103.5
+    path: helm/litellm/litellm-1.109.0
     helm:
       valueFiles:
         - values.yaml
@@ -72,7 +72,7 @@ spec:
 
         image:
           repository: ghcr.io/berriai/litellm
-          tag: v1.103.5
+          tag: v1.109.0
         proxy_config:
           model_list:
             # Text Models
