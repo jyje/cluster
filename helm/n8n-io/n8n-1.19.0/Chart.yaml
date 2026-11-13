@@ -1,0 +1,39 @@
+annotations:
+  artifacthub.io/category: integration-delivery
+  artifacthub.io/images: |
+    - name: n8n
+      image: docker.n8n.io/n8nio/n8n:2.47.4
+    - name: task-runner
+      image: n8nio/runners:2.47.4
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: Chart documentation
+      url: https://github.com/n8n-io/n8n-hosting/blob/main/charts/n8n/README.md
+    - name: Self-hosting documentation
+      url: https://docs.n8n.io/hosting/
+    - name: Community forum
+      url: https://community.n8n.io
+apiVersion: v2
+appVersion: 2.47.4
+description: The official, production-grade Helm chart for n8n, the workflow automation
+  platform. Supports queue mode, multi-main HA, webhook processors, task runners,
+  HPA, PDB, network policies, and S3 external storage.
+home: https://n8n.io
+icon: https://raw.githubusercontent.com/n8n-io/n8n-hosting/main/assets/n8n-chart-icon.svg
+keywords:
+- n8n
+- workflow-automation
+- automation
+- queue
+- redis
+- postgres
+kubeVersion: '>=1.25.0-0'
+maintainers:
+- name: n8n
+  url: https://github.com/n8n-io
+name: n8n
+sources:
+- https://github.com/n8n-io/n8n-hosting
+- https://github.com/n8n-io/n8n
+type: application
+version: 1.19.0

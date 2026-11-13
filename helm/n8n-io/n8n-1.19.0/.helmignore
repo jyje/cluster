@@ -1,0 +1,76 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# negation (prefixed with !). Only one pattern per line.
+.DS_Store
+# Common VCS dirs
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# CI/CD files. /ci/ holds the values files chart-testing and CI render the
+# chart with; they are read from the repository and are no use to an install.
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+/ci/
+
+# Documentation and examples.
+CHANGELOG.md
+DESIGN.md
+decisions/
+LICENSE
+examples/
+docs/
+
+# Testing files (anchored to the chart root so templates/tests/ still ships)
+/test/
+/tests/
+*_test.go
+*.test
+
+# Development files
+Makefile
+docker-compose.yml
+docker-compose.yaml
+*.dockerfile
+Dockerfile*
+
+# Package files
+*.tgz
+*.tar.gz
+
+# Logs
+*.log
+logs/
+
+# Node.js files (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
