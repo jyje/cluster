@@ -1,0 +1,72 @@
+name: Seal OpenRouter API key
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  seal:
+    if: github.repository == 'jyje/cluster' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Prepare kubeseal and verify public certificate
+        shell: bash
+        env:
+          SEALING_CERT_PEM: ${{ vars.OPENROUTER_SEALING_CERT_PEM }}
+          SEALING_CERT_SHA256: ${{ vars.OPENROUTER_SEALING_CERT_SHA256 }}
+        run: |
+          umask 077
+          work_dir="$RUNNER_TEMP/openrouter-seal"
+          mkdir "$work_dir" "$work_dir/output"
+          archive="$work_dir/kubeseal.tar.gz"
+          curl --fail --silent --show-error --location --max-time 90 \
+            'https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.41.2/kubeseal-0.41.2-linux-amd64.tar.gz' \
+            --output "$archive"
+          printf '%s  %s\n' '666b5db6788ad1dedb56e2d97064e1cc3779aa77bbd6f4b56b62beeb1941ed79' "$archive" |
+            sha256sum --check --status
+          tar -xzf "$archive" -C "$work_dir" kubeseal
+
+          if [[ ! "$SEALING_CERT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+            echo '::error::Configure the trusted public sealing certificate fingerprint.'
+            exit 1
+          fi
+          printf '%s\n' "$SEALING_CERT_PEM" > "$work_dir/cert.pem"
+          fingerprint="$(openssl x509 -in "$work_dir/cert.pem" -outform DER | sha256sum)"
+          if [[ "${fingerprint%% *}" != "$SEALING_CERT_SHA256" ]]; then
+            echo '::error::Public sealing certificate fingerprint mismatch.'
+            exit 1
+          fi
+          # Pass only the verified certificate, even if the input contains multiple PEM blocks.
+          openssl x509 -in "$work_dir/cert.pem" -out "$work_dir/verified.pem"
+          openssl x509 -in "$work_dir/verified.pem" -checkend 0 -noout
+
+      - name: Seal the key without cluster access
+        shell: bash
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          umask 077
+          if [[ -z "$OPENROUTER_API_KEY" ]]; then
+            echo '::error::OPENROUTER_API_KEY is not configured.'
+            exit 1
+          fi
+          work_dir="$RUNNER_TEMP/openrouter-seal"
+          output="$work_dir/output/openrouter.api.key.sealed"
+          # Keep the value out of argv and do not inherit it in kubeseal.
+          secret="$OPENROUTER_API_KEY"
+          unset OPENROUTER_API_KEY
+          printf '%s' "$secret" |
+            "$work_dir/kubeseal" --raw --scope strict --cert "$work_dir/verified.pem" \
+              --namespace ollama-system --name litellm-creds > "$output"
+          unset secret
+          test -s "$output"
+
+      - name: Upload ciphertext only
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: openrouter-sealed-key
+          path: ${{ runner.temp }}/openrouter-seal/output/openrouter.api.key.sealed
+          if-no-files-found: error
+          retention-days: 1
