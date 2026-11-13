@@ -202,6 +202,15 @@ spec:
               model_info:
                 max_input_tokens: 262144
 
+            # OpenRouter Inkling 2 Small (free): disabled until the key is sealed
+            # and authenticated inference is verified. Agentic harnesses only;
+            # do not send confidential or personal data to this free endpoint.
+            # -
+            #   model_name: "openrouter/thinkingmachines/inkling-2-small:free"
+            #   litellm_params:
+            #     model: "openrouter/thinkingmachines/inkling-2-small:free"
+            #     api_key: "os.environ/OPENROUTER_API_KEY"
+
             # GitHub Copilot Models (June)
             # Auth is FILE-based: LiteLLM's github_copilot provider reads the
             # long-lived GitHub token from $GITHUB_COPILOT_TOKEN_DIR/access-token
@@ -343,6 +352,12 @@ spec:
               secretKeyRef:
                 name: litellm-creds
                 key: upstage.api.key
+          # Enable with the model after adding openrouter.api.key to the SealedSecret.
+          # - name: OPENROUTER_API_KEY
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: litellm-creds
+          #       key: openrouter.api.key
           - name: DISABLE_METRICS
             value: "True"
           - name: TELEMETRY
