@@ -202,14 +202,14 @@ spec:
               model_info:
                 max_input_tokens: 262144
 
-            # OpenRouter Inkling 2 Small (free): disabled until the key is sealed
-            # and authenticated inference is verified. Agentic harnesses only;
-            # do not send confidential or personal data to this free endpoint.
-            # -
-            #   model_name: "openrouter/thinkingmachines/inkling-2-small:free"
-            #   litellm_params:
-            #     model: "openrouter/thinkingmachines/inkling-2-small:free"
-            #     api_key: "os.environ/OPENROUTER_API_KEY"
+            # Agentic harnesses only. Never send confidential or personal data.
+            -
+              model_name: "openrouter/thinkingmachines/inkling-2-small:free"
+              litellm_params:
+                model: "openrouter/thinkingmachines/inkling-2-small:free"
+                api_key: "os.environ/OPENROUTER_API_KEY"
+              model_info:
+                team_id: inkling-agent-harness
 
             # GitHub Copilot Models (June)
             # Auth is FILE-based: LiteLLM's github_copilot provider reads the
@@ -291,6 +291,8 @@ spec:
           litellm_settings:
             telemetry: false
             turn_off_message_logging: true
+            callbacks:
+              - inkling_attribution.hook
         db:
           deployStandalone: false
           database: "litellm"
@@ -352,12 +354,11 @@ spec:
               secretKeyRef:
                 name: litellm-creds
                 key: upstage.api.key
-          # Enable with the model after adding openrouter.api.key to the SealedSecret.
-          # - name: OPENROUTER_API_KEY
-          #   valueFrom:
-          #     secretKeyRef:
-          #       name: litellm-creds
-          #       key: openrouter.api.key
+          - name: OPENROUTER_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: litellm-creds
+                key: openrouter.api.key
           - name: DISABLE_METRICS
             value: "True"
           - name: TELEMETRY
@@ -373,6 +374,9 @@ spec:
         # emptyDir so the github_copilot provider can cache the short-lived
         # `api-key.json` it exchanges. No init container needed.
         volumes:
+          - name: inkling-attribution
+            configMap:
+              name: litellm-inkling-attribution-v1
           - name: copilot-auth
             emptyDir: {}
           - name: copilot-token
@@ -382,6 +386,10 @@ spec:
                 - key: github.token
                   path: access-token
         volumeMounts:
+          - name: inkling-attribution
+            mountPath: /etc/litellm/inkling_attribution.py
+            subPath: inkling_attribution.py
+            readOnly: true
           - name: copilot-auth
             mountPath: /copilot-auth
           - name: copilot-token
@@ -390,6 +398,45 @@ spec:
             readOnly: true
 
         extraResources:
+          # Bump the ConfigMap name and volume reference together when changing the hook.
+          - apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: litellm-inkling-attribution-v1
+            data:
+              inkling_attribution.py: |
+                from fastapi import HTTPException
+                from litellm.integrations.custom_logger import CustomLogger
+
+                MODEL = "openrouter/thinkingmachines/inkling-2-small:free"
+                TEAM = "inkling-agent-harness"
+
+                class InklingAttribution(CustomLogger):
+                    async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
+                        if data.get("model") != MODEL:
+                            return data
+                        if user_api_key_dict.team_id != TEAM:
+                            raise HTTPException(403, "This model requires an agent-harness team key.")
+
+                        request = data.get("proxy_server_request") or {}
+                        headers = {k.lower(): v for k, v in (request.get("headers") or {}).items()}
+                        title = headers.get("x-openrouter-title") or headers.get("x-title")
+                        referer = headers.get("http-referer")
+                        user_agent = headers.get("user-agent", "")
+                        if referer == "https://hermes-agent.nousresearch.com" and title == "Hermes Agent":
+                            selected = {"HTTP-Referer": referer, "X-Title": title}
+                            if headers.get("x-openrouter-categories") == "productivity,cli-agent":
+                                selected["X-OpenRouter-Categories"] = headers["x-openrouter-categories"]
+                        elif user_agent.startswith("claude-cli/") and headers.get("x-app") == "cli":
+                            selected = {"User-Agent": user_agent, "X-App": headers["x-app"]}
+                        else:
+                            raise HTTPException(403, "Supported agent attribution is required.")
+
+                        data.pop("headers", None)
+                        data["extra_headers"] = selected
+                        return data
+
+                hook = InklingAttribution()
           # SealedSecret for Litellm
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
