@@ -54,6 +54,16 @@ spec:
                 # z-ai/glm-5.2 intentionally omitted: NIM returned 429 on
                 # every verification attempt, so its real limit is still
                 # unconfirmed. Add it once verified — don't guess.
+            litellm-inkling:
+              base_url: http://litellm.ollama-system.svc.cluster.local:4000/v1
+              key_env: HENRY_INKLING_LITELLM_API_KEY
+              discover_models: false
+              models:
+                "openrouter/thinkingmachines/inkling-2-small:free": {}
+              extra_headers:
+                HTTP-Referer: https://hermes-agent.nousresearch.com
+                X-Title: Hermes Agent
+                X-OpenRouter-Categories: productivity,cli-agent
           model:
             provider: litellm
             # Temporary: z-ai/glm-5.2 was hitting NVIDIA NIM's own 429
@@ -134,7 +144,62 @@ spec:
         extraEnvFrom:
           - secretRef:
               name: hermes-agent-henry-creds
+          - secretRef:
+              name: hermes-henry-inkling-creds
+        extraInitContainers:
+          # Bootstrap preserves the writable config. Reconcile only this provider.
+          - name: configure-inkling
+            image: nousresearch/hermes-agent:v0.22.5
+            command:
+              - /opt/hermes/.venv/bin/python
+              - -c
+              - |
+                import os
+                import stat
+                import tempfile
+                from pathlib import Path
+
+                import yaml
+
+                target = Path("/opt/data/config.yaml")
+                seed = yaml.safe_load(Path("/seed/config.yaml").read_text())
+                current = yaml.safe_load(target.read_text())
+                providers = current.setdefault("providers", {})
+                if not isinstance(providers, dict):
+                    raise ValueError("Hermes providers must be a mapping")
+                name = "litellm-inkling"
+                desired = seed["providers"][name]
+                if providers.get(name) != desired:
+                    providers[name] = desired
+                    original = target.stat()
+                    fd, temporary = tempfile.mkstemp(dir=target.parent)
+                    try:
+                        with os.fdopen(fd, "w") as stream:
+                            yaml.safe_dump(current, stream, sort_keys=False, allow_unicode=True)
+                            if os.geteuid() == 0:
+                                os.fchown(stream.fileno(), original.st_uid, original.st_gid)
+                            os.fchmod(stream.fileno(), stat.S_IMODE(original.st_mode))
+                        os.replace(temporary, target)
+                    finally:
+                        Path(temporary).unlink(missing_ok=True)
+            volumeMounts:
+              - name: data
+                mountPath: /opt/data
+              - name: config
+                mountPath: /seed
+                readOnly: true
         extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: hermes-henry-inkling-creds
+            spec:
+              encryptedData:
+                HENRY_INKLING_LITELLM_API_KEY: AgCjWdkuG5+Z3l0D85Vs6OeWTMu+48vnEQCOP5CNUqBoeJgAYHnndDOOFgxdH9WkE98o1YRDk9ZEkqk2XejASusHKpTe9ONRxtdzI/MuPi19bHewrXjwP4ipjrqj/FhKq/jeoW89lddyembRUbMMUsrhlfbiuC4oyFwm8RMQhnoFNXb2FWz1TvCrPIq8FQJaHaqnqYB94+HTaGBHYcJN/l/9mQtiwyXV6qNnZzsLxarXX6fcxch1CfLMI6E9IyJZt1n82kCM+nQa95c1I746GsySUyC+Oiguxg0ZNbyJRLBtI/0283EEPl+wp0PLdlXktl9G6Za+o/AaD4H4IcaLFfapuZBQRsCwuE8mLIVc4uAw6p9OZsFwtjFdisKc06IfvveAHMrQy3ZsKTwlg1oBIbOHx1GxRuFLPnnkd028jfBGBlDI8QYNlFYSasQKmdrFIXBNXf1yV4bVVRteuhzxaXagW3BR9Qmbx3hVar741fCX6ZUZlKLomqGmZMxTM8hVlUO7/ycL94WuLUmVBQgxNDQ9K7BZaTIdz4x88bO//ayXJ36FWvrMlezfDESa4FHz2tMzgD69zYdX/qKS6iFyEBol/tUxsTrG0FjQ0LEvDp1Ky1VJR+rgm9WygrmufUnzTzZc2w/ZUr+4XsVmVfMyn7jFNYk1VSDgLvvXCBRUG80yVx5IncOB2Os3DY5VXs9h1mH20eLqFdCW769X5FFcL01dl/eFL7TP/Mu+
+              template:
+                metadata:
+                  name: hermes-henry-inkling-creds
+                type: Opaque
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:
