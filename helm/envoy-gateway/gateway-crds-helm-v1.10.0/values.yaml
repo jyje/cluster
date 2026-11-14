@@ -1,0 +1,9 @@
+crds:
+  gatewayAPI:
+    enabled: false
+    channel: experimental   # Available options: standard, experimental
+  envoyGateway:
+    enabled: false
+
+# -- Extra manifests to render. Supports objects and templated YAML strings.
+extraResources: []
