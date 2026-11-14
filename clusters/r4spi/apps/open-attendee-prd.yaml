@@ -7,7 +7,7 @@ metadata:
 spec:
   project: base
   source:
-    repoURL: https://github.com/jyje/kirothon-team-032.git
+    repoURL: https://github.com/jyje/open-attendee.git
     targetRevision: prd
     path: helm
     helm:
