@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: open-attendee-dev
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/kirothon-team-032.git
+    targetRevision: dev
+    path: helm
+    helm:
+      valuesObject:
+        image:
+          repository: ghcr.io/jyje/open-attendee-dev
+          # "managed" is a sentinel that does not exist in GHCR. Image Updater
+          # replaces it with the newest immutable r<run>-<sha7> tag.
+          tag: managed
+        # SQLite and uploads live on one PVC, so keep a single replica.
+        replicaCount: 1
+        # Created out of band (SealedSecret) in the open-attendee-dev namespace.
+        # Required keys: OWNER_PASSWORD_HASH, SESSION_SECRET.
+        existingSecret: open-attendee
+        persistence:
+          storageClass: subdir-usb
+        ingress:
+          enabled: true
+          clusterIssuer: nginx-letsencrypt-prod
+          host: attendee.dev.jyje.online
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: open-attendee-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# ImageUpdater is an argocd-scoped CRD, so it lives in the argocd namespace.
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: open-attendee-dev
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: open-attendee-dev
+      writeBackConfig:
+        method: argocd
+      images:
+        - alias: open-attendee
+          imageName: ghcr.io/jyje/open-attendee-dev:managed
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^r[0-9]+-[0-9a-f]{7}$"
+            forceUpdate: true
+            platforms:
+              - linux/arm64
+          manifestTargets:
+            helm:
+              name: image.repository
+              tag: image.tag

@@ -38,6 +38,24 @@ spec:
     namespace: argocd
     jsonPointers:
     - /spec/source/helm/parameters
+  - group: argoproj.io
+    kind: Application
+    name: open-attendee-dev
+    namespace: argocd
+    jsonPointers:
+    - /spec/source/helm/parameters
+  - group: argoproj.io
+    kind: Application
+    name: open-attendee-stg
+    namespace: argocd
+    jsonPointers:
+    - /spec/source/helm/parameters
+  - group: argoproj.io
+    kind: Application
+    name: open-attendee-prd
+    namespace: argocd
+    jsonPointers:
+    - /spec/source/helm/parameters
   syncPolicy:
     automated: {}
     syncOptions:
