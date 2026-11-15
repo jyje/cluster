@@ -39,9 +39,17 @@ spec:
 
 Before syncing the PoC change, run
 `python3 scripts/preflight_envoy_udp_pool.py <context>`. This checks the live
-pool and service restriction, API and node addresses, other pools, and Pod,
+pool and service restriction where supported, API and node addresses, other pools, and Pod,
 Service, and LoadBalancer allocations. It does not verify the DHCP reservation;
 that check must come from the network operator.
+
+MetalLB v0.13.3 does not support `serviceAllocation`; omit that block only on
+that release. Its allocator uses the explicit `metallb.universe.tf/address-pool`
+selection, and the manifest sets the same pool with both the legacy and current
+keys. With `autoAssign: false`, this address will not be assigned automatically,
+but the legacy controller does not enforce an allowlist against a deliberate
+request by another Service. The preflight rejects any such existing request.
+Reinstate the selector restriction before upgrading the controller.
 
 Then sync the PoC and run `bash scripts/verify_envoy_udp_poc.sh <context>`
 from a client on the intended LAN. Require the Gateway to be programmed, the

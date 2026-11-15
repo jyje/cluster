@@ -1,7 +1,9 @@
 import ipaddress as ip
 import unittest
 
-from preflight_envoy_udp_pool import LABEL, NAMESPACE, POOL, PreflightError, check_gateway, preflight
+from preflight_envoy_udp_pool import (
+    LABEL, LEGACY_CONTROLLER, NAMESPACE, POOL, POOL_KEYS, PreflightError, check_gateway, preflight,
+)
 
 
 class PoolTest(unittest.TestCase):
@@ -45,6 +47,21 @@ class PoolTest(unittest.TestCase):
         with self.assertRaisesRegex(PreflightError, "only the labeled game Service"):
             self.check()
 
+    def test_selectorless_pool_requires_the_verified_legacy_version(self):
+        del self.pool["spec"]["serviceAllocation"]
+        with self.assertRaisesRegex(PreflightError, "verified legacy"):
+            self.check()
+        self.check(controller_image=LEGACY_CONTROLLER)
+
+    def test_other_service_cannot_request_the_legacy_pool(self):
+        with self.assertRaisesRegex(PreflightError, "explicitly requests"):
+            self.check(services=[{"metadata": {"annotations": {POOL_KEYS[1]: POOL}}, "spec": {}}])
+        with self.assertRaisesRegex(PreflightError, "already requested"):
+            self.check(services=[{
+                "metadata": {"annotations": {"metallb.universe.tf/loadBalancerIPs": self.address}},
+                "spec": {},
+            }])
+
     def test_overlapping_shared_range(self):
         shared = {"metadata": {"name": "shared"}, "spec": {"addresses": ["172.31.254.199-172.31.254.201"]}}
         with self.assertRaisesRegex(PreflightError, "overlaps another MetalLB pool"):
@@ -78,7 +95,7 @@ class PoolTest(unittest.TestCase):
                     "gateway.envoyproxy.io/owning-gateway-name": "factorio",
                     "gateway.envoyproxy.io/owning-gateway-namespace": NAMESPACE,
                 },
-                "annotations": {"metallb.io/address-pool": POOL},
+                "annotations": {key: POOL for key in POOL_KEYS},
             },
             "spec": {"type": "LoadBalancer"},
             "status": {"loadBalancer": {"ingress": [{"ip": self.address}]}},

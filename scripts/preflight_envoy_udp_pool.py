@@ -12,6 +12,9 @@ from urllib.parse import urlsplit
 POOL = "factorio-private"
 NAMESPACE = "envoy-gateway-system"
 LABEL = "networking.jyje.io/reserved-vip"
+POOL_KEYS = ("metallb.io/address-pool", "metallb.universe.tf/address-pool")
+IP_KEYS = ("metallb.io/loadBalancerIPs", "metallb.universe.tf/loadBalancerIPs")
+LEGACY_CONTROLLER = "quay.io/metallb/controller:v0.13.3"
 PRIVATE = tuple(map(ip.ip_network, ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")))
 
 
@@ -39,7 +42,7 @@ def game_service(service):
         and labels.get(LABEL) == "factorio"
         and labels.get("gateway.envoyproxy.io/owning-gateway-name") == "factorio"
         and labels.get("gateway.envoyproxy.io/owning-gateway-namespace") == NAMESPACE
-        and metadata.get("annotations", {}).get("metallb.io/address-pool") == POOL
+        and all(metadata.get("annotations", {}).get(key) == POOL for key in POOL_KEYS)
     )
 
 
@@ -47,18 +50,24 @@ def external_ips(service):
     return [i.get("ip") for i in service.get("status", {}).get("loadBalancer", {}).get("ingress", [])]
 
 
-def preflight(pools, advertisements, nodes, services, networks, api_addresses):
+def preflight(pools, advertisements, nodes, services, networks, api_addresses, controller_image=None):
     targets = [pool for pool in pools if pool["metadata"]["name"] == POOL]
     require(len(targets) == 1, "The dedicated IPAddressPool has not been provisioned.")
     spec = targets[0]["spec"]
     require(spec.get("autoAssign") is False, "The dedicated pool must disable auto-assignment.")
-    require(
-        spec.get("serviceAllocation") == {
-            "namespaces": [NAMESPACE],
-            "serviceSelectors": [{"matchLabels": {LABEL: "factorio"}}],
-        },
-        "The dedicated pool must permit only the labeled game Service.",
-    )
+    if "serviceAllocation" not in spec:
+        require(
+            controller_image == LEGACY_CONTROLLER,
+            "A selectorless pool is supported only on the verified legacy MetalLB version.",
+        )
+    else:
+        require(
+            spec["serviceAllocation"] == {
+                "namespaces": [NAMESPACE],
+                "serviceSelectors": [{"matchLabels": {LABEL: "factorio"}}],
+            },
+            "The dedicated pool must permit only the labeled game Service.",
+        )
     entries = spec.get("addresses", [])
     require(len(entries) == 1, "The dedicated pool must contain one IPv4 /32.")
     reserved = ip.ip_network(entries[0], strict=True)
@@ -97,7 +106,11 @@ def preflight(pools, advertisements, nodes, services, networks, api_addresses):
             continue
         spec = service["spec"]
         annotations = service["metadata"].get("annotations", {})
-        requested = [value.strip() for value in annotations.get("metallb.io/loadBalancerIPs", "").split(",")]
+        require(
+            not any(annotations.get(key) == POOL for key in POOL_KEYS),
+            "Another Service explicitly requests the dedicated pool.",
+        )
+        requested = [value.strip() for key in IP_KEYS for value in annotations.get(key, "").split(",")]
         assigned = (
             spec.get("clusterIPs", [])
             + spec.get("externalIPs", [])
@@ -143,6 +156,14 @@ def run(context, verify_gateway):
         for cidr in resource["spec"]["cidrs"]
     ] + [resource["spec"]["cidr"] for resource in items("ippools.crd.projectcalico.org")]
     services = items("services", "-A")
+    controllers = [
+        container["image"]
+        for item in items("deployments", *pool_ns)
+        if item["status"].get("availableReplicas", 0) > 0
+        for container in item["spec"]["template"]["spec"]["containers"]
+        if container["name"] == "controller"
+    ]
+    controller_image = controllers[0] if len(controllers) == 1 else None
     candidate = preflight(
         items("ipaddresspools.metallb.io", *pool_ns),
         items("l2advertisements.metallb.io", *pool_ns),
@@ -150,6 +171,7 @@ def run(context, verify_gateway):
         services,
         networks,
         api_addresses,
+        controller_image,
     )
     if verify_gateway:
         check_gateway(services, kubectl("get", "gateway", "factorio", "-n", NAMESPACE), candidate)
