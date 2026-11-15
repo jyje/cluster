@@ -255,7 +255,7 @@ spec:
                 # Almost every card is discovered automatically from each app's
                 # Ingress annotations (see ingressSelector above), which build the
                 # groups via service.homer.rajsingh.info/name:
-                #   1. Applications — n8n, Open WebUI, LiteLLM, Hermes Agent
+                #   1. Applications — n8n, Open WebUI, LiteLLM, Hermes Agent, then Gameplane
                 #   2. Dashboards   — Grafana, Homer
                 #   3. Management   — Argo CD, Portainer, authentik
                 # Group names carry a numeric prefix everywhere they're set
@@ -263,24 +263,30 @@ spec:
                 # operator renders groups sorted alphabetically by name, not
                 # in declaration/discovery order — this is the only way to
                 # force a specific display order.
-                # Games and external links are intentionally manual. Infisical
+                # Gameplane and external links are intentionally manual. Infisical
                 # is intentionally hidden from the dashboard for now.
                 services:
+                  # Same group name as the discovered Applications cards, so the
+                  # operator merges them. The icon repeats the one the Ingress
+                  # annotations set, because the manual definition wins.
                   - parameters:
-                      name: "4. Games"
-                      icon: "fas fa-gamepad"
+                      name: "1. Applications"
+                      icon: "fas fa-rocket"
                     items:
-                      # Manual, not an Ingress annotation: this card has to survive the
-                      # move from the bridge Ingress to the HTTPRoute.
+                      # Manual: this card has to survive the move from the bridge
+                      # Ingress to the HTTPRoute. Items sort by name, and a lower
+                      # "order" sorts later, so -1 keeps it at the bottom of the
+                      # group (the order parameter needs homer-operator 1.2.4).
                       - parameters:
                           name: "Gameplane"
-                          icon: "fas fa-server"
+                          logo: "https://avatars.githubusercontent.com/u/339341021"
                           subtitle: "Game server control panel"
                           url: "https://gameplane.app.jyje.online"
                           target: "_blank"
+                          order: "-1"
                   # Branding links do not have an Ingress backing them.
                   - parameters:
-                      name: "5. External Links"
+                      name: "4. External Links"
                       icon: "fas fa-link"
                     items:
                       - parameters:
