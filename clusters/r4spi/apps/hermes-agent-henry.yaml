@@ -150,6 +150,9 @@ spec:
           # Bootstrap preserves the writable config. Reconcile only this provider.
           - name: configure-inkling
             image: nousresearch/hermes-agent:v0.22.5
+            # hermes_yaml lives in the source tree, not in the sealed venv
+            # (built with --no-install-project), so run from the image WORKDIR.
+            workingDir: /opt/hermes
             command:
               - /opt/hermes/.venv/bin/python
               - -c
@@ -159,7 +162,9 @@ spec:
                 import tempfile
                 from pathlib import Path
 
-                import yaml
+                # v0.22 dropped PyYAML for ruamel.yaml. hermes_yaml wraps it with
+                # the same safe_load/safe_dump API and Hermes's YAML 1.1 rules.
+                import hermes_yaml as yaml
 
                 target = Path("/opt/data/config.yaml")
                 seed = yaml.safe_load(Path("/seed/config.yaml").read_text())
