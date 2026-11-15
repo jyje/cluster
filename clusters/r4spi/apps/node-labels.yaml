@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-labels
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/jyje/manifest-group-0.1.0
+    helm:
+      valuesObject:
+        # Declares only the `app.jyje.*` labels of the nodes. Server-side apply
+        # makes Argo CD own just these keys, so labels set by the kubelet and
+        # other controllers are left alone. A Node must never be pruned or
+        # deleted by Argo CD, so every Node carries Prune=false and Delete=false.
+        #
+        # Migration to a single `app.jyje.online` domain (the `app.jyje.live`
+        # domain is being retired):
+        #   1. Declare the labels exactly as they were (this change).
+        #   2. Add the `app.jyje.online` keys to every node and keep the old ones.
+        #   3. Move the workloads to the `app.jyje.online` keys.
+        #   4. Remove the `app.jyje.live` keys.
+        manifests:
+          - |
+            apiVersion: v1
+            kind: Node
+            metadata:
+              name: raspi-40
+              annotations:
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+              labels:
+                app.jyje.live/node.family: raspberry-pi
+                app.jyje.live/raspi.ram: 8g
+                app.jyje.live/raspi.type: 4b
+          - |
+            apiVersion: v1
+            kind: Node
+            metadata:
+              name: raspi-41
+              annotations:
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+              labels:
+                app.jyje.live/node.family: raspberry-pi
+                app.jyje.live/raspi.ram: 8g
+                app.jyje.live/raspi.type: 4b
+          - |
+            apiVersion: v1
+            kind: Node
+            metadata:
+              name: raspi-50
+              annotations:
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+              labels:
+                app.jyje.online/node.family: raspberry-pi
+                app.jyje.online/raspi.ram: 8g
+                app.jyje.online/raspi.type: 5b
+          - |
+            apiVersion: v1
+            kind: Node
+            metadata:
+              name: raspi-51
+              annotations:
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+              labels:
+                app.jyje.online/raspi.type: 5b
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+      - FailOnSharedResource=true
