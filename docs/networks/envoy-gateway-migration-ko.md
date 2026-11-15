@@ -12,15 +12,19 @@
 
 ### 리스너와 라우트
 
-`envoy-web`에는 호스트마다 HTTPS 리스너(`https-app`, `https-error`)가 8443 포트에 하나씩 있습니다. 각 리스너는 자기 네임스페이스의 라우트만 받아서, 다른 앱이 남의 호스트를 가로챌 수 없습니다. 앱별 `HTTPRoute`는 그 앱의 Argo CD Application 안에 두고, `sectionName`으로 해당 리스너를 가리킵니다.
+라우팅은 앱이 각자 소유합니다. 앱의 `Gateway`, `Certificate`, `HTTPRoute`는 그 앱의 Argo CD Application(`extraResources`)에 앱 네임스페이스로 선언합니다. Gateway에는 앱 호스트용 HTTPS 리스너가 8443 포트에 하나 있고, 자기 네임스페이스의 라우트만 받습니다(`allowedRoutes.namespaces.from: Same`). 그래서 다른 앱이 남의 호스트를 가로챌 수 없습니다.
+
+이 Gateway들은 모두 공용 `envoy-web` GatewayClass(`manifests/envoy-factorio-gateways/web-gatewayclass.yaml`)를 씁니다. 이 클래스의 `EnvoyProxy`에 `mergeGateways: true`가 있어서 클래스 안의 모든 Gateway가 프록시 한 벌을 같이 씁니다. 앱을 추가해도 프록시 파드가 늘지 않고(노드 메모리가 빠듯합니다), 컷오버 때 옮길 포트도 한 벌입니다. 대신 클래스 전체에서 리스너가 포트, 프로토콜, 호스트명 조합으로 유일해야 하고, 겹치면 `Accepted=False`로 거부됩니다. `factorio` Gateway는 UDP LoadBalancer Service가 필요해서 별도 클래스를 씁니다.
 
 이 라우트들은 아직 휴면 상태입니다. 실제 호스트 이름을 갖고 있지만, 외부에서 Gateway로 들어오는 트래픽이 없습니다. Ingress는 그대로 남아 계속 서비스합니다.
 
-컨트롤러는 `envoy-gateway` Application에 적힌 네임스페이스만 지켜봅니다. 첫 라우트를 만들기 전에 거기에 네임스페이스를 추가해야 합니다.
+컨트롤러는 `envoy-gateway` Application에 적힌 네임스페이스만 지켜봅니다. 첫 Gateway나 라우트를 만들기 전에 거기에 네임스페이스를 추가해야 합니다. 네임스페이스 자체는 지금처럼 따로 관리합니다.
+
+Hermes Henry pilot Gateway는 아직 `manifests/envoy-factorio-gateways/henry-gateway.yaml`에 있습니다. 공용 클래스로 옮겨 놓았고, 나중에 같은 패턴으로 앱 쪽으로 옮길 수 있습니다.
 
 ### 인증서
 
-인증서는 Gateway 어노테이션이 아니라 `envoy-gateway-system`의 명시적 `Certificate` 리소스로 만듭니다(`manifests/envoy-factorio-gateways/certificates.yaml`).
+앱마다 Gateway 옆에 같은 네임스페이스로 명시적 `Certificate`를 선언합니다. 그래서 TLS 시크릿에 네임스페이스를 넘나드는 `ReferenceGrant`가 필요 없습니다. Gateway 어노테이션은 쓰지 않습니다.
 
 - 80 포트를 아직 ingress-nginx가 받는 동안에는 그쪽 HTTP-01 solver만 챌린지를 끝낼 수 있습니다. 그래서 기존 `nginx-letsencrypt-prod` 발급자를 씁니다.
 - Certificate는 옛 Ingress가 사라진 뒤에도 계속 갱신되므로, 시크릿이 Ingress에 매이지 않습니다.
@@ -36,7 +40,7 @@ Envoy 서비스로 포트 포워딩하고 각 호스트를 실제 이름으로 �
 
 ```bash
 kubectl -n envoy-gateway-system port-forward \
-  $(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gateway-name=envoy-web -o name) 8443:8443
+  $(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gatewayclass=envoy-web -o name) 8443:8443
 ```
 
 ```bash
