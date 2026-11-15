@@ -64,3 +64,14 @@ Also check that the Gateway reports `Programmed=True`, both listeners report `Re
 ## Rollback
 
 Keep the ingress-nginx manifests in git until the new path is verified. To roll back, restore the ingress-nginx DaemonSet on the host ports and point the Cloudflare Tunnel and the router back at it. The Ingress objects and their certificates are untouched until their own removal step, so no data is lost.
+
+## Changing the class of a Gateway
+
+Moving an existing Gateway to another GatewayClass does not remove the proxy of
+the old class: the controller no longer manages it, and it keeps running with
+the old Service. When `envoy-web` moved to the merged class, the old
+`envoy-envoy-gateway-system-envoy-web-*` Deployment, Service, ServiceAccount and
+ConfigMap stayed behind and crash-looped. They were deleted by hand after
+checking that no Gateway used the old Service address. Do the same after a class
+change: list the leftover objects by their `owning-gateway-name` label, check
+that nothing refers to them, and delete them by name.

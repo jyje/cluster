@@ -92,6 +92,85 @@ printf '%s' "$ADMIN_PASSWORD" | kubectl -n gameplane-system exec -i deploy/gamep
   /api bootstrap-admin --username admin --password-stdin
 ```
 
+## Single sign-on (authentik)
+
+The dashboard signs in through authentik, next to the local admin account.
+
+- The authentik side is the `authentik-gameplane-oidc` blueprint in
+  [`authentik.yaml`](../../clusters/r4spi/apps/authentik.yaml). Gameplane needs a
+  client secret, so the blueprint is sealed with the secret inside it. The same
+  secret is sealed again as `gameplane-oidc` in the Gameplane Application.
+- The application is bound to `AuthentikAdmin` only (see
+  [authentik-access.md](authentik-access.md)), which also admits `ClusterAdmin`.
+- Roles come from the `groups` claim: `AuthentikAdmin` and `ClusterAdmin` become
+  dashboard admins. `defaultRole: deny` refuses anyone else.
+- The redirect URL is the legacy path `/auth/oidc/callback`, which Gameplane
+  keeps as an alias for this Helm-configured provider. The blueprint registers
+  it and the `/auth/oidc/helm/callback` form.
+- The local admin stays enabled as a break-glass login. Keep its password.
+
+To rotate the client secret, generate a new one, seal it into both places and
+sync both Applications. Check it as the owner: the login page shows an
+"authentik" button, and signing in lands on the dashboard as an admin.
+Troubleshooting follows [authentik-access.md](authentik-access.md). A sign-in
+that answers `invalid_request` means the provider lost its `grant_types`.
+
+## Guide: your first Factorio server in the web UI
+
+This is a guide for creating a Factorio server in the dashboard. Nothing here is
+in Git. The server is a `GameServer` that the operator reconciles, and it does
+not touch the existing `factorio` Application. Check these points first,
+because they are specific to this cluster.
+
+**Before you start**
+
+1. In **Admin Settings, General**, set **External URL** to
+   `https://gameplane.app.jyje.online`. Share links and callbacks derive from it.
+2. Do not reuse the existing server's address. The `factorio` Application owns
+   UDP 34197 on its reserved address. A second server needs its own port.
+3. Factorio uses UDP only. Players on a different client version cannot join,
+   so match the client to the image version of the module.
+
+**Create the server** (Servers, Create server, template **Factorio**)
+
+1. **Name and password.** Set a game password. Leave it empty only for a test
+   that nobody else can reach, because an empty password makes the server open.
+   Keep **Public** off. `require_user_verification` is always on in this
+   template, so every player needs a Factorio account.
+2. **Placement.** Add the node selector `app.jyje.online/raspi.type: 5b`. The
+   simulation is bound by one core, so run on a Pi 5 node, not a Pi 4. The module
+   image is a multi-arch image and has an arm64 build.
+3. **Resources.** The template asks for 1Gi and allows 4Gi and 2 CPUs. Lower the
+   limits if the node is busy, the same way the existing server is sized.
+4. **Storage.** 5Gi on the default StorageClass (NFS). Saves land there, so
+   expect slower autosaves than on a local disk.
+5. **Exposure.** This is the step to get right.
+   - Do **not** choose `LoadBalancer` without `addressPool`. MetalLB's
+     `default-addresspool` holds the node addresses, and handing a node address
+     to a Service caused an ARP conflict before. `factorio-private` has one
+     address and is reserved for the existing server.
+   - For a first test choose **NodePort** and pin the port. Then forward WAN UDP
+     on a spare port to that node port, or just join from the LAN with
+     `<node address>:<node port>`.
+   - Later, use a dedicated MetalLB pool with `addressPool`, or a relay tunnel
+     (frp, Tailscale or playit.gg), which needs no router forward.
+   If the expose choices do not show in the wizard, the operator has them off by
+   default (see the networking notes in the Gameplane repository).
+6. Leave **idle sleep** and **wake on connect** off for the first run.
+
+**Check it**
+
+1. The server reaches **Running** and the log shows the game hosting on UDP
+   34197 inside the pod.
+2. Join with the Factorio client by direct connect, using the address from the
+   server's Overview. Make a recognizable change, wait for an autosave, restart
+   the server from the dashboard and join again to see the change survived.
+3. Take a backup only after you configure a backup target. None is configured
+   here yet.
+
+**Clean up**: deleting the server in the dashboard removes the pod and Service.
+Check that its claim is gone too, so the NFS space is released.
+
 ## Verify a rollout
 
 1. Argo CD synced the intended revision and the Application is `Healthy`.

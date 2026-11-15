@@ -27,6 +27,24 @@ spec:
           agentMTLS:
             caSecretRef: {name: gameplane-external-ca-v1}
             clientCertRef: {name: gameplane-external-client-v1}
+          # Single sign-on through authentik (blueprint authentik-gameplane-oidc
+          # in authentik.yaml). The local admin stays for break-glass. Only the
+          # authentik groups listed here get a role, anyone else is refused.
+          oidc:
+            enabled: true
+            issuer: https://authentik.app.jyje.online/application/o/gameplane/
+            clientID: gameplane
+            clientSecretRef: {name: gameplane-oidc, key: clientSecret}
+            # The legacy path aliases this provider, and the authentik
+            # blueprint registers it.
+            redirectURL: https://gameplane.app.jyje.online/auth/oidc/callback
+            displayName: authentik
+            groupsClaim: groups
+            defaultRole: deny
+            roleMappings:
+              admin: [AuthentikAdmin, ClusterAdmin]
+              operator: []
+              viewer: []
         # Routing is a Gateway API route next to the app (see extraResources),
         # not the chart's own nginx Ingress. A small bridge Ingress below hands
         # public traffic to Envoy until ingress-nginx gives up ports 80/443.
@@ -155,6 +173,19 @@ spec:
                             name: gameplane-envoy
                             port:
                               number: 8080
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: gameplane-oidc
+              namespace: '{{ .Release.Namespace }}'
+            spec:
+              encryptedData:
+                clientSecret: AgCfGpUU61bUVpYuMxT/q8irTubjR0HYN4mpsNTPR1sYLYrFhObtqFZWeQnlh1cqaeYbkFdTUjXXFtgZ4caEntE+djyRn4KFVbdjup1BuqZ0jpwJynhnm8SxhMZYEcoUdFNUhlEpz3rTvymgsVOfTO3IdNL8BIf00jofAN8adniDSo6U7c70kMp/B6tazF2/yJLo9Req3KKEfehp3NzZtS4CvAra7cbLRkb/7ywUntdACRj8nlb25TgtmDo7LBMDTjKw+MteNKgOXatrGaZZ1HAhM8K2OMsdb1HwLLHSSzZJstSe0oYQCWG/UvPoW6CccoC/es/bFVaJoWXhnAYeIbjYHmXs4RWSFZA2ZifPtsuGyG3weCrEdD46ZbBnt6gANBCbGI2U9ry5gwi8QhUTvNpdW7i/L6r2r1hV9VX+jy5LaZ6c4nEVlCXeQENoyiNPEj+HfBGuLO5raks++qNLZ9q2PQW4IwENX0KF9AnIbc+N3+zDLMPJaWqU0jdda58hNABbkfsy+tRFTr+eUiHhD75yK9tGNeXF2mw42hq8XwxbM+RJu0NcrOcv80/yFxnusbog9H9nYwN/j/D0vPsJhdOpPELdWSv8nVlP9do9OV9wR3+jyczbv66nUVURuXAQ5FyNcCaYMz9DNZRFH7wtq3GSfsuu56djzkLtTqCbukrVarW6Xl8Y/g90y2esbNiC1Z/diDa3qRd56IMAWVIQz5YLiqMw9tT+/S+hazzBBYrpwRNmsSg2QUKD/n5iA9ShOi7jjx3qVeRQIiJyYUgAqwFk
+              template:
+                metadata:
+                  name: gameplane-oidc
+                  namespace: gameplane-system
+                type: Opaque
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:

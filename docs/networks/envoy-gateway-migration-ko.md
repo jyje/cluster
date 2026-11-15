@@ -64,3 +64,11 @@ Gateway가 `Programmed=True`인지, 인증서가 발급된 뒤 두 리스너가 
 ## 롤백
 
 새 경로가 검증될 때까지 ingress-nginx 매니페스트를 git에 남겨 둡니다. 되돌릴 때는 ingress-nginx DaemonSet을 호스트 포트에 다시 띄우고 Cloudflare Tunnel과 라우터를 그쪽으로 돌립니다. Ingress와 그 인증서는 각자의 제거 단계 전까지 그대로라서 데이터는 잃지 않습니다.
+
+## Gateway의 클래스를 바꿀 때
+
+기존 Gateway를 다른 GatewayClass로 옮겨도 옛 클래스의 프록시는 지워지지 않습니다. 컨트롤러가 더 이상 관리하지
+않아서, 옛 Service와 함께 계속 남습니다. `envoy-web`을 병합 클래스로 옮겼을 때 옛
+`envoy-envoy-gateway-system-envoy-web-*`의 Deployment, Service, ServiceAccount, ConfigMap이 남아서 계속
+재시작했고, 옛 Service 주소를 쓰는 Gateway가 없음을 확인한 뒤 손으로 지웠습니다. 클래스를 바꾼 뒤에는 같은
+방식으로, `owning-gateway-name` 레이블로 남은 객체를 찾고, 참조하는 곳이 없는지 확인한 다음 이름을 지정해 지웁니다.

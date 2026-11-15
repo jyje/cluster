@@ -28,6 +28,7 @@ spec:
           secrets:
             - authentik-google-source
             - authentik-argocd-oidc
+            - authentik-gameplane-oidc
             - authentik-owner
           # RBAC group hierarchy — no credentials involved, so a plain
           # ConfigMap (not a SealedSecret) is the right home for it.
@@ -377,6 +378,23 @@ spec:
               template:
                 metadata:
                   name: authentik-argocd-oidc
+                type: Opaque
+
+          # Sign-in for the Gameplane dashboard. Gameplane needs a client secret
+          # (a confidential client), so the blueprint is sealed with the secret
+          # inside it. The same secret is sealed again as gameplane-oidc in the
+          # Gameplane Application. The application is bound to AuthentikAdmin
+          # (and ClusterAdmin through the group hierarchy) only.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-gameplane-oidc
+            spec:
+              encryptedData:
+                gameplane-oidc.yaml: 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
+              template:
+                metadata:
+                  name: authentik-gameplane-oidc
                 type: Opaque
 
           # The owner account blueprint: matched by email, promoted to
