@@ -10,3 +10,9 @@ Track each chart update in an issue from vendoring through verified deployment.
 4. **Record the result and close the issue.** Before closing, record the vendoring and deployment PRs, chart and image versions, rollout result, and verification evidence in the tracking issue. Do not use `Closes #<number>` in either PR as a substitute for this check. Close the issue only after the live deployment is verified and the record is complete.
 
 Renovate's auto-closed dashboard is not evidence of deployment. If a dashboard can close before live verification, use a linked rollout tracking issue that stays open until the steps above are complete. Do not include credentials or private infrastructure details in public issues or PRs.
+
+## Manifest layout
+
+Keep each workload in its own manifest file. Do not mix resources that serve different workloads, applications or namespaces in one YAML file, even when they share a directory or an Argo CD Application. For example, the Factorio game Gateway and the Henry web Gateway live in separate files.
+
+When splitting an existing file, keep it in the same directory and Application so resource identity does not change, and verify that the new files concatenate to the original content.
