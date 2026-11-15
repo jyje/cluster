@@ -34,14 +34,26 @@ API와 operator가 롤링되게 합니다. 에이전트는 CA를 신뢰하므로
 
 ## 대시보드 접근
 
-Gateway, Certificate, HTTPRoute는 Application(`extraResources`)에 있고 공용 `envoy-web` 클래스에 합류합니다.
-아직 휴면 상태입니다. ingress-nginx가 80, 443 포트를 쥐고 있어서, 컷오버 전에는 외부에서 Envoy로 들어오는
-트래픽이 없습니다. 컷오버는 [envoy-gateway-migration-ko.md](../networks/envoy-gateway-migration-ko.md)를 보세요.
+공개 호스트는 `gameplane.app.jyje.online`입니다. Gateway, Certificate, HTTPRoute는 Application(`extraResources`)에 있고
+공용 `envoy-web` 클래스에 합류합니다. 80, 443 포트는 아직 ingress-nginx가 노드에서 쥐고 있어서, Application 안의
+작은 브리지 Ingress가 위 Certificate로 TLS를 끝내고 Envoy 프록시로 HTTPS 전달을 합니다(`envoy-gateway-system`의
+`envoy-web`을 가리키는 `ExternalName` Service 사용). 그다음 HTTPRoute가 모든 경로를 `gameplane-web`으로 보냅니다.
+즉 공개 트래픽은 이미 Envoy Gateway를 지납니다. [envoy-gateway-migration-ko.md](../networks/envoy-gateway-migration-ko.md)의
+컷오버에서 Envoy가 포트를 가져가면 브리지 Ingress와 Service는 지웁니다.
 
-`gameplane.app.jyje.online` 호스트는 Let's Encrypt HTTP-01 챌린지가 끝나려면 DNS 레코드가 먼저 있어야 합니다.
-그 전까지 Certificate는 대기 상태이고 리스너는 `ResolvedRefs=False`로 보입니다. 다른 Gateway에는 영향이 없습니다.
+브리지에서 알아 둘 점이 둘 있습니다.
 
-포트포워드로 확인합니다.
+- ingress-nginx는 일부 백엔드 오류를 자체 오류 페이지로 바꿉니다(`custom-http-errors`). 대시보드 API는 401과 404를
+  직접 응답하고 SPA가 그 값을 읽으므로, 브리지 Ingress는 목록을 쓰지 않는 코드로 덮어씁니다.
+- Envoy 리스너는 SNI로 인증서를 고르므로 Ingress에 `proxy-ssl-server-name`과 `proxy-ssl-name`을 지정합니다.
+
+DNS 레코드는 다른 `app.jyje.online` 이름들과 같은 DDNS 호스트를 가리키는 CNAME입니다. Certificate가 발급되려면
+Let's Encrypt HTTP-01 챌린지 전에 이 레코드가 있어야 합니다.
+
+Homer 카드는 Ingress 어노테이션이 아니라 `homer-instance`의 `4. Games` 그룹에 둔 수동 항목입니다. 브리지 Ingress에서
+HTTPRoute로 옮겨도 카드가 유지됩니다.
+
+공개 구간 없이 Envoy 경로만 확인하려면 포트포워드를 씁니다.
 
 ```bash
 kubectl -n envoy-gateway-system port-forward \

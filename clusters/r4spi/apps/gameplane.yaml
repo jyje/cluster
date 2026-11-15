@@ -27,18 +27,17 @@ spec:
           agentMTLS:
             caSecretRef: {name: gameplane-external-ca-v1}
             clientCertRef: {name: gameplane-external-client-v1}
-        # Public entry is a Gateway API route next to the app (see
-        # extraResources), not the chart's nginx Ingress.
+        # Routing is a Gateway API route next to the app (see extraResources),
+        # not the chart's own nginx Ingress. A small bridge Ingress below hands
+        # public traffic to Envoy until ingress-nginx gives up ports 80/443.
         ingress:
           enabled: false
         extraResources:
           # Gateway API side of the Envoy Gateway migration (see
-          # docs/networks/envoy-gateway-migration.md). It is dormant: nothing
-          # reaches the Gateway from outside until the ports are swapped, so
-          # check it through a port-forward. The Gateway joins the shared
-          # envoy-web class, and the Certificate lives here so the TLS secret
-          # stays in this namespace. The chart's Ingress sends every path to
-          # gameplane-web, which serves the dashboard and proxies the API, so
+          # docs/networks/envoy-gateway-migration.md). The Gateway joins the
+          # shared envoy-web class, and the Certificate lives here so the TLS
+          # secret stays in this namespace. The chart's Ingress sends every path
+          # to gameplane-web, which serves the dashboard and proxies the API, so
           # one rule is enough.
           - apiVersion: cert-manager.io/v1
             kind: Certificate
@@ -88,6 +87,61 @@ spec:
                 - backendRefs:
                     - name: gameplane-web
                       port: 80
+          # Bridge: ingress-nginx still owns ports 80/443 on the nodes, so it
+          # terminates TLS with the Certificate above and forwards to the Envoy
+          # proxy, which routes by the HTTPRoute. Remove both objects at the
+          # cutover, when Envoy takes the ports. The Service gives the Ingress a
+          # backend in this namespace for the proxy in envoy-gateway-system.
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: gameplane-envoy
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              type: ExternalName
+              externalName: envoy-web.envoy-gateway-system.svc.cluster.local
+              ports:
+                - name: https
+                  port: 8443
+                  protocol: TCP
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: gameplane
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                # The Envoy listener is HTTPS and picks its certificate by SNI.
+                nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+                nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+                nginx.ingress.kubernetes.io/proxy-ssl-name: gameplane.app.jyje.online
+                # The dashboard API answers 401 and 404 itself and the SPA reads
+                # them, so keep ingress-nginx from swapping them for its global
+                # error pages. An unused code overrides the global list.
+                nginx.ingress.kubernetes.io/custom-http-errors: "599"
+                # Same limits as the chart's own Ingress: uploads, long-lived
+                # WebSocket and SSE, and a request rate cap.
+                nginx.ingress.kubernetes.io/proxy-body-size: "512m"
+                nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+                nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+                nginx.ingress.kubernetes.io/limit-rps: "20"
+                nginx.ingress.kubernetes.io/limit-connections: "50"
+            spec:
+              ingressClassName: nginx
+              tls:
+                - secretName: gameplane-envoy-tls
+                  hosts:
+                    - gameplane.app.jyje.online
+              rules:
+                - host: gameplane.app.jyje.online
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: gameplane-envoy
+                            port:
+                              number: 8443
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:
