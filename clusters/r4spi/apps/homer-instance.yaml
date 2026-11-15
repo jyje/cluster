@@ -263,16 +263,22 @@ spec:
                 # operator renders groups sorted alphabetically by name, not
                 # in declaration/discovery order — this is the only way to
                 # force a specific display order.
-                # Only the fully manual group below is declared here. Infisical
-                # is intentionally hidden from the dashboard for now (its
-                # Ingress carries no Homer annotations, and it has no manual
-                # card).
+                # Games and external links are intentionally manual. Infisical
+                # is intentionally hidden from the dashboard for now.
                 services:
-                  # Fully manual group (no Ingress backing these) for personal
-                  # branding links. Numbered 4. to render after 3. Management —
-                  # see the numeric-prefix note above.
                   - parameters:
-                      name: "4. External Links"
+                      name: "4. Games"
+                      icon: "fas fa-gamepad"
+                    items:
+                      - parameters:
+                          name: "Factorio"
+                          icon: "fas fa-industry"
+                          subtitle: "Direct connect: factorio.app.jyje.online:34197 (UDP)"
+                          url: "https://wiki.factorio.com/Multiplayer#Joining_a_Multiplayer_game"
+                          target: "_blank"
+                  # Branding links do not have an Ingress backing them.
+                  - parameters:
+                      name: "5. External Links"
                       icon: "fas fa-link"
                     items:
                       - parameters:
