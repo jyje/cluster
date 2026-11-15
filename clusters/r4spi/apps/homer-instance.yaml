@@ -273,7 +273,7 @@ spec:
                       - parameters:
                           name: "Factorio"
                           icon: "fas fa-industry"
-                          subtitle: "Direct connect: factorio.app.jyje.online:34197 (UDP)"
+                          subtitle: "Direct connect: factorio.app.jyje.online:34197 (UDP, password required)"
                           url: "https://wiki.factorio.com/Multiplayer#Joining_a_Multiplayer_game"
                           target: "_blank"
                   # Branding links do not have an Ingress backing them.

@@ -32,6 +32,13 @@ spec:
             objectName: settings
             mountPath: /etc/factorio
             readOnly: true
+          credentials:
+            enabled: true
+            type: secret
+            objectName: factorio-secret
+            expandObjectName: false
+            mountPath: /etc/factorio-secret
+            readOnly: true
         configmap:
           settings:
             enabled: true
@@ -63,8 +70,17 @@ spec:
                       mkdir -p /factorio/saves /factorio/mods
                       printf '[path]\nread-data=/opt/factorio/data\nwrite-data=/factorio\n' > /factorio/config.ini
                       factorio=/opt/factorio/bin/arm64/factorio
-                      jq -s '.[0] * .[1]' /opt/factorio/data/server-settings.example.json \
-                        /etc/factorio/overrides.json > /factorio/server-settings.json
+                      umask 077
+                      jq -s '.[0] * .[1] * .[2]' /opt/factorio/data/server-settings.example.json \
+                        /etc/factorio/overrides.json /etc/factorio-secret/settings.json \
+                        > /factorio/server-settings.json
+                      # Optional runtime override: write a new password to this file with
+                      # kubectl exec and restart. Delete the file to use the Secret again.
+                      if [ -f /factorio/game_password ]; then
+                        jq --rawfile p /factorio/game_password '.game_password = ($p | rtrimstr("\n"))' \
+                          /factorio/server-settings.json > /factorio/server-settings.tmp
+                        mv /factorio/server-settings.tmp /factorio/server-settings.json
+                      fi
                       if ! find /factorio/saves -maxdepth 1 -name '*.zip' ! -name '*.tmp.zip' | grep -q .; then
                         "$factorio" --config /factorio/config.ini --mod-directory /factorio/mods --create /factorio/saves/world.zip
                       fi
@@ -86,6 +102,15 @@ spec:
           limits:
             memory: 4Gi
         extraResources:
+          # Default game password, sealed for this namespace. Never commit it in plain text.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: factorio-secret
+              namespace: '{{ .Release.Namespace }}'
+            spec:
+              encryptedData:
+                settings.json: AgAhulUuFjs9L7XpD3cMd73JyeXozmt63mPG9dyXcdtBBGUXW4+Q2mvkGARejIpIOf9nhmILgxGzl6L37MBWhkEfXW5tN9chU9wRIXNSXm1QXlNkwil+mHSjKbstZ9/L/ZlzAsg/RjiKpHr9ulEzZGMSWyqiI558JMWD/3aKwcuzVFFCeBKiXkOJNi2zNxr91fvKIKPzrIlRnNLN6K/nu/QI5peE2g2zWfATpNWdWf3nKL5ksssYT8R+t2C0gVwnEqgRVAV/imB/k30TIw0Xgdn5URZVJtFIb2KIe1y7ZnGge6dsbaiYFknvQVdIQIIgh80rV6V9IdDVmoKMpvTljAR45hqBI3I4ZUlmX8iwqUDFCXuZf56J3974/dy5BzelV6u/A5lk0p0NSXq0etaCXeRkYc8of3nfdom6IfP6stpmaNH+XFt+mK6sOR2cPjXo5LIQpj7Wkfl2zJ0EJBsDRENxq7c83krpwLqPCZbpwIcF6iaF5Zxb0CNgiDLXK0wAJWAHbGUI+TwE+xX0zgyicg59L12JERLZSvglWPx/IZN0wsCyttnd5Qo0GruJhPJsYqCKCxM7BFWBXyy3eX1TIbU8FRrQCmNnfa8lMniak8oN+ZOzFfZnQp618920s7M1DIu/mVm4GmhfuZh+S0n1DHb4fpvwFtQ0anlCzG/4HxlWznDEMH4VioH0CpmRSaBG7YR8SYhy9k8x8BFHWJN4wd66kJ0Q20wdAxMJ+xARyU/VdNg4gkbK
           - apiVersion: v1
             kind: PersistentVolumeClaim
             metadata:
