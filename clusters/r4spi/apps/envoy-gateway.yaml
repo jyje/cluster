@@ -16,7 +16,7 @@ spec:
           pod:
             annotations:
               # Roll the controller when the watch configuration changes.
-              networking.jyje.io/watch-profile: factorio-henry-homer-error-v2
+              networking.jyje.io/watch-profile: factorio-henry-homer-error-gameplane-v3
         config:
           envoyGateway:
             provider:
@@ -30,6 +30,7 @@ spec:
                     - hermes-agent-henry
                     - homer-instance
                     - error-pages
+                    - gameplane-system
   destination:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
