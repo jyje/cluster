@@ -22,8 +22,11 @@ spec:
           ingressClass: higress
           # Do not write the gateway address into Ingress status fields.
           enableStatus: false
-          # Gateway API stays with Envoy Gateway until Higress is evaluated for it.
-          enableGatewayAPI: false
+          # Gateway API is on only to test whether Higress can route UDP
+          # (UDPRoute is still alpha). It reconciles only GatewayClass
+          # "higress", so Envoy Gateway is not affected.
+          enableGatewayAPI: true
+          enableAlphaGatewayAPI: true
           enableIstioAPI: false
         higress-core:
           controller:
@@ -457,6 +460,50 @@ spec:
                   http:
                     paths:
                       - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # Rate limit with the Higress annotation name. The nginx names
+          # (limit-rps) were ignored, so this checks the native one.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-rate-higress
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                higress.io/route-limit-rps: "2"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-rate-higress.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # UDP check: does Higress accept a UDP listener and a UDPRoute?
+          # Only the status of these objects matters, nothing is exposed.
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: udp-check
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              gatewayClassName: higress
+              listeners:
+                - name: udp
+                  port: 34198
+                  protocol: UDP
+                  allowedRoutes:
+                    kinds:
+                      - kind: UDPRoute
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: UDPRoute
+            metadata:
+              name: udp-check
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              parentRefs:
+                - name: udp-check
+              rules:
+                - backendRefs:
+                    - name: whoami
+                      port: 80
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
