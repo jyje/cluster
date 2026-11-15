@@ -32,6 +32,9 @@ repositories:
   rajsinghtech:
     type: oci
     url: oci://ghcr.io/rajsinghtech/homer-operator/charts
+  higress.io:
+    type: http
+    url: https://higress.io/helm-charts
   berriai:
     type: oci
     url: oci://docker.litellm.ai/berriai
@@ -136,6 +139,12 @@ charts:
     chart: homer-operator
     applications:
       - clusters/r4spi/apps/homer-operator.yaml
+  higress:
+    repository: higress.io
+    group: higress
+    chart: higress
+    applications:
+      - clusters/r4spi/apps/higress.yaml
   litellm-helm:
     repository: berriai
     group: litellm

@@ -1,0 +1,160 @@
+# Evaluation install of Higress (tracking issue #314). It runs next to
+# ingress-nginx and Envoy Gateway and does not touch their Ingresses: it only
+# watches Ingress objects with ingressClassName "higress", and nothing outside
+# the test objects below uses that class. There is no automated sync, so
+# nothing is deployed until someone syncs it. Remove this Application after
+# the evaluation if Higress is not adopted.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: higress
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/higress/higress-2.2.6
+    helm:
+      valuesObject:
+        global:
+          # Only Ingresses with this class are watched. ingress-nginx keeps
+          # serving every other Ingress.
+          ingressClass: higress
+          # Do not write the gateway address into Ingress status fields.
+          enableStatus: false
+          # Gateway API stays with Envoy Gateway until Higress is evaluated for it.
+          enableGatewayAPI: false
+          enableIstioAPI: false
+        higress-core:
+          controller:
+            replicas: 1
+            # Higress would request its own certificates over HTTP-01 and
+            # needs port 80. cert-manager owns certificates here.
+            automaticHttps:
+              enabled: false
+            # The chart default asks for 2Gi. These are starting values for
+            # the Raspberry Pi nodes. Measure and adjust (see #314).
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 768Mi
+            # Go binary, so a Pi 4 node is fine and has the most free memory.
+            affinity:
+              nodeAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    preference:
+                      matchExpressions:
+                        - key: app.jyje.online/raspi.type
+                          operator: In
+                          values: ["4b"]
+          pilot:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 768Mi
+          gateway:
+            replicas: 1
+            # No entry point yet. Reach it with a port-forward while it is
+            # evaluated. A dedicated MetalLB address comes later.
+            service:
+              type: ClusterIP
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                memory: 768Mi
+            # The gateway is Envoy based. Envoy's TCMalloc cannot map its heap
+            # on the 39-bit address space of the 4 KB page (Raspberry Pi 4)
+            # nodes, so keep it on the other nodes.
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: app.jyje.online/raspi.type
+                          operator: NotIn
+                          values: ["4b"]
+        # The web console is not needed for the evaluation.
+        higress-console:
+          replicaCount: 0
+        extraResources:
+          # Test backend and an Ingress that carries nginx annotations, to
+          # compare Higress with ingress-nginx. It uses a host that is not
+          # resolvable, so it is only reachable through a port-forward.
+          - apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: echo
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              replicas: 2
+              selector:
+                matchLabels:
+                  app: echo
+              template:
+                metadata:
+                  labels:
+                    app: echo
+                spec:
+                  containers:
+                    - name: echo
+                      image: hashicorp/http-echo:1.0
+                      args: ["-text=echo", "-listen=:5678"]
+                      ports:
+                        - containerPort: 5678
+                      resources:
+                        requests:
+                          cpu: 5m
+                          memory: 16Mi
+                        limits:
+                          memory: 32Mi
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: echo
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              selector:
+                app: echo
+              ports:
+                - port: 80
+                  targetPort: 5678
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: echo
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                # The same kinds of nginx annotations the real Ingresses use.
+                nginx.ingress.kubernetes.io/enable-cors: "true"
+                nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online"
+                nginx.ingress.kubernetes.io/cors-allow-methods: "GET, HEAD, OPTIONS"
+                nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+                nginx.ingress.kubernetes.io/affinity: "cookie"
+                nginx.ingress.kubernetes.io/session-cookie-name: "echo-affinity"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: echo.higress.invalid
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: echo
+                            port:
+                              number: 80
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: higress-system
+  # No automated sync on purpose: sync by hand while the evaluation runs.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
