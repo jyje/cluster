@@ -60,3 +60,40 @@ Their kernel uses a 39-bit address space, and the proxy's TCMalloc fails to map
 its heap there (`MmapAligned() failed`, exit code 133, CrashLoopBackOff). Both
 `EnvoyProxy` resources therefore carry a `NotIn 4b` node affinity. A node
 without the label, such as one added later, is still eligible.
+
+## Settings that live outside Git
+
+Two pieces of the Factorio path are configured by hand and are not reconciled by
+Argo CD. Re-create them if the router is reset or replaced, or if the public
+address changes.
+
+| Setting | Where it lives | Value (example only) |
+|---|---|---|
+| UDP port forward | Router admin UI, NAT / port forward | WAN UDP `34197` to `<reserved-game-address>` UDP `34197` |
+| DNS A record | DNS provider (Porkbun) | `factorio.app.jyje.online` to `<public-address>` |
+
+Notes:
+
+- The forward is the real entrance to the cluster. The DNS record only helps
+  clients find the public address. Packets that arrive at the forwarded port
+  reach the Gateway even if the record is missing.
+- `<reserved-game-address>` comes from the MetalLB `factorio-private` pool and
+  is pinned by the Gateway annotations, so it does not change across restarts.
+  Read it with `kubectl -n envoy-gateway-system get svc` (the Service owned by
+  the `factorio` Gateway).
+- Only forward UDP `34197`. Do not forward RCON or TCP, and leave unrelated
+  rules alone. If the router has a separate firewall feature, check that it does
+  not drop the forwarded port.
+- Do not commit the real public or private addresses. Keep them in the router
+  and DNS provider only.
+
+### Would external-dns replace these?
+
+Only the DNS record. external-dns can manage the A record from a Gateway or
+Service annotation, but it never configures the router. The port forward stays
+manual with external-dns, so this section remains needed either way.
+
+To remove the manual forward you would need a different design, for example a
+controller that talks to the router (UPnP or NAT-PMP, if the router supports it)
+or a host with a public address in front of the cluster. Neither is in place
+today.
