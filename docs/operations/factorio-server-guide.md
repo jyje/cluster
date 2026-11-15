@@ -3,10 +3,11 @@
 Korean version: [factorio-server-guide-ko.md](factorio-server-guide-ko.md)
 
 Operating notes for the Factorio server deployed by the `factorio` Application
-(see [envoy-factorio-cutover.md](envoy-factorio-cutover.md) for the rollout). The
-snippets below are sketches: validate each one with `helm template` or a dry run
-before using it, and never commit a plain-text password or token to this
-repository.
+(see [envoy-factorio-cutover.md](envoy-factorio-cutover.md) for the rollout).
+Never commit a plain-text password, token or user list to this repository.
+
+All `kubectl` commands below use the `factorio` namespace and the `factorio`
+Deployment.
 
 ## How the server is set up today
 
@@ -14,59 +15,85 @@ repository.
 - The game listens on UDP 34197. It is exposed through the Envoy `factorio`
   Gateway on a reserved private address, and a single router forward carries
   WAN UDP 34197 to it. No RCON, no TCP.
-- Settings come from a ConfigMap (`overrides.json`) that the start script merges
-  over the image's `server-settings.example.json` with `jq` at every start. Only
-  the keys listed in `overrides.json` change. Settings are read at start, so a
-  change needs a Pod restart.
-- Autosave every 5 minutes with 3 slots. The save is `/factorio/saves/world.zip`
-  and the server loads the latest save on start.
+- Settings come from a ConfigMap (`overrides.json`) and a SealedSecret
+  (`factorio-secret`). The start script merges both over the image's
+  `server-settings.example.json` with `jq` at every start. Settings are read at
+  start, so a change needs a Pod restart.
+- The server loads the most recently modified save in `/factorio/saves` on start.
+  The loaded save is rewritten in place by every autosave, so there is no history
+  of older autosaves. See [Checkpoints and backups](#checkpoints-and-backups).
 - `require_user_verification` is `true`, so every player needs a valid Factorio
   account. The server is not listed publicly (`visibility.public: false`).
+- The server runs on a Pi 5 node (`app.jyje.online/raspi.type: 5b`). See
+  [node-labels.md](node-labels.md).
 
-## Set a game password
+## Game password
 
-Do not put the password in `overrides.json`: the ConfigMap is rendered from this
-public repository.
+A random default password is stored in the SealedSecret `factorio-secret`
+(key `settings.json`, a JSON document with `game_password`). Only the encrypted
+value is in Git. The Secret is mounted read-only at `/etc/factorio-secret` and
+merged into the server settings at start.
 
-1. Create a Secret with the key `game_password` as a SealedSecret, the same way
-   other secrets in this repository are handled (`extraResources` entry in the
-   Application, encrypted with `kubeseal`). Example shape, with the value
-   encrypted locally:
+Read the current default password:
 
-   ```yaml
-   apiVersion: bitnami.com/v1alpha1
-   kind: SealedSecret
-   metadata:
-     name: factorio-secret
-   spec:
-     encryptedData:
-       settings.json: <output of kubeseal, never the plain value>
-   ```
+```bash
+kubectl -n factorio get secret factorio-secret -o jsonpath='{.data.settings\.json}' | base64 -d | jq -r .game_password
+```
 
-   The `settings.json` value is a small JSON document: `{"game_password": "..."}`.
-   The admin and whitelist files below go in the same Secret as further keys.
+### Change it without a Git change
 
-2. Mount it next to the ConfigMap with the chart's `persistence` block
-   (`type: secret`, `objectName: factorio-secret`, `mountPath: /etc/factorio-secret`,
-   `readOnly: true`).
-3. Add the file to the merge in the start script:
-   `jq -s '.[0] * .[1] * .[2]' example.json overrides.json /etc/factorio-secret/settings.json`.
-4. Sync the Application and let the Pod restart. Clients are then asked for the
-   password. Rotating it is a new SealedSecret plus a restart.
+The start script also looks for the file `/factorio/game_password` on the save
+volume. If it exists, its content replaces the password at the next start. Write
+the new password from standard input, so it does not appear in the process list,
+then restart:
 
-The password stops casual joins. Keep `require_user_verification: true`, and use
-the whitelist below when you want to name exactly who may play.
+```bash
+printf %s 'NEW-PASSWORD' | kubectl -n factorio exec -i deploy/factorio -- sh -c 'cat > /factorio/game_password && chmod 600 /factorio/game_password'
+kubectl -n factorio rollout restart deploy/factorio
+```
 
-## Name administrators
+An empty file means no password. Delete the file to go back to the Secret:
 
-The example settings file has no `admins` key. The server reads a separate list
-file passed with `--server-adminlist`. Treat the list, and the whitelist below,
-as secrets: they name real accounts, and this repository is public.
+```bash
+kubectl -n factorio exec deploy/factorio -- rm -f /factorio/game_password
+kubectl -n factorio rollout restart deploy/factorio
+```
+
+The restart disconnects players for about a minute. The override lives on the
+save volume, so it survives restarts and Pod replacements.
+
+### Change it live, as an administrator
+
+An admin can run `/config set password NEW-PASSWORD` in the in-game chat
+(the `password` option is listed on the [Console](https://wiki.factorio.com/Console)
+page). It changes the running server only. The start script rebuilds the settings
+at every start, so after a restart the Secret, or the override file, applies again.
+This needs an administrator, see below.
+
+### Change the default
+
+Create a new SealedSecret value and commit it:
+
+```bash
+printf '{"game_password": "NEW-PASSWORD"}' | kubeseal --raw --scope strict --namespace factorio --name factorio-secret --cert <controller-cert.pem>
+```
+
+Replace the `settings.json` value of the `factorio-secret` entry in
+`clusters/r4spi/apps/factorio.yaml`, merge, then sync the `factorio` Application
+(sync `apps` first so the Application resource has the new value).
+
+## Administrators
+
+The example settings file has no `admins` key, and no administrator is set today.
+Without one, in-game commands such as `/server-save` and `/config` are not
+available to anyone. The server reads a separate list file passed with
+`--server-adminlist`. Treat the list, and the whitelist below, as secrets: they
+name real accounts, and this repository is public.
 
 1. Add the JSON arrays to the same SealedSecret as the password, as extra keys,
    for example `server-adminlist.json` with `["alice", "bob"]` and
    `server-whitelist.json` in the same format. Encrypt each value locally with
-   `kubeseal`. The Secret is mounted at `/etc/factorio-secret` as shown above.
+   `kubeseal`. The Secret is mounted at `/etc/factorio-secret`.
 2. Add `--server-adminlist /etc/factorio-secret/server-adminlist.json` to the
    `exec` line of the start script and restart. The files are read-only, which is
    fine: the server only reads them at start.
@@ -81,7 +108,116 @@ as secrets: they name real accounts, and this repository is public.
    `--server-whitelist /etc/factorio-secret/server-whitelist.json`. Only listed
    users can join.
 
-RCON stays off. Everything above works without it.
+## Console commands: pause, resume and saves
+
+RCON is off, so commands run from the in-game chat by an administrator. The full
+list is on the [Console](https://wiki.factorio.com/Console) page.
+
+| Goal | Command | Notes |
+| --- | --- | --- |
+| Save now | `/server-save` | Admin only. Saves the game on the server. |
+| Pause | `/c game.tick_paused = true` | Lua API property `tick_paused`. |
+| Resume | `/c game.tick_paused = false` | |
+| Change the password | `/config set password NEW-PASSWORD` | Running server only. |
+| Other settings | `/config get` and `/config set` | Options include `max-players`, `autosave-interval`, `only-admins-can-pause`, `visibility-public`. |
+| Admins | `/promote name`, `/demote name` | Not kept across restarts here. |
+| Kick or ban | `/kick name`, `/ban name` | |
+
+Notes:
+
+- `/c` runs Lua. The Console page says that using it turns achievements off for
+  that save.
+- `auto_pause` is already on, so the game pauses by itself when nobody is
+  connected.
+- `only_admins_can_pause_the_game` is on, so players cannot pause on their own.
+- To run commands from a terminal instead, the server would need RCON
+  (`--rcon-port` and `--rcon-password`, see
+  [Command line parameters](https://wiki.factorio.com/Command_line_parameters)).
+  RCON is not enabled here. It needs a password in a Secret and a decision about
+  who can reach the port, so enable it deliberately.
+
+## Checkpoints and backups
+
+The server rewrites the loaded save, `world.zip`, at every autosave. It does not
+keep numbered autosave files. A checkpoint therefore has to be a copy you make.
+
+Keep copies outside `/factorio/saves`. The server loads the most recently
+modified file there, so an extra copy in that folder can be loaded by mistake.
+
+Make a backup:
+
+```bash
+kubectl -n factorio exec deploy/factorio -- sh -c 'mkdir -p /factorio/backups && cp -p /factorio/saves/world.zip "/factorio/backups/world-$(date +%Y%m%d-%H%M).zip"'
+```
+
+For a consistent copy, run `/server-save` as an admin first. List and download:
+
+```bash
+kubectl -n factorio exec deploy/factorio -- ls -l /factorio/backups
+kubectl -n factorio exec deploy/factorio -- cat /factorio/backups/NAME.zip > NAME.zip
+```
+
+Restore a backup:
+
+```bash
+kubectl -n factorio exec deploy/factorio -- sh -c 'mkdir -p /factorio/backups && mv /factorio/saves/world.zip /factorio/backups/world-before-restore.zip && cp /factorio/backups/NAME.zip /factorio/saves/world.zip'
+kubectl -n factorio rollout restart deploy/factorio
+```
+
+The backups sit on the same volume as the live save, so they do not protect
+against losing the volume. Download the ones that matter.
+
+## Move a game from the Mac to the server
+
+Official location of saves on macOS (see
+[Application directory](https://wiki.factorio.com/Application_directory)):
+`~/Library/Application Support/factorio/saves/`. Pick the newest `.zip`, or an
+`_autosave` file.
+
+Before you start, check that:
+
+- The Mac game and the server are the same version, or the server is newer
+  (both are 2.1.24 today). The server can load an older save.
+- The mods match. The server has `base`, `elevated-rails`, `quality`, `recycler`
+  and `space-age` enabled, which is the same set as an unmodded Space Age game.
+  A save that uses other mods needs those mods in `/factorio/mods` and in its
+  `mod-list.json` first.
+
+Steps:
+
+1. Quit the game on the Mac so the file is complete.
+2. Back up the server save (see above) and move it out of the saves folder:
+
+   ```bash
+   kubectl -n factorio exec deploy/factorio -- sh -c 'mkdir -p /factorio/backups && mv /factorio/saves/world.zip "/factorio/backups/world-$(date +%Y%m%d-%H%M).zip"'
+   ```
+
+3. Copy the Mac save to the server:
+
+   ```bash
+   kubectl -n factorio exec -i deploy/factorio -- sh -c 'cat > /factorio/saves/world.zip' < "$HOME/Library/Application Support/factorio/saves/NAME.zip"
+   ```
+
+   Naming it `world.zip` keeps one save in the folder and keeps autosaves going to
+   the same file.
+4. Restart the server and check that it loaded the file:
+
+   ```bash
+   kubectl -n factorio rollout restart deploy/factorio
+   kubectl -n factorio logs deploy/factorio | grep "Loading map"
+   ```
+
+5. Join with the same Factorio username you used on the Mac. A single-player
+   character usually carries over by username. The first join can take a while
+   because the client downloads the whole map.
+
+## Official documentation
+
+- [Console](https://wiki.factorio.com/Console): commands such as `/server-save`, `/config`, `/promote`, `/c`.
+- [Command line parameters](https://wiki.factorio.com/Command_line_parameters): `--start-server`, `--server-adminlist`, `--rcon-port` and the rest.
+- [Multiplayer](https://wiki.factorio.com/Multiplayer): dedicated servers, settings and admin lists.
+- [Application directory](https://wiki.factorio.com/Application_directory): where saves and mods live on each system.
+- [LuaGameScript](https://lua-api.factorio.com/latest/classes/LuaGameScript.html): the `tick_paused` property.
 
 ## Several games
 
