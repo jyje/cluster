@@ -10,6 +10,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 context=$1
 k() { kubectl --context "$context" --request-timeout=10s -n envoy-gateway-system "$@"; }
 
+python3 "$root/scripts/preflight_envoy_udp_pool.py" "$context" --check-gateway
+
 gateway=$(k get gateway factorio -o json)
 route=$(k get udproute factorio -o json)
 
