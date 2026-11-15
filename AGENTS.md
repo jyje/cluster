@@ -13,6 +13,6 @@ Renovate's auto-closed dashboard is not evidence of deployment. If a dashboard c
 
 ## Manifest layout
 
-Keep each workload in its own manifest file. Do not mix resources that serve different workloads, applications or namespaces in one YAML file, even when they share a directory or an Argo CD Application. For example, the Factorio game Gateway and the Henry web Gateway live in separate files.
+Keep each workload in its own manifest file. Do not mix resources that serve different workloads, applications or namespaces in one YAML file, even when they share a directory or an Argo CD Application. For example, the UDP game Gateway and the Henry web Gateway live in separate files.
 
 When splitting an existing file, keep it in the same directory and Application so resource identity does not change, and verify that the new files concatenate to the original content.

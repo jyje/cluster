@@ -4,7 +4,7 @@ Tracking issue: #207. This page records the design for moving web traffic from i
 
 ## Where things stand
 
-- Envoy Gateway runs in `envoy-gateway-system` with the `envoy-web` Gateway (ClusterIP, no public entry point yet) and the `factorio` Gateway (UDP).
+- Envoy Gateway runs in `envoy-gateway-system` with the `envoy-web` Gateway (ClusterIP, no public entry point yet) and the `games` Gateway (UDP).
 - ingress-nginx still owns ports 80 and 443 on the node network. It serves every public host, so nothing public changes until the cutover.
 - The first two apps to move are `homer-instance` (`app.jyje.online`) and `error-pages` (`error.app.jyje.online`), because they are stateless and low risk.
 
@@ -14,13 +14,13 @@ Tracking issue: #207. This page records the design for moving web traffic from i
 
 Each app owns its own routing. The `Gateway`, `Certificate` and `HTTPRoute` of an app are declared in that app's Argo CD Application (`extraResources`), in the app's namespace. The Gateway has one HTTPS listener on port 8443 for the app's host and only accepts routes from its own namespace (`allowedRoutes.namespaces.from: Same`), so an app cannot claim another app's host.
 
-All of these Gateways use the shared `envoy-web` GatewayClass (`manifests/envoy-factorio-gateways/web-gatewayclass.yaml`). Its `EnvoyProxy` sets `mergeGateways: true`, so every Gateway of the class runs on one proxy fleet. A new app therefore adds no proxy pod (memory is tight on the nodes), and the cutover has a single set of ports to move. The cost is that a listener must be unique by port, protocol and hostname across the whole class. A duplicate is rejected with `Accepted=False`. The `factorio` Gateway has its own class because its Service is a UDP LoadBalancer.
+All of these Gateways use the shared `envoy-web` GatewayClass (`manifests/envoy-gateways/web-gatewayclass.yaml`). Its `EnvoyProxy` sets `mergeGateways: true`, so every Gateway of the class runs on one proxy fleet. A new app therefore adds no proxy pod (memory is tight on the nodes), and the cutover has a single set of ports to move. The cost is that a listener must be unique by port, protocol and hostname across the whole class. A duplicate is rejected with `Accepted=False`. The `games` Gateway has its own class because its Service is a UDP LoadBalancer.
 
 These routes are dormant: they have the real hostnames, but no traffic reaches the Gateway from outside. The Ingress objects stay in place and keep serving.
 
 The controller only watches namespaces that are listed in the `envoy-gateway` Application. Add a namespace there before its first Gateway or route. Namespaces themselves stay managed separately.
 
-The Hermes Henry pilot Gateway still lives in `manifests/envoy-factorio-gateways/henry-gateway.yaml`. It moved onto the shared class and can follow the same pattern later.
+The Hermes Henry pilot Gateway still lives in `manifests/envoy-gateways/henry-gateway.yaml`. It moved onto the shared class and can follow the same pattern later.
 
 ### Certificates
 

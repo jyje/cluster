@@ -1,0 +1,17 @@
+# Sends the game port to the game server that Gameplane runs in gameplane-games.
+# The server is created in the Gameplane dashboard, and its Service has the
+# server's name. Change backendRefs when the server is replaced.
+apiVersion: gateway.networking.k8s.io/v1
+kind: UDPRoute
+metadata:
+  name: games-udp
+  namespace: gameplane-games
+spec:
+  parentRefs:
+    - name: games
+      namespace: envoy-gateway-system
+      sectionName: game
+  rules:
+    - backendRefs:
+        - name: world-1
+          port: 34197
