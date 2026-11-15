@@ -336,6 +336,63 @@ spec:
                             port:
                               number: 80
 
+          # Gateway API side of the Envoy Gateway migration (see
+          # docs/networks/envoy-gateway-migration.md). It is dormant: public
+          # traffic still enters through the Ingress above until the ports are
+          # swapped. The Gateway joins the shared envoy-web class, and the
+          # Certificate lives here so the TLS secret stays in this namespace.
+          # The route carries no Homer annotations because homer-operator has
+          # enableGatewayAPI off; the card keeps coming from the Ingress
+          # until the cutover.
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: homer-envoy
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: homer-envoy-tls
+              dnsNames:
+                - app.jyje.online
+              issuerRef:
+                kind: ClusterIssuer
+                name: nginx-letsencrypt-prod
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: homer
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              gatewayClassName: envoy-web
+              listeners:
+                - name: https
+                  protocol: HTTPS
+                  port: 8443
+                  hostname: app.jyje.online
+                  tls:
+                    mode: Terminate
+                    certificateRefs:
+                      - name: homer-envoy-tls
+                  allowedRoutes:
+                    namespaces:
+                      from: Same
+                    kinds:
+                      - kind: HTTPRoute
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: homer
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              parentRefs:
+                - name: homer
+                  sectionName: https
+              hostnames:
+                - app.jyje.online
+              rules:
+                - backendRefs:
+                    - name: homer-homer
+                      port: 80
+
           # assets.configMapRef mounts via subPath, which kubelet does not
           # live-reload, and the homer-operator controller does not watch the
           # referenced ConfigMap for changes (only the Dashboard CR's own

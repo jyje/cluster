@@ -1,40 +1,14 @@
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyProxy
-metadata:
-  name: envoy-web
-  namespace: envoy-gateway-system
-spec:
-  provider:
-    type: Kubernetes
-    kubernetes:
-      envoyDeployment:
-        pod:
-          # Envoy's TCMalloc cannot map its heap on the 39-bit address space of
-          # the 4 KB page (Raspberry Pi 4) nodes and crashes at startup. Keep the
-          # proxies on the other nodes.
-          affinity:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                  - matchExpressions:
-                      - key: app.jyje.online/raspi.type
-                        operator: NotIn
-                        values: ["4b"]
-      envoyService:
-        type: ClusterIP
----
+# Pilot Gateway for the Hermes Henry dashboard route. It stays here for now;
+# the other apps declare their own Gateway next to their route (see
+# docs/networks/envoy-gateway-migration.md). It shares the proxy fleet of the
+# envoy-web GatewayClass, so it takes no infrastructure of its own.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: envoy-web
   namespace: envoy-gateway-system
 spec:
-  gatewayClassName: envoy-gateway
-  infrastructure:
-    parametersRef:
-      group: gateway.envoyproxy.io
-      kind: EnvoyProxy
-      name: envoy-web
+  gatewayClassName: envoy-web
   listeners:
     - name: web
       protocol: HTTP
