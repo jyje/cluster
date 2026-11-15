@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  # Keep the Application identity so the existing game Gateway stays tracked.
   name: envoy-udp-poc
 spec:
   project: base
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: manifests/envoy-udp-poc
+    path: manifests/envoy-factorio-gateways
   destination:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
-  # Sync only after the controller is ready. Do not configure WAN forwarding.
   syncPolicy:
     syncOptions:
       - FailOnSharedResource=true

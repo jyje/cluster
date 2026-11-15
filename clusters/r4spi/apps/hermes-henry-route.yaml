@@ -22,8 +22,8 @@ spec:
               namespace: "{{ .Release.Namespace }}"
             spec:
               parentRefs:
-                - name: traefik
-                  namespace: traefik-system
+                - name: envoy-web
+                  namespace: envoy-gateway-system
                   sectionName: web
               hostnames:
                 - henry.gateway.invalid
