@@ -71,6 +71,8 @@ spec:
                       printf '[path]\nread-data=/opt/factorio/data\nwrite-data=/factorio\n' > /factorio/config.ini
                       factorio=/opt/factorio/bin/arm64/factorio
                       umask 077
+                      # The file holds the game password: recreate it so it is owner-only.
+                      rm -f /factorio/server-settings.json /factorio/server-settings.tmp
                       jq -s '.[0] * .[1] * .[2]' /opt/factorio/data/server-settings.example.json \
                         /etc/factorio/overrides.json /etc/factorio-secret/settings.json \
                         > /factorio/server-settings.json
@@ -85,7 +87,8 @@ spec:
                         "$factorio" --config /factorio/config.ini --mod-directory /factorio/mods --create /factorio/saves/world.zip
                       fi
                       exec "$factorio" --config /factorio/config.ini --mod-directory /factorio/mods \
-                        --start-server-load-latest --server-settings /factorio/server-settings.json --port 34197
+                        --start-server-load-latest --server-settings /factorio/server-settings.json \
+                        --server-adminlist /etc/factorio-secret/server-adminlist.json --port 34197
                   probes:
                     startup:
                       type: exec
@@ -111,6 +114,7 @@ spec:
             spec:
               encryptedData:
                 settings.json: AgAhulUuFjs9L7XpD3cMd73JyeXozmt63mPG9dyXcdtBBGUXW4+Q2mvkGARejIpIOf9nhmILgxGzl6L37MBWhkEfXW5tN9chU9wRIXNSXm1QXlNkwil+mHSjKbstZ9/L/ZlzAsg/RjiKpHr9ulEzZGMSWyqiI558JMWD/3aKwcuzVFFCeBKiXkOJNi2zNxr91fvKIKPzrIlRnNLN6K/nu/QI5peE2g2zWfATpNWdWf3nKL5ksssYT8R+t2C0gVwnEqgRVAV/imB/k30TIw0Xgdn5URZVJtFIb2KIe1y7ZnGge6dsbaiYFknvQVdIQIIgh80rV6V9IdDVmoKMpvTljAR45hqBI3I4ZUlmX8iwqUDFCXuZf56J3974/dy5BzelV6u/A5lk0p0NSXq0etaCXeRkYc8of3nfdom6IfP6stpmaNH+XFt+mK6sOR2cPjXo5LIQpj7Wkfl2zJ0EJBsDRENxq7c83krpwLqPCZbpwIcF6iaF5Zxb0CNgiDLXK0wAJWAHbGUI+TwE+xX0zgyicg59L12JERLZSvglWPx/IZN0wsCyttnd5Qo0GruJhPJsYqCKCxM7BFWBXyy3eX1TIbU8FRrQCmNnfa8lMniak8oN+ZOzFfZnQp618920s7M1DIu/mVm4GmhfuZh+S0n1DHb4fpvwFtQ0anlCzG/4HxlWznDEMH4VioH0CpmRSaBG7YR8SYhy9k8x8BFHWJN4wd66kJ0Q20wdAxMJ+xARyU/VdNg4gkbK
+                server-adminlist.json: AgAb0At0rT9gO6qCYqG+BpeM270JrRSRcC1k4zcO8nEvBPD/i3EozpoITA+Ltig9KNOTzDDou4DPtUpm7hHbnB0UDOKPd1TYCR0Xw1fgNPuIks++2ORUpxXvzUD2LjgRCZnSPWvR/pKRjc4rvv4uquXCraHBns8oOh9pFcVJsabb0gsubUepEWz2VZGGFegju80XG/FOVCmav7/4H5vlNRtozlL0GyuYFfglD2UqWRL6D+M5u62gzXhxfhyPH/YiKZxKtGw1VP9cw5oUTUh2raZhM46l4kuJXfhX7mFTjuxwLflgYIdzgPIFXY+a7vCq8oNGQIFOnufsFN0JWV05ULTzCvHwbX5cyC2f8/LGyQYwtxdXMlAH1zHh9KwNVLMZnuM/ZUf9BjczyGcmWfLcbYf4JEI0WqtQLHpxffNMyvvVzVkpkXfCT8BY++BApYFeJLwTNVB3lEElReV5xRtdDNafsKDGWT/20kGZYeA++gbCJxRzNkSAg06HS6Yd52T8JDCEKFvMLzsr3stUIUYZyBGwbqNAFC2n3EMRjqrtyY3jyAP1NrH/9Zek+EPs1EdHnwbPnQBvUFdLvVOyKBjywbsx26L844nDD9DW7M1Hp9aVE7c6Rwpdeoa7AzcFllRZki9EQNYKg1YA0eILMZ9RKlu3KoEjyCwsQf+jMPW5Od51IhCp+3ahYaAuh0PCljo5dJElmI0i5FYV3IWglBU=
           - apiVersion: v1
             kind: PersistentVolumeClaim
             metadata:

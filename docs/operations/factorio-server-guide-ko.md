@@ -59,48 +59,34 @@ kubectl -n factorio rollout restart deploy/factorio
 재시작하면 플레이어 접속이 약 1분 끊깁니다. 덮어쓰기 파일은 저장 볼륨에 있으므로 재시작과
 Pod 교체 후에도 유지됩니다.
 
-### 관리자로 즉시 바꾸기
+### 관리자
 
-관리자는 게임 안 채팅에서 `/config set password 새-비밀번호`를 실행할 수 있습니다(`password`
-옵션은 [Console](https://wiki.factorio.com/Console) 문서에 있습니다). 실행 중인 서버에만
-적용됩니다. 시작 스크립트가 시작할 때마다 설정을 다시 만들므로, 재시작하면 Secret(또는
-덮어쓰기 파일) 값이 다시 적용됩니다. 관리자가 필요하며 아래를 보세요.
+예제 설정 파일에는 `admins` 키가 없습니다. 서버는 `--server-adminlist`로 넘기는 별도 목록
+파일을 읽습니다. 여기서는 이미 설정돼 있습니다. SealedSecret `factorio-secret`의
+`server-adminlist.json` 키에 관리자 계정의 JSON 배열이 있고, 시작 스크립트가
+`/etc/factorio-secret/server-adminlist.json`을 넘깁니다. 이 목록과 아래의 선택 사항인
+화이트리스트는 실제 계정을 가리키고 이 저장소는 공개이므로 시크릿으로 다룹니다. Git에는 암호화된
+값만 있습니다.
 
-### 기본값 바꾸기
+관리자 바꾸기:
 
-새 SealedSecret 값을 만들어 커밋합니다.
+1. 비밀번호와 같은 `--scope strict --namespace factorio --name factorio-secret` 옵션으로
+   새 JSON 배열(예: `["alice", "bob"]`)을 `server-adminlist.json` 파일 이름으로 암호화합니다
+   ([기본값 바꾸기](#기본값-바꾸기) 참고).
+2. `clusters/r4spi/apps/factorio.yaml`의 `factorio-secret` 항목에서 `server-adminlist.json`
+   값을 바꾸고 병합한 뒤 `apps`, 그다음 `factorio`를 동기화합니다. 파일은 읽기 전용이지만
+   서버가 시작할 때만 읽으므로 문제없습니다.
+3. 관리자는 게임 안에서 `/promote 이름`, `/demote 이름`으로 다른 사람을 승격하거나 강등할 수
+   있습니다. 이 명령은 서버의 목록 파일을 고치는데 여기서는 읽기 전용이라, 게임 안에서 한
+   승격은 재시작하면 사라집니다. 영구 변경은 SealedSecret을 고치고 재시작하세요.
+4. 예제 설정에서 `allow_commands`는 `admins-only`, `only_admins_can_pause_the_game`은 `true`라서
+   명령과 일시정지는 기본적으로 관리자만 쓸 수 있습니다.
+5. 닫힌 서버로 운영하려면 같은 방식으로 `server-whitelist.json` 키를 추가하고
+   `--use-server-whitelist --server-whitelist /etc/factorio-secret/server-whitelist.json`을
+   넘깁니다. 목록의 사용자만 접속할 수 있습니다.
 
-```bash
-printf '{"game_password": "새-비밀번호"}' | kubeseal --raw --scope strict --namespace factorio --name factorio-secret --cert <controller-cert.pem>
-```
-
-`clusters/r4spi/apps/factorio.yaml`의 `factorio-secret` 항목 `settings.json` 값을 바꾸고
-병합한 뒤 `factorio` Application을 동기화하세요(Application 리소스에 새 값이 들어가도록
-`apps`를 먼저 동기화합니다).
-
-## 관리자
-
-예제 설정 파일에는 `admins` 키가 없고, 지금은 관리자가 지정돼 있지 않습니다. 관리자가
-없으면 `/server-save`나 `/config` 같은 게임 안 명령을 아무도 쓸 수 없습니다. 서버는
-`--server-adminlist`로 넘기는 별도 목록 파일을 읽습니다. 이 목록과 아래 화이트리스트는 실제
-계정을 가리키고 이 저장소는 공개이므로 시크릿으로 다룹니다.
-
-1. 비밀번호와 같은 SealedSecret에 JSON 배열을 키로 더합니다. 예를 들어
-   `server-adminlist.json`에 `["alice", "bob"]`, `server-whitelist.json`에 같은 형식을
-   넣습니다. 각 값은 로컬에서 `kubeseal`로 암호화합니다. Secret은 `/etc/factorio-secret`에
-   마운트됩니다.
-2. 시작 스크립트의 `exec` 줄에
-   `--server-adminlist /etc/factorio-secret/server-adminlist.json`을 추가하고
-   재시작합니다. 파일은 읽기 전용이지만 서버가 시작할 때만 읽으므로 문제없습니다.
-3. 이후 관리자는 게임 안에서 `/promote 이름`, `/demote 이름`으로 다른 사람을 승격하거나
-   강등할 수 있습니다. 이 명령은 서버의 목록 파일을 고치는데 여기서는 읽기 전용이라,
-   게임 안에서 한 승격은 재시작하면 사라집니다. 영구 변경은 SealedSecret을 고치고
-   재시작하세요.
-4. 예제 설정에서 `allow_commands`는 `admins-only`, `only_admins_can_pause_the_game`은
-   `true`라서 명령과 일시정지는 기본적으로 관리자만 쓸 수 있습니다.
-5. 닫힌 서버로 운영하려면 `--use-server-whitelist`와
-   `--server-whitelist /etc/factorio-secret/server-whitelist.json`을 추가합니다. 목록의
-   사용자만 접속할 수 있습니다.
+생성되는 설정 파일 `/factorio/server-settings.json`에는 게임 비밀번호가 들어 있으므로,
+시작 스크립트가 매 시작마다 소유자 전용 권한(모드 600)으로 다시 만듭니다.
 
 ## 콘솔 명령: 일시정지, 재개, 저장
 
