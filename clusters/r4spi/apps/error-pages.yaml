@@ -58,9 +58,44 @@ spec:
                             name: error-pages
                             port:
                               number: 8080
-          # Dormant Gateway API route for the Envoy Gateway migration (see
-          # docs/networks/envoy-gateway-migration.md). Public traffic still
-          # enters through the Ingress above until the ports are swapped.
+          # Gateway API side of the Envoy Gateway migration (see
+          # docs/networks/envoy-gateway-migration.md). It is dormant: public
+          # traffic still enters through the Ingress above until the ports are
+          # swapped. The Gateway joins the shared envoy-web class, and the
+          # Certificate lives here so the TLS secret stays in this namespace.
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: error-pages-envoy
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: error-pages-envoy-tls
+              dnsNames:
+                - error.app.jyje.online
+              issuerRef:
+                kind: ClusterIssuer
+                name: nginx-letsencrypt-prod
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: error-pages
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              gatewayClassName: envoy-web
+              listeners:
+                - name: https
+                  protocol: HTTPS
+                  port: 8443
+                  hostname: error.app.jyje.online
+                  tls:
+                    mode: Terminate
+                    certificateRefs:
+                      - name: error-pages-envoy-tls
+                  allowedRoutes:
+                    namespaces:
+                      from: Same
+                    kinds:
+                      - kind: HTTPRoute
           - apiVersion: gateway.networking.k8s.io/v1
             kind: HTTPRoute
             metadata:
@@ -68,9 +103,8 @@ spec:
               namespace: "{{ .Release.Namespace }}"
             spec:
               parentRefs:
-                - name: envoy-web
-                  namespace: envoy-gateway-system
-                  sectionName: https-error
+                - name: error-pages
+                  sectionName: https
               hostnames:
                 - error.app.jyje.online
               rules:
