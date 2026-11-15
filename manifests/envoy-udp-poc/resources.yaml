@@ -15,7 +15,9 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: LoadBalancer
+        # Do not use the shared auto-assignment pool for this test. Enable
+        # LoadBalancer only after an address has been explicitly reserved.
+        type: ClusterIP
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
