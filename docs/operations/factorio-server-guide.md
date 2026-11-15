@@ -144,9 +144,9 @@ Notes:
 - Disk is rarely the limit. Saves are small. Three autosave slots plus a
   manual save fit easily in 5 GiB for a long time.
 
-Current requests are `250m` CPU and `512Mi` memory with a `2Gi` memory limit and
-no CPU limit. That is enough for the small case. For the standard case, raise
-the CPU request to `1000m`, the memory request to `2Gi` and the memory limit to
-`4Gi`, and prefer a Raspberry Pi 5 node over a Pi 4 node for the faster core.
-The `NotIn 4b` node affinity already used for the Envoy proxies shows how to do
-that. Re-measure with real players before settling on numbers.
+The server is sized for the standard case: `1000m` CPU and `2Gi` memory requests,
+a `4Gi` memory limit (the chart's default CPU limit of `1500m` applies), and a
+node selector on the Pi 5 label `app.jyje.online/raspi.type: 5b`, because the
+Pi 4 node has the slower core. This chart does not implement `nodeAffinity`, so
+use a node selector. For a small game the old values (`250m`, `512Mi`, `2Gi`
+limit) were enough. Re-measure with real players before settling on numbers.
