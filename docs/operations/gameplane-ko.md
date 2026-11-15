@@ -96,49 +96,38 @@ printf '%s' "$ADMIN_PASSWORD" | kubectl -n gameplane-system exec -i deploy/gamep
 [authentik-access-ko.md](authentik-access-ko.md)를 따릅니다. 로그인이 `invalid_request`로 끝나면 프로바이더에서
 `grant_types`가 빠진 것입니다.
 
-## 가이드: 웹 UI로 첫 Factorio 서버 만들기
+## 가이드: UDP Gateway 뒤의 게임 서버
 
-대시보드에서 Factorio 서버를 만드는 가이드입니다. 아래 내용은 Git에 들어가지 않습니다. 서버는 operator가
-reconcile하는 `GameServer`이고, 기존 `factorio` Application에는 손대지 않습니다. 이 클러스터에 특화된 점이
-있어서 먼저 확인하세요.
-
-**시작하기 전에**
+게임 서버는 대시보드에서 만듭니다. 서버는 operator가 reconcile하는 `GameServer`라서 서버 자체는 Git에 들어가지
+않습니다. 공개 UDP는 Git에 있는 `games` Gateway를 지나 들어옵니다([envoy-udp-gateway-ko.md](envoy-udp-gateway-ko.md)
+참고). 이 클러스터에 특화된 점은 다음과 같습니다.
 
 1. **Admin Settings, General**의 **External URL**을 `https://gameplane.app.jyje.online`으로 설정합니다.
    공유 링크와 콜백이 이 값에서 만들어집니다.
-2. 기존 서버의 주소를 재사용하지 마세요. `factorio` Application이 예약 주소의 UDP 34197을 씁니다.
-   두 번째 서버는 다른 포트가 필요합니다.
-3. Factorio는 UDP만 씁니다. 클라이언트 버전이 다르면 접속할 수 없으니, 모듈 이미지 버전에 클라이언트를 맞추세요.
-
-**서버 만들기** (Servers, Create server, 템플릿 **Factorio**)
-
-1. **이름과 비밀번호.** 게임 비밀번호를 설정합니다. 비워 두면 서버가 열려 있는 상태가 되므로, 다른 사람이
-   닿을 수 없는 테스트에만 비워 두세요. **Public**은 끕니다. 이 템플릿은 `require_user_verification`이 항상
-   켜져 있어서 모든 플레이어에게 Factorio 계정이 필요합니다.
-2. **배치.** 노드 셀렉터 `app.jyje.online/raspi.type: 5b`를 추가합니다. 시뮬레이션이 코어 하나에 묶이므로
-   Pi 4가 아니라 Pi 5 노드에서 돌립니다. 모듈 이미지는 멀티 아키텍처 이미지이고 arm64 빌드가 있습니다.
-3. **리소스.** 템플릿은 1Gi를 요청하고 4Gi와 CPU 2개까지 허용합니다. 노드가 바쁘면 기존 서버 크기처럼
-   한도를 낮춥니다.
-4. **스토리지.** 기본 StorageClass(NFS)에 5Gi입니다. 세이브가 여기에 쌓이므로 로컬 디스크보다
-   자동 저장이 느릴 수 있습니다.
-5. **노출.** 이 단계가 가장 중요합니다.
-   - `addressPool` 없이 `LoadBalancer`를 고르지 **마세요**. MetalLB의 `default-addresspool`에 노드 주소가
-     들어 있고, 노드 주소를 Service에 주면 전에 ARP 충돌이 났습니다. `factorio-private`는 주소가 하나이고
-     기존 서버 전용으로 예약돼 있습니다.
-   - 첫 테스트는 **NodePort**를 고르고 포트를 고정합니다. 그다음 남는 WAN UDP 포트를 그 노드 포트로
-     포워딩하거나, LAN에서 `<노드 주소>:<노드 포트>`로 바로 접속해 봅니다.
-   - 나중에는 `addressPool`로 전용 MetalLB 풀을 쓰거나, 라우터 포워딩이 필요 없는 릴레이 터널(frp,
-     Tailscale, playit.gg)을 씁니다.
-   마법사에 노출 선택지가 보이지 않으면 operator에서 기본으로 꺼 둔 것입니다(Gameplane 저장소의 네트워킹
-   문서 참고).
+2. **이미지를 고정합니다.** 마법사에서 버전을 고른 뒤, 서버 설정(`spec.image`)에 태그와 digest로 이미지를
+   지정합니다. 떠다니는 태그나 채널은 게임 버전을 마음대로 바꾸고, 다른 버전의 클라이언트는 접속할 수 없습니다.
+   이미지에 arm64 네이티브 빌드가 있는지 확인하세요. x86 바이너리만 들어 있는 이미지는 에뮬레이터로 돌아서
+   훨씬 느립니다.
+3. **배치.** 노드 셀렉터 `app.jyje.online/raspi.type: 5b`를 추가합니다. 시뮬레이션이 코어 하나에 묶이므로
+   Pi 4가 아니라 Pi 5 노드를 씁니다.
+4. **이름.** 공개 라우트는 서버 이름과 같은 Service로 트래픽을 보냅니다(`manifests/envoy-gateways/games-route.yaml`의
+   `world-1`). 서버를 그 이름으로 만들거나 라우트를 바꾸세요.
+5. **노출.** `ClusterIP`로 둡니다. 공개 UDP는 Gateway로 들어옵니다. 전용 주소 풀 없이 `LoadBalancer`를 고르지
+   **마세요**. MetalLB의 `default-addresspool`에 노드 주소가 들어 있고, 노드 주소를 Service에 주면 전에 ARP 충돌이
+   났습니다.
 6. 첫 실행에서는 **idle sleep**과 **wake on connect**를 꺼 둡니다.
+7. 게임 비밀번호를 설정하고 서버를 비공개 목록으로 둡니다.
 
 **확인하기**
 
-1. 서버가 **Running**이 되고, 로그에 파드 안 UDP 34197로 게임을 호스팅한다고 찍힙니다.
-2. Factorio 클라이언트의 직접 연결로, 서버 Overview의 주소로 접속합니다. 눈에 띄는 변경을 만들고 자동 저장을
-   기다린 뒤, 대시보드에서 서버를 재시작하고 다시 접속해서 변경이 남아 있는지 봅니다.
+1. 서버가 **Running**이 되고, 로그에 파드 안 UDP 포트로 게임을 호스팅한다고 찍힙니다.
+2. 클라이언트의 직접 연결로 공개 이름과 게임 포트에 접속합니다. 눈에 띄는 변경을 만들고 자동 저장을 기다린 뒤,
+   대시보드에서 서버를 재시작하고 다시 접속해서 변경이 남아 있는지 봅니다.
 3. 백업은 백업 대상을 설정한 뒤에 합니다. 지금은 설정된 곳이 없습니다.
+
+**기존 월드 옮기기**: 서버를 멈추고, 데이터 볼륨의 saves 디렉터리에 세이브를 복사합니다(대시보드 Files 탭, 또는
+`kubectl exec`와 파이프). 서버를 시작하고 로그에서 세이브를 읽었는지 확인합니다. 서버 버전은 세이브를 만든 버전과
+같거나 더 높아야 하고, 세이브에 쓰인 모드는 서버에도 있어야 합니다.
 
 **정리**: 대시보드에서 서버를 지우면 파드와 Service가 사라집니다. 클레임도 같이 지워졌는지 확인해서 NFS
 공간이 풀리게 하세요.

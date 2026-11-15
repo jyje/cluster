@@ -21,7 +21,7 @@ A label is a `key=value` tag on a node. A workload picks nodes with a
 Current nodes: `raspi-40` and `raspi-41` are `4b`. `raspi-50` and `raspi-51` are `5b`.
 
 The labels mark hardware classes, not quality. Some software needs one class:
-Envoy and Factorio run on `5b` nodes, Envoy cannot map its heap on the 4 KB page
+Envoy and the game servers run on `5b` nodes, Envoy cannot map its heap on the 4 KB page
 nodes, and qdrant is pinned to `4b`.
 
 ## How it is managed
