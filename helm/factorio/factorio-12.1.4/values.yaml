@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=./values.schema.json
+# -- Extra manifests to render. Supports objects and templated YAML strings.
+extraResources: []
+
+image:
+  pullPolicy: IfNotPresent
+  repository: docker.io/factoriotools/factorio
+  tag: stable@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28
+
+securityContext:
+  container:
+    readOnlyRootFilesystem: false
+    runAsNonRoot: false
+    runAsGroup: 0
+    runAsUser: 0
+
+service:
+  main:
+    ports:
+      main:
+        port: 34197
+        protocol: udp
+  rcon:
+    enabled: true
+    ports:
+      rcon:
+        enabled: true
+        port: 27015
+        protocol: tcp
+
+workload:
+  main:
+    podSpec:
+      containers:
+        main:
+          probes:
+            liveness:
+              type: tcp
+              port: "{{ .Values.service.rcon.ports.rcon.port }}"
+            readiness:
+              type: tcp
+              port: "{{ .Values.service.rcon.ports.rcon.port }}"
+            startup:
+              type: tcp
+              port: "{{ .Values.service.rcon.ports.rcon.port }}"
+          env:
+            PORT: "{{ .Values.service.main.ports.main.port }}"
+            RCON_PORT: "{{ .Values.service.rcon.ports.rcon.port }}"
+            GENERATE_NEW_SAVE: false
+            LOAD_LATEST_SAVE: true
+            SAVE_NAME: "_autosave1"
+            TOKEN: ""
+            UPDATE_MODS_ON_START: ""
+            USERNAME: ""
+
+persistence:
+  config:
+    enabled: true
+    mountPath: /factorio
