@@ -24,7 +24,7 @@ spec:
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
                   - matchExpressions:
-                      - key: app.jyje.live/raspi.type
+                      - key: app.jyje.online/raspi.type
                         operator: NotIn
                         values: ["4b"]
       envoyService:
@@ -79,7 +79,7 @@ spec:
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
                   - matchExpressions:
-                      - key: app.jyje.live/raspi.type
+                      - key: app.jyje.online/raspi.type
                         operator: NotIn
                         values: ["4b"]
       envoyService:
