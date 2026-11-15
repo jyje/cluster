@@ -26,6 +26,13 @@ it, CRDs that require server-side apply can exceed the annotation size limit.
 5. Join with a Factorio 2.1.24 client and make a recognizable change. Wait for
    an autosave, replace the game Pod, and reconnect to verify the same world
    and change are still present. Verify there is no RCON Service or listener.
+   After the autosave and before replacement, run
+   `python3 scripts/verify_factorio_rollout.py <context> <full-revision>`
+   and save its JSON output in a local, untracked file. Run the same command
+   after replacement with `--previous <local-fingerprint-file>`. This checks
+   the exact Git revision, reserved address, listener, protected volume,
+   different Pod UID and surviving save fingerprint. Do not use it in place
+   of real-client join, reconnect and in-game state verification.
 6. Publish the Porkbun DNS record for `factorio.app.jyje.online` only after
    validating the intended UDP entry point. Do not publish internal IPs or
    point game clients at an HTTP-only tunnel hostname. Resolve the record
