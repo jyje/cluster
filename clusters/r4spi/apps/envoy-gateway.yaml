@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/envoy-gateway/gateway-helm-v1.10.0
+    helm:
+      valuesObject:
+        crds:
+          enabled: false
+        config:
+          envoyGateway:
+            provider:
+              type: Kubernetes
+              kubernetes:
+                watch:
+                  type: Namespaces
+                  namespaces:
+                    - envoy-gateway-system
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  # Sync after the separate Envoy Gateway CRDs are established.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - FailOnSharedResource=true
