@@ -39,4 +39,7 @@ spec:
                         operator: NotIn
                         values: ["4b"]
       envoyService:
+        # A fixed name, so a bridge Ingress can point at the proxy without a
+        # generated hash in its backend.
+        name: envoy-web
         type: ClusterIP

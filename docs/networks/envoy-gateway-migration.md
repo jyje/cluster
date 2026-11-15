@@ -59,7 +59,7 @@ Also check that the Gateway reports `Programmed=True`, both listeners report `Re
 2. Add an HTTP listener on the Gateway for the ACME challenge and an HTTP to HTTPS redirect.
 3. Free ports 80 and 443 on the nodes (stop the ingress-nginx DaemonSet) and expose Envoy on them. Plan this window, because a short outage is expected.
 4. Enable `enableGatewayAPI` in homer-operator and move the Homer annotations to the HTTPRoutes.
-5. Remove the Ingresses of the migrated apps, then repeat for the next batch.
+5. Remove the Ingresses of the migrated apps and the bridge Ingress and ExternalName Service of Gameplane, which forward public traffic to Envoy while ingress-nginx holds the ports. Then repeat for the next batch.
 
 ## Rollback
 

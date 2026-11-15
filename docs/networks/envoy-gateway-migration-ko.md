@@ -59,7 +59,7 @@ Gateway가 `Programmed=True`인지, 인증서가 발급된 뒤 두 리스너가 
 2. ACME 챌린지용 HTTP 리스너와 HTTP에서 HTTPS로의 리다이렉트를 Gateway에 추가합니다.
 3. 노드의 80, 443 포트를 비우고(ingress-nginx DaemonSet 중지) Envoy를 그 포트로 노출합니다. 짧은 중단이 예상되므로 시간을 잡아서 진행합니다.
 4. homer-operator의 `enableGatewayAPI`를 켜고 Homer 어노테이션을 HTTPRoute로 옮깁니다.
-5. 옮긴 앱의 Ingress를 지우고 다음 묶음에 같은 일을 반복합니다.
+5. 옮긴 앱의 Ingress와, ingress-nginx가 포트를 쥐는 동안 공개 트래픽을 Envoy로 넘기는 Gameplane의 브리지 Ingress 및 ExternalName Service를 지우고 다음 묶음에 같은 일을 반복합니다.
 
 ## 롤백
 

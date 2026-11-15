@@ -39,18 +39,34 @@ The private keys are never kept in the repository, only the sealed form.
 
 ## Reaching the dashboard
 
-The Gateway, Certificate and HTTPRoute live in the Application
-(`extraResources`) and join the shared `envoy-web` class. They are dormant:
-ingress-nginx still owns ports 80 and 443, so nothing reaches Envoy from
-outside until the cutover described in
-[envoy-gateway-migration.md](../networks/envoy-gateway-migration.md).
+The public host is `gameplane.app.jyje.online`. The Gateway, Certificate and
+HTTPRoute live in the Application (`extraResources`) and join the shared
+`envoy-web` class. ingress-nginx still owns ports 80 and 443 on the nodes, so
+a small bridge Ingress in the Application terminates TLS with the Certificate
+and forwards to the Envoy proxy over HTTPS (through an `ExternalName` Service,
+`envoy-web` in `envoy-gateway-system`). The HTTPRoute then sends every path to
+`gameplane-web`. Public traffic therefore already passes through Envoy
+Gateway. At the cutover described in
+[envoy-gateway-migration.md](../networks/envoy-gateway-migration.md), Envoy
+takes the ports and the bridge Ingress and Service are removed.
 
-The host `gameplane.app.jyje.online` needs a DNS record before the Let's
-Encrypt HTTP-01 challenge can finish. Until then the Certificate stays pending
-and the listener reports `ResolvedRefs=False`. That does not affect other
-Gateways.
+Two details of the bridge matter:
 
-Check it through a port-forward:
+- ingress-nginx replaces some backend errors with its own error pages
+  (`custom-http-errors`). The dashboard API answers 401 and 404 itself, and the
+  SPA reads them, so the bridge Ingress overrides the list with an unused code.
+- The Envoy listener picks its certificate by SNI, so the Ingress sets
+  `proxy-ssl-server-name` and `proxy-ssl-name`.
+
+The DNS record is a CNAME to the same DDNS host as the other `app.jyje.online`
+names. The Let's Encrypt HTTP-01 challenge needs it before the Certificate can
+be issued.
+
+The Homer card is a manual entry in the `4. Games` group of `homer-instance`
+(not an Ingress annotation), so it survives the move from the bridge Ingress to
+the HTTPRoute.
+
+To check the Envoy path without the public hop, use a port-forward:
 
 ```bash
 kubectl -n envoy-gateway-system port-forward \
