@@ -336,6 +336,29 @@ spec:
                             port:
                               number: 80
 
+          # Dormant Gateway API route for the Envoy Gateway migration (see
+          # docs/networks/envoy-gateway-migration.md). Public traffic still
+          # enters through the Ingress above until the ports are swapped.
+          # It carries no Homer annotations because homer-operator has
+          # enableGatewayAPI off; the card keeps coming from the Ingress
+          # until the cutover.
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: homer
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              parentRefs:
+                - name: envoy-web
+                  namespace: envoy-gateway-system
+                  sectionName: https-app
+              hostnames:
+                - app.jyje.online
+              rules:
+                - backendRefs:
+                    - name: homer-homer
+                      port: 80
+
           # assets.configMapRef mounts via subPath, which kubelet does not
           # live-reload, and the homer-operator controller does not watch the
           # referenced ConfigMap for changes (only the Dashboard CR's own

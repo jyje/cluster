@@ -58,6 +58,25 @@ spec:
                             name: error-pages
                             port:
                               number: 8080
+          # Dormant Gateway API route for the Envoy Gateway migration (see
+          # docs/networks/envoy-gateway-migration.md). Public traffic still
+          # enters through the Ingress above until the ports are swapped.
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: error-pages
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              parentRefs:
+                - name: envoy-web
+                  namespace: envoy-gateway-system
+                  sectionName: https-error
+              hostnames:
+                - error.app.jyje.online
+              rules:
+                - backendRefs:
+                    - name: error-pages
+                      port: 8080
   destination:
     server: https://kubernetes.default.svc
     namespace: error-pages
