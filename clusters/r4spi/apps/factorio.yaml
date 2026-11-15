@@ -52,6 +52,8 @@ spec:
               automountServiceAccountToken: false
               nodeSelector:
                 kubernetes.io/arch: arm64
+                # The simulation is bound by one core, so run on a Pi 5 node, not a Pi 4.
+                app.jyje.online/raspi.type: 5b
               terminationGracePeriodSeconds: 120
               containers:
                 main:
@@ -79,10 +81,10 @@ spec:
                       enabled: false
         resources:
           requests:
-            cpu: 250m
-            memory: 512Mi
-          limits:
+            cpu: 1000m
             memory: 2Gi
+          limits:
+            memory: 4Gi
         extraResources:
           - apiVersion: v1
             kind: PersistentVolumeClaim
