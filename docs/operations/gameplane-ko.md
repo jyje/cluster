@@ -143,6 +143,18 @@ reconcile하는 `GameServer`이고, 기존 `factorio` Application에는 손대�
 **정리**: 대시보드에서 서버를 지우면 파드와 Service가 사라집니다. 클레임도 같이 지워졌는지 확인해서 NFS
 공간이 풀리게 하세요.
 
+## 게임이 Starting과 AgentStale에 머물 때
+
+각 게임의 에이전트 사이드카는 쿠버네티스 API로 상태를 보고합니다. Gameplane의 기본 정책은 API 서버로 가는 길을
+TCP 443과 6443만 열어 두는데, MicroK8s는 API를 16443에서 제공하고, Calico는 Service 주소가 엔드포인트로
+변환된 뒤에 정책을 검사합니다. 그래서 heartbeat가 타임아웃되고(에이전트 로그의
+`dial tcp 10.152.183.1:443: i/o timeout`), 게임은 실제로 돌고 있는데도 서버가 `Starting`과 `AgentStale`로
+보입니다. Application의 `allow-agent-to-microk8s-apiserver` 정책이 게임과 sentinel 파드에 16443을 열어 줍니다.
+같은 증상이 다시 보이면 `kubectl get endpoints kubernetes`의 엔드포인트 포트와 이 정책을 비교하세요.
+
+게임 로그에는 10초마다 `New RCON connection from <노드 주소>` 줄이 찍힙니다. kubelet 프로브가 RCON 포트를
+확인하는 것이라 문제가 아닙니다.
+
 ## 롤아웃 확인
 
 1. Argo CD가 의도한 리비전을 동기화했고 Application이 `Healthy`입니다.
