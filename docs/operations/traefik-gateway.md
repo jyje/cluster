@@ -1,3 +1,7 @@
+> Retired: Traefik was replaced by Envoy Gateway in #274. This page is kept as
+> the rollback reference. To restore it, revert the cleanup change that removed
+> `clusters/r4spi/apps/traefik.yaml` and sync the `traefik` Application.
+
 # Shared Traefik Gateway
 
 This is the next step in [#207](https://github.com/jyje/cluster/issues/207).
