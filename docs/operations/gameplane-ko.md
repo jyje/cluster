@@ -1,0 +1,69 @@
+# Gameplane
+
+English version: [gameplane.md](gameplane.md)
+
+`gameplane` Application 운영 메모입니다. Gameplane은 쿠버네티스 네이티브 게임 서버 컨트롤 패널입니다
+(https://github.com/GameplanePanel/Gameplane, 차트 0.4.0, pre-v1).
+추적 이슈: [#301](https://github.com/jyje/cluster/issues/301).
+아직 게임 서버는 만들지 않았습니다. 비밀번호, 토큰, 개인키는 저장소에 올리지 않습니다.
+
+## 구성
+
+- Argo CD Application `gameplane` 하나가 vendoring한 차트(`helm/gameplane/gameplane-0.4.0`)를
+  `gameplane-system`에 배포합니다. 차트가 이후 게임 서버용 `gameplane-games`를 만듭니다.
+- CRD는 Argo CD가 server-side apply로 차트와 함께 동기화하므로, 차트의 pre-upgrade CRD 훅은 껐습니다.
+  Application을 지우면 CRD가 prune되면서 모든 GameServer도 같이 사라집니다. 게임이 생긴 뒤에는 지우지 마세요.
+- API는 SQLite 데이터베이스를 `2Gi` 클레임에 둡니다. 이 클러스터의 유일한 StorageClass는 NFS이고,
+  WAL 모드 SQLite는 NFS에서 문제가 생길 수 있습니다. 첫 롤아웃 뒤 API 로그에서 데이터베이스 잠금 오류를 살펴보세요.
+- 익명 사용 통계는 껐습니다(`api.telemetry.enabled: false`).
+- 기본 모듈 소스는 `ghcr.io`에서 모듈 카탈로그를 한 시간마다 가져옵니다.
+
+## 에이전트 mTLS 자료
+
+차트가 CA를 직접 만들 수도 있지만, Argo CD는 오프라인으로 렌더링해서 렌더링할 때마다 새 CA가 나옵니다.
+그래서 CA와 클라이언트 인증서는 Application 안의 SealedSecret으로 둡니다.
+
+| 시크릿 | 키 |
+|---|---|
+| `gameplane-external-ca-v1` | `ca.crt`, `ca.key` |
+| `gameplane-external-client-v1` | `tls.crt`, `tls.key` |
+
+교체할 때는 새 자료를 만들어 새 버전 이름(`-v2`)으로 봉인하고, `api.agentMTLS`가 새 이름을 가리키게 한 뒤
+API와 operator가 롤링되게 합니다. 에이전트는 CA를 신뢰하므로, CA를 바꾸면 기존 게임 파드를 재시작해야 합니다.
+개인키는 저장소에 두지 않고 봉인된 형태만 둡니다.
+
+## 대시보드 접근
+
+Gateway, Certificate, HTTPRoute는 Application(`extraResources`)에 있고 공용 `envoy-web` 클래스에 합류합니다.
+아직 휴면 상태입니다. ingress-nginx가 80, 443 포트를 쥐고 있어서, 컷오버 전에는 외부에서 Envoy로 들어오는
+트래픽이 없습니다. 컷오버는 [envoy-gateway-migration-ko.md](../networks/envoy-gateway-migration-ko.md)를 보세요.
+
+`gameplane.app.jyje.online` 호스트는 Let's Encrypt HTTP-01 챌린지가 끝나려면 DNS 레코드가 먼저 있어야 합니다.
+그 전까지 Certificate는 대기 상태이고 리스너는 `ResolvedRefs=False`로 보입니다. 다른 Gateway에는 영향이 없습니다.
+
+포트포워드로 확인합니다.
+
+```bash
+kubectl -n envoy-gateway-system port-forward \
+  $(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gatewayclass=envoy-web -o name) 8443:8443
+```
+
+```bash
+curl -sI --resolve gameplane.app.jyje.online:8443:127.0.0.1 https://gameplane.app.jyje.online:8443/
+```
+
+## 첫 관리자
+
+비밀번호는 12자 이상이어야 합니다. 셸 기록에 남지 않도록 표준입력으로 넘깁니다.
+
+```bash
+printf '%s' "$ADMIN_PASSWORD" | kubectl -n gameplane-system exec -i deploy/gameplane-api -- \
+  /api bootstrap-admin --username admin --password-stdin
+```
+
+## 롤아웃 확인
+
+1. Argo CD가 의도한 리비전을 동기화했고 Application이 `Healthy`입니다.
+2. `gameplane-operator`, `gameplane-api`, `gameplane-web` Deployment가 `Ready`입니다.
+3. Certificate가 `Ready`, Gateway 리스너가 `Programmed`, HTTPRoute가 `Accepted`입니다.
+4. 포트포워드로 대시보드가 응답하고 관리자가 로그인됩니다.
