@@ -288,6 +288,125 @@ spec:
                   http:
                     paths:
                       - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # Long-connection comparison (scripts/ingress-compat). The same
+          # backends are exposed through ingress-nginx and Higress, each with
+          # no timeout annotation and with a 3600 second one, to see which
+          # defaults cut a long request or an idle WebSocket. The hosts do not
+          # resolve, so they are reachable only through a port-forward.
+          - apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: httpbin
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: httpbin
+              template:
+                metadata:
+                  labels:
+                    app: httpbin
+                spec:
+                  containers:
+                    - name: httpbin
+                      image: mccutchen/go-httpbin:v2.15.0
+                      env:
+                        # Allow responses that last minutes (default is 10s).
+                        - name: MAX_DURATION
+                          value: "5m"
+                      ports:
+                        - containerPort: 8080
+                      resources:
+                        requests:
+                          cpu: 5m
+                          memory: 16Mi
+                        limits:
+                          memory: 64Mi
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: httpbin
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              selector:
+                app: httpbin
+              ports:
+                - port: 80
+                  targetPort: 8080
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: c-nginx-default
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              ingressClassName: nginx
+              rules:
+                - host: nginx-default.compat.invalid
+                  http:
+                    paths:
+                      - {path: /echo, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+                      - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: c-nginx-3600
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+                nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+            spec:
+              ingressClassName: nginx
+              rules:
+                - host: nginx-3600.compat.invalid
+                  http:
+                    paths:
+                      - {path: /echo, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+                      - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: c-higress-default
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: higress-default.compat.invalid
+                  http:
+                    paths:
+                      - {path: /echo, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+                      - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: c-higress-nginx-names
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+                nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: higress-nginx-names.compat.invalid
+                  http:
+                    paths:
+                      - {path: /echo, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+                      - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: c-higress-3600
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                higress.io/timeout: "3600"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: higress-3600.compat.invalid
+                  http:
+                    paths:
+                      - {path: /echo, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+                      - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
