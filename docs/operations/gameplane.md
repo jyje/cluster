@@ -115,58 +115,48 @@ sync both Applications. Check it as the owner: the login page shows an
 Troubleshooting follows [authentik-access.md](authentik-access.md). A sign-in
 that answers `invalid_request` means the provider lost its `grant_types`.
 
-## Guide: your first Factorio server in the web UI
+## Guide: a game server behind the UDP Gateway
 
-This is a guide for creating a Factorio server in the dashboard. Nothing here is
-in Git. The server is a `GameServer` that the operator reconciles, and it does
-not touch the existing `factorio` Application. Check these points first,
-because they are specific to this cluster.
-
-**Before you start**
+Game servers are created in the dashboard. A server is a `GameServer` that the
+operator reconciles, so nothing about the server itself is in Git. Public UDP
+reaches it through the `games` Gateway, which is in Git (see
+[envoy-udp-gateway.md](envoy-udp-gateway.md)). Points that are specific to this
+cluster:
 
 1. In **Admin Settings, General**, set **External URL** to
    `https://gameplane.app.jyje.online`. Share links and callbacks derive from it.
-2. Do not reuse the existing server's address. The `factorio` Application owns
-   UDP 34197 on its reserved address. A second server needs its own port.
-3. Factorio uses UDP only. Players on a different client version cannot join,
-   so match the client to the image version of the module.
-
-**Create the server** (Servers, Create server, template **Factorio**)
-
-1. **Name and password.** Set a game password. Leave it empty only for a test
-   that nobody else can reach, because an empty password makes the server open.
-   Keep **Public** off. `require_user_verification` is always on in this
-   template, so every player needs a Factorio account.
-2. **Placement.** Add the node selector `app.jyje.online/raspi.type: 5b`. The
-   simulation is bound by one core, so run on a Pi 5 node, not a Pi 4. The module
-   image is a multi-arch image and has an arm64 build.
-3. **Resources.** The template asks for 1Gi and allows 4Gi and 2 CPUs. Lower the
-   limits if the node is busy, the same way the existing server is sized.
-4. **Storage.** 5Gi on the default StorageClass (NFS). Saves land there, so
-   expect slower autosaves than on a local disk.
-5. **Exposure.** This is the step to get right.
-   - Do **not** choose `LoadBalancer` without `addressPool`. MetalLB's
-     `default-addresspool` holds the node addresses, and handing a node address
-     to a Service caused an ARP conflict before. `factorio-private` has one
-     address and is reserved for the existing server.
-   - For a first test choose **NodePort** and pin the port. Then forward WAN UDP
-     on a spare port to that node port, or just join from the LAN with
-     `<node address>:<node port>`.
-   - Later, use a dedicated MetalLB pool with `addressPool`, or a relay tunnel
-     (frp, Tailscale or playit.gg), which needs no router forward.
-   If the expose choices do not show in the wizard, the operator has them off by
-   default (see the networking notes in the Gameplane repository).
+2. **Pin the image.** Pick the version in the wizard, then set the image by tag
+   and digest in the server settings (`spec.image`). A floating tag or channel
+   changes the game version under you, and clients on another version cannot
+   join. Check that the image has a native arm64 build: an image that only
+   ships an x86 binary runs through an emulator and is much slower.
+3. **Placement.** Add the node selector `app.jyje.online/raspi.type: 5b`. The
+   simulation is bound by one core, so use a Pi 5 node, not a Pi 4.
+4. **Name.** The public route sends traffic to the Service that has the
+   server's name (`world-1` in `manifests/envoy-gateways/games-route.yaml`).
+   Create the server under that name, or change the route.
+5. **Exposure.** Leave it at `ClusterIP`. Public UDP comes in through the
+   Gateway. Do **not** choose `LoadBalancer` without a dedicated address pool:
+   MetalLB's `default-addresspool` holds the node addresses, and handing a node
+   address to a Service caused an ARP conflict before.
 6. Leave **idle sleep** and **wake on connect** off for the first run.
+7. Set a game password, and keep the server unlisted.
 
 **Check it**
 
-1. The server reaches **Running** and the log shows the game hosting on UDP
-   34197 inside the pod.
-2. Join with the Factorio client by direct connect, using the address from the
-   server's Overview. Make a recognizable change, wait for an autosave, restart
-   the server from the dashboard and join again to see the change survived.
+1. The server reaches **Running** and the log shows the game hosting on its
+   UDP port inside the pod.
+2. Join from a client by direct connect with the public name and the game port.
+   Make a recognizable change, wait for an autosave, restart the server from the
+   dashboard and join again to see the change survived.
 3. Take a backup only after you configure a backup target. None is configured
    here yet.
+
+**Moving an existing world in**: stop the server, copy the save into the data
+volume's saves directory (the dashboard Files tab, or `kubectl exec` with a
+pipe), start it, and check the log for the loaded save. The server version must
+be the same as or newer than the one that wrote the save, and every mod in the
+save has to be present on the server.
 
 **Clean up**: deleting the server in the dashboard removes the pod and Service.
 Check that its claim is gone too, so the NFS space is released.

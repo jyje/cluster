@@ -270,13 +270,7 @@ spec:
                       name: "4. Games"
                       icon: "fas fa-gamepad"
                     items:
-                      - parameters:
-                          name: "Factorio"
-                          icon: "fas fa-industry"
-                          subtitle: "Direct connect: factorio.app.jyje.online:34197 (UDP, password required)"
-                          url: "https://wiki.factorio.com/Multiplayer#Joining_a_Multiplayer_game"
-                          target: "_blank"
-                      # Manual like the other games: this card has to survive the
+                      # Manual, not an Ingress annotation: this card has to survive the
                       # move from the bridge Ingress to the HTTPRoute.
                       - parameters:
                           name: "Gameplane"

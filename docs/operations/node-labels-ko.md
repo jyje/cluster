@@ -19,7 +19,7 @@ English version: [node-labels.md](node-labels.md)
 현재 노드: `raspi-40`, `raspi-41`은 `4b`이고 `raspi-50`, `raspi-51`은 `5b`입니다.
 
 라벨은 우열이 아니라 하드웨어 종류를 나타냅니다. 어떤 소프트웨어는 한 종류가 필요합니다.
-Envoy와 Factorio는 `5b` 노드에서 실행하고, Envoy는 4KB 페이지 노드에서 힙을 매핑하지 못하며,
+Envoy와 게임 서버는 `5b` 노드에서 실행하고, Envoy는 4KB 페이지 노드에서 힙을 매핑하지 못하며,
 qdrant는 `4b`에 고정돼 있습니다.
 
 ## 관리 방식
