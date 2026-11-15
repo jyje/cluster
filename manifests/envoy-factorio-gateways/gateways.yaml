@@ -15,9 +15,12 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        # Preserve the safe default until the cutover config carries the
-        # explicitly reserved address verified by the live UDP proof.
-        type: ClusterIP
+        type: LoadBalancer
+        annotations:
+          metallb.io/address-pool: factorio-private
+          metallb.universe.tf/address-pool: factorio-private
+        labels:
+          networking.jyje.io/reserved-vip: factorio
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway

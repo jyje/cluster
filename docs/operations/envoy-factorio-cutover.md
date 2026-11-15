@@ -4,9 +4,10 @@ Do not sync this change until the live UDP echo proof of concept for
 [#274](https://github.com/jyje/cluster/issues/274) has passed before and after
 replacement of the echo Pod. Leave legacy ingress-nginx routes unchanged.
 
-The game Gateway stays on ClusterIP in this draft. Before rollout, carry
-forward the exact reserved LoadBalancer allocation that passed the live UDP
-proof. Do not use an automatically selected address from a shared pool.
+The game Gateway reuses the explicit `factorio-private` pool from the LAN
+proof. Run the reserved-pool preflight before sync, and confirm the Service
+and Gateway receive the same reserved address after sync. Do not use an
+automatically selected address from a shared pool.
 
 When submitting a manual sync directly through the Kubernetes Application
 resource, copy `spec.syncPolicy.syncOptions` into
@@ -33,9 +34,11 @@ it, CRDs that require server-side apply can exceed the annotation size limit.
    the exact Git revision, reserved address, listener, protected volume,
    different Pod UID and surviving save fingerprint. Do not use it in place
    of real-client join, reconnect and in-game state verification.
-6. Publish the Porkbun DNS record for `factorio.app.jyje.online` only after
-   validating the intended UDP entry point. Do not publish internal IPs or
-   point game clients at an HTTP-only tunnel hostname. Resolve the record
+6. Once the live Factorio backend passes the LAN checks, forward only WAN
+   UDP port 34197 to UDP port 34197 on the reserved game address. Leave
+   RCON, TCP forwarding and unrelated rules untouched. Publish the Porkbun
+   DNS record for `factorio.app.jyje.online` using a verified public address.
+   Do not publish internal IPs or point game clients at an HTTP-only tunnel hostname. Resolve the record
    against authoritative DNS and join by hostname from the intended client
    network. Only then merge the standalone Homer card change (Homer syncs
    automatically). The card links to game instructions,
