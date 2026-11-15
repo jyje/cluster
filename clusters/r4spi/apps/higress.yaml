@@ -151,6 +151,143 @@ spec:
                             name: echo
                             port:
                               number: 80
+          # Annotation tests (#314). whoami prints its pod name, so session
+          # affinity can be seen, and "?wait=5s" delays the answer, so timeouts
+          # can be seen. Each Ingress has its own unresolvable host, reachable
+          # only through a port-forward.
+          - apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: whoami
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              replicas: 2
+              selector:
+                matchLabels:
+                  app: whoami
+              template:
+                metadata:
+                  labels:
+                    app: whoami
+                spec:
+                  containers:
+                    - name: whoami
+                      image: traefik/whoami:v1.10.4
+                      ports:
+                        - containerPort: 80
+                      resources:
+                        requests:
+                          cpu: 5m
+                          memory: 16Mi
+                        limits:
+                          memory: 64Mi
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: whoami
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              selector:
+                app: whoami
+              ports:
+                - port: 80
+                  targetPort: 80
+          # Several allowed origins and credentials, the case the
+          # configuration-snippet origin echo covers on ingress-nginx.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-cors
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/enable-cors: "true"
+                nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online, https://other.example.test"
+                nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-cors.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # Cookie affinity across two pods.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-affinity
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/affinity: "cookie"
+                nginx.ingress.kubernetes.io/session-cookie-name: "t-affinity"
+                nginx.ingress.kubernetes.io/session-cookie-max-age: "600"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-affinity.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # The nginx timeout annotations, and the Higress one for comparison.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-timeout-nginx
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/proxy-read-timeout: "3"
+                nginx.ingress.kubernetes.io/proxy-send-timeout: "3"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-timeout-nginx.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-timeout-higress
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                higress.io/timeout: "3"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-timeout-higress.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # Request body limit.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-body
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-body.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # Rate and connection limits.
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-rate
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/limit-rps: "2"
+                nginx.ingress.kubernetes.io/limit-connections: "5"
+            spec:
+              ingressClassName: higress
+              rules:
+                - host: t-rate.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
