@@ -420,6 +420,60 @@ spec:
                     paths:
                       - {path: /echo, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
                       - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
+          # TLS and certificate checks (#314, step 2). A self-signed
+          # certificate proves that port 443 serves a Higress Ingress with TLS.
+          - apiVersion: cert-manager.io/v1
+            kind: Issuer
+            metadata:
+              name: selfsigned
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              selfSigned: {}
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: c-tls
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: c-tls
+              dnsNames:
+                - tls.compat.invalid
+              issuerRef:
+                kind: Issuer
+                name: selfsigned
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: c-tls
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              ingressClassName: higress
+              tls:
+                - secretName: c-tls
+                  hosts:
+                    - tls.compat.invalid
+              rules:
+                - host: tls.compat.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # A request to Let's Encrypt staging through the Higress issuer. It
+          # cannot finish, because the public port 80 still reaches
+          # ingress-nginx, but it makes cert-manager create the challenge
+          # Ingress with class higress, so we can check that Higress serves the
+          # challenge path. Remove it after the check.
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: acme-probe
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: acme-probe
+              dnsNames:
+                - higress-probe.app.jyje.online
+              issuerRef:
+                kind: ClusterIssuer
+                name: higress-letsencrypt-stag
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
