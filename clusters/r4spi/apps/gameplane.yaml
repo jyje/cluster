@@ -156,6 +156,10 @@ spec:
                 nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
                 nginx.ingress.kubernetes.io/limit-rps: "20"
                 nginx.ingress.kubernetes.io/limit-connections: "50"
+                # The Homer card pings /healthz from the browser, so the
+                # dashboard origin has to be allowed. Only that origin.
+                nginx.ingress.kubernetes.io/enable-cors: "true"
+                nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online"
             spec:
               ingressClassName: nginx
               tls:
