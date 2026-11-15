@@ -1,0 +1,93 @@
+{{- if not .Values.api.standalone }}
+{{- if .Values.mcpServer.enabled }}
+# Optional, strictly read-only MCP server. It speaks MCP (JSON-RPC 2.0) over
+# stdio only, never a network port, so there is no Service here — reach a
+# running instance with:
+#   kubectl exec -i deploy/gameplane-mcp-server -n {{ .Release.Namespace }} -- /mcp-server serve
+# The container's own long-running process runs the `idle` subcommand (no
+# args); it does nothing besides keep a container alive for `kubectl exec`
+# to attach to. Each `serve` session gets its own isolated read-only client.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gameplane-mcp-server
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+---
+# Cluster-wide, read-only: get/list/watch only, on exactly the resources the
+# server's tools read. No write verb (create/update/patch/delete) appears
+# anywhere in this file — see mcp-server/README.md for the read-only
+# guarantee this mirrors in code (Client in mcp-server/internal/kube/client.go exposes no
+# mutating method, and main_test.go asserts no tool is registered that could
+# use one).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-mcp-server-read
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["gameplane.local"]
+    resources: [gameservers, gametemplates, backups, backupschedules, restores, modules, modulesources]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods, events]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-mcp-server-read
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-mcp-server-read
+subjects:
+  - kind: ServiceAccount
+    name: gameplane-mcp-server
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gameplane-mcp-server
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.mcpServer.replicas }}
+  selector:
+    matchLabels: { app.kubernetes.io/name: gameplane-mcp-server }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gameplane-mcp-server
+        {{- include "gameplane.labels" . | nindent 8 }}
+    spec:
+      {{- include "gameplane.placement" .Values.mcpServer | nindent 6 }}
+      serviceAccountName: gameplane-mcp-server
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: mcp-server
+          image: {{ include "gameplane.mcpServerImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # No args: defaults to the `idle` subcommand (see mcp-server/main.go).
+          # No ports, no probes: this container exposes no HTTP/TCP surface to
+          # probe — its only interface is `kubectl exec -i ... -- /mcp-server
+          # serve`, which Kubernetes doesn't have a probe verb for.
+          resources: {{ toYaml .Values.mcpServer.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+
+{{- end }}

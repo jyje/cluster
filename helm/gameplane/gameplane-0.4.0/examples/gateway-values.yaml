@@ -1,0 +1,14 @@
+# Replace all identity and CIDR examples before installing on a remote cluster.
+# Central API/database/UI are omitted; the operator and agent mTLS remain.
+api:
+  enabled: false
+gateway:
+  enabled: true
+  clusterID: remote-1
+  peerURI: spiffe://gameplane.example/central-api
+  namespaces: [gameplane-games]
+  serverTLSSecret: gameplane-gateway-server
+  centralClientCASecret: gameplane-central-client-ca
+  networkPolicy:
+    peerCIDRs: [10.20.30.40/32]
+    apiServerCIDRs: [10.96.0.1/32, 10.0.0.10/32]

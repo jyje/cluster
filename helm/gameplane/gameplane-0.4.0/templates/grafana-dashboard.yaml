@@ -1,0 +1,24 @@
+{{- if (eq (include "gameplane.operatorEnabled" .) "true") }}
+{{- if .Values.grafanaDashboards.enabled }}
+# Grafana dashboard for the operator, shipped as a ConfigMap that the Grafana
+# sidecar (kube-prometheus-stack / grafana helm chart) auto-imports by label.
+# The JSON lives in dashboards/ and is embedded verbatim via .Files.Get, so its
+# Grafana field templating (e.g. {{`{{controller}}`}}) is NOT processed by Helm.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gameplane-operator-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gameplane.labels" . | nindent 4 }}
+    {{- with .Values.grafanaDashboards.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  gameplane-workloads.json: |-
+    {{- .Files.Get "dashboards/gameplane-workloads.json" | nindent 4 }}
+  gameplane-operator.json: |-
+    {{- .Files.Get "dashboards/gameplane-operator.json" | nindent 4 }}
+{{- end }}
+
+{{- end }}

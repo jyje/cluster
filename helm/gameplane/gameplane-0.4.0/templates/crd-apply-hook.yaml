@@ -1,0 +1,287 @@
+{{- if not .Values.api.standalone }}
+{{- if .Values.crds.autoApply.enabled }}
+{{- /*
+Helm installs the files under crds/ only on the FIRST install and never
+updates them on `helm upgrade` — a documented Helm limitation. This hook
+closes that gap for every environment (not just this repo's `make dev-install`):
+a Job runs `kubectl apply --server-side` over the CRDs on pre-UPGRADE, so a
+plain `helm upgrade` always brings the CRD schema up to date.
+
+Normally pre-upgrade ONLY, not pre-install: a fresh install already gets the
+CRDs from Helm's native crds/ install, which needs no pod — so gating the
+hook to upgrades keeps first installs (air-gapped, or the kind e2e) working
+with zero dependency on pulling the kubectl image, and only reaches for it on
+the upgrades that actually need it. The one exception (F-218): crds/ silently
+skips any CRD that already exists, and `helm uninstall` never deletes CRDs,
+so installing a newer chart onto a cluster an older release was uninstalled
+from finds its CRDs already present and never brings them up to date. The
+block below detects exactly that case by comparing a schema-bundle hash
+stamped on every CRD, and adds pre-install to this hook's events only then —
+ordinary fresh installs are unaffected.
+
+Why a Job and not templates/: the CRDs can't live in templates/ (their
+descriptions contain Go-template syntax like `{{"{{"}}.Params.message{{"}}"}}`
+that Helm would try to evaluate), and the large gametemplates CRD needs
+server-side apply to avoid the client-side last-applied-annotation size
+limit. So the CRDs are shipped in crd-manifests/ (readable by .Files, unlike
+the special crds/ dir), mounted into the Job via a ConfigMap.
+
+All resources are hook-scoped and cleaned up after a successful run; only
+the CRDs they apply persist (CRDs are never owned or deleted by Helm here,
+so `helm uninstall` never wipes your GameServers).
+*/}}
+{{- /*
+F-218: Helm v3 runs its native crds/ install BEFORE it renders templates, so
+on a genuinely fresh cluster the Gameplane CRDs already exist by the time
+this file is rendered — "does the CRD exist" alone would fire the hook on
+every install. What distinguishes a leftover CRD from one crds/ created a
+moment ago is its content. `make manifests` (hack/sync-chart-crds.sh) stamps
+every CRD in crds/ and crd-manifests/ with `gameplane.local/crd-bundle-sha256`,
+a hash over the whole generated CRD set. So:
+
+  - fresh cluster: crds/ just created the CRDs carrying THIS chart's stamp
+    -> stamps match -> pre-upgrade only, no Job, no kubectl image pull;
+  - leftover CRDs from an older, uninstalled release: stamp absent (releases
+    that predate it) or different -> also fire on pre-install, which applies
+    crd-manifests/ and so brings both the schema and the stamp up to date.
+
+Helm 4 differs: its crds/ install is a server-side apply (manager "helm"),
+so it updates leftover CRDs itself, stamp included, before this file is
+rendered; the stamps then match and the hook stays pre-upgrade only, which
+is correct because the schema is already current. That apply only succeeds
+when "helm" owns the fields it changes, hence the Job's --field-manager.
+
+`lookup` returns an empty map during `helm template`/client-side dry-run or
+without cluster access, so render checks always see pre-upgrade only.
+gameservers is the probe because it has existed in every release; the hash
+covers all CRDs, so a change to any of them changes its stamp too.
+*/}}
+{{- $crdStamp := "gameplane.local/crd-bundle-sha256" }}
+{{- $wantStamp := dig "metadata" "annotations" $crdStamp "" (.Files.Get "crd-manifests/gameplane.local_gameservers.yaml" | fromYaml) }}
+{{- if not $wantStamp }}
+{{- fail (printf "crd-manifests/gameplane.local_gameservers.yaml carries no %s annotation; run `make manifests`" $crdStamp) }}
+{{- end }}
+{{- $liveCRD := lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" "gameservers.gameplane.local" }}
+{{- $liveStamp := dig "metadata" "annotations" $crdStamp "" $liveCRD }}
+{{- $reinstallOverLeftoverCRDs := and (not .Release.IsUpgrade) $liveCRD (ne $liveStamp $wantStamp) }}
+{{- $hookEvents := "pre-upgrade" }}
+{{- if $reinstallOverLeftoverCRDs }}
+{{- $hookEvents = "pre-install,pre-upgrade" }}
+{{- end }}
+{{- $hookAnnotations := dict
+  "helm.sh/hook" $hookEvents
+  "helm.sh/hook-delete-policy" "before-hook-creation,hook-succeeded" }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-crd-apply
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "-5") $hookAnnotations) | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # Cluster-scoped: namespace-qualified so the same release name in two
+  # namespaces doesn't collide on this name.
+  name: {{ .Release.Name }}-{{ .Release.Namespace }}-crd-apply
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "-5") $hookAnnotations) | nindent 4 }}
+rules:
+  # Scoped to CRDs only. get/create for first apply, patch for server-side
+  # apply of an existing CRD (list lets kubectl resolve the resource).
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-{{ .Release.Namespace }}-crd-apply
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "-5") $hookAnnotations) | nindent 4 }}
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: {{ .Release.Name }}-{{ .Release.Namespace }}-crd-apply }
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-crd-apply
+    namespace: {{ .Release.Namespace }}
+{{- if and (eq (include "gameplane.apiEnabled" .) "true") .Release.IsUpgrade }}
+---
+# One-time workload migration, riding along with this hook because it needs
+# exactly the same thing: a kubectl that runs BEFORE Helm applies the release.
+#
+# Older releases (including combined PostgreSQL installs) shipped no `strategy`
+# on the api Deployment, so the apiserver defaulted it to RollingUpdate with a
+# spec.strategy.rollingUpdate block. The chart now sets `type: Recreate` (the
+# API's audit/user-management locks require one process), and the apiserver rejects
+# the two together:
+#
+#   spec.strategy.rollingUpdate: Forbidden: may not be specified when
+#   strategy `type` is 'Recreate'
+#
+# Helm cannot clear the stale field itself: under server-side apply it does
+# not own it, so an explicit null is not enough, and the whole `helm upgrade`
+# fails -- not just the Deployment. Hence a patch that runs first.
+#
+# Namespaced Role, not an addition to the CRD ClusterRole above: this touches
+# one Deployment in the release namespace and should not be able to reach
+# anything else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-strategy-migrate
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "-5") $hookAnnotations) | nindent 4 }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    # The chart always names the API Deployment "gameplane-api" literally
+    # (api.yaml), not `{{ .Release.Name }}-api` like the surrounding
+    # Role/RoleBinding names. A release installed under any other name (e.g.
+    # `gp`) used to target a Deployment that never existed and abort every
+    # upgrade (F-213).
+    resourceNames: ["gameplane-api"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-strategy-migrate
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "-5") $hookAnnotations) | nindent 4 }}
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ .Release.Name }}-strategy-migrate }
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-crd-apply
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-crd-manifests
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "-5") $hookAnnotations) | nindent 4 }}
+data:
+  # .AsConfig embeds each CRD file verbatim (filename: content). .Files.Get
+  # does not re-template the content, so the {{"{{"}} … {{"}}"}} in CRD
+  # descriptions is preserved literally.
+{{ (.Files.Glob "crd-manifests/*.yaml").AsConfig | indent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-crd-apply
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml (merge (dict "helm.sh/hook-weight" "0") $hookAnnotations) | nindent 4 }}
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gameplane-crd-apply
+        {{- include "gameplane.labels" . | nindent 8 }}
+    spec:
+      {{- include "gameplane.placement" .Values.crds.autoApply | nindent 6 }}
+      serviceAccountName: {{ .Release.Name }}-crd-apply
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      {{- /* The target may be enabled for the first time during this upgrade.
+             Only an existing Deployment needs migration; a lookup error fails
+             rendering, while NotFound safely skips the patch. */}}
+      {{- if and (eq (include "gameplane.apiEnabled" .) "true") .Release.IsUpgrade (lookup "apps/v1" "Deployment" .Release.Namespace "gameplane-api") }}
+      initContainers:
+        # Clear the stale spec.strategy.rollingUpdate left by releases that
+        # predate the Recreate strategy — see the Role above for why Helm
+        # cannot do this itself. An initContainer rather than a second command
+        # on the container below because the kubectl image is distroless and
+        # has no shell to chain with.
+        #
+        # A strategic-merge patch, not a JSON `remove`: it sets type and
+        # clears rollingUpdate atomically (clearing it while the live type is
+        # still RollingUpdate would just get defaulted straight back), a null
+        # deletes the key rather than erroring when it is already absent, and
+        # re-running it on an already-migrated Deployment is a no-op. So this
+        # stays safe on every subsequent upgrade, not just the one that needs
+        # it.
+        - name: migrate-api-strategy
+          image: {{ .Values.crds.autoApply.image | quote }}
+          imagePullPolicy: {{ .Values.crds.autoApply.pullPolicy }}
+          command:
+            - kubectl
+            - patch
+            - deployment
+            - gameplane-api
+            - --type=merge
+            - -p
+            - '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
+          env:
+            - { name: HOME, value: /tmp }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      {{- end }}
+      containers:
+        - name: kubectl
+          image: {{ .Values.crds.autoApply.image | quote }}
+          imagePullPolicy: {{ .Values.crds.autoApply.pullPolicy }}
+          # --field-manager=helm: Helm 4 installs crds/ with a server-side
+          # apply under field manager "helm" and WITHOUT --force-conflicts.
+          # .spec.versions is an atomic list, so under kubectl's default
+          # manager ("kubectl") every schema change this hook applied left
+          # "kubectl" the sole owner of it, and a later `helm install` over
+          # the leftover CRDs (after `helm uninstall`) failed with
+          # "Apply failed with 1 conflict: conflict with \"kubectl\" ...
+          # .spec.versions". Applying as "helm" keeps one owner, so Helm's own
+          # crds/ apply can move the schema on. --force-conflicts still takes
+          # the fields over from any other manager (e.g. "kubectl" from an
+          # older release's hook).
+          command: ["kubectl", "apply", "--server-side", "--force-conflicts", "--field-manager=helm", "-f", "/crds"]
+          env:
+            # kubectl caches API discovery under $HOME/.kube; point it at the
+            # writable emptyDir so readOnlyRootFilesystem holds.
+            - { name: HOME, value: /tmp }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: crds, mountPath: /crds, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: crds
+          configMap:
+            name: {{ .Release.Name }}-crd-manifests
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+
+{{- end }}

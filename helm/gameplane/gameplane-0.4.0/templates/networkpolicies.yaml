@@ -1,0 +1,419 @@
+{{- if (eq (include "gameplane.operatorEnabled" .) "true") }}
+{{- if .Values.networkPolicies.enabled }}
+# Default-deny ingress in the games namespace. Individual GameServers
+# open only the ports declared in their template (and whatever the
+# operator surfaces via the backing Service / Ingress).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: []
+---
+# Default-deny egress. This rule opens only DNS; outbound access to the
+# public internet (game binary / asset / mod downloads) is granted by the
+# allow-game-public-egress policy below, and apiserver access by
+# allow-agent-to-apiserver. Operators can add further game-specific allow
+# policies as needed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Allow the agent sidecar to reach the kube-apiserver for its status
+# heartbeat (gameservers/status patches). Service VIP traffic is DNATed
+# to the apiserver endpoint before policy evaluation on most CNIs, so an
+# ipBlock toward the endpoint address is required; like the kubelet
+# probes policy below, default to RFC1918 + link-local and let operators
+# narrow it via networkPolicies.apiServerCIDRs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-agent-to-apiserver
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Egress]
+  egress:
+    - to:
+        {{- $apiCidrs := (.Values.networkPolicies.apiServerCIDRs | default (list)) }}
+        {{- if $apiCidrs }}
+        {{- range $apiCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+        {{- else }}
+        - ipBlock: { cidr: 10.0.0.0/8 }
+        - ipBlock: { cidr: 172.16.0.0/12 }
+        - ipBlock: { cidr: 192.168.0.0/16 }
+        - ipBlock: { cidr: 169.254.0.0/16 }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+---
+# Allow the API and operator pods (in the system namespace) to reach
+# every game pod's agent on port 8090. The API proxies console/files/
+# logs/players traffic; the operator calls /quiesce before backups.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-agent
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-api
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-operator
+      ports:
+        - { protocol: TCP, port: 8090 }
+{{- $capture := .Values.capture | default dict }}
+{{- if $capture.enabled }}
+---
+# Capture control and local file access use the sidecar's separate mTLS port.
+# Keep this allowance independent of the agent and kubelet probe ports.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-capture
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        {{- if (eq (include "gameplane.apiEnabled" .) "true") }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-api
+              app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- end }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-operator
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - { protocol: TCP, port: 9091 }
+{{- end }}
+{{- with .Values.serviceMonitors.scrapeNamespaceSelector }}
+{{- if $.Values.serviceMonitors.enabled }}
+---
+# F-216: opens only the agent's plain-HTTP metrics port 9090, never the
+# mTLS control port 8090; rationale in agent/specs.md's /metrics section.
+# Rendered only once an operator opts in via
+# serviceMonitors.scrapeNamespaceSelector; left empty, this stays exactly
+# as restrictive as before.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-to-agent
+  namespace: {{ $.Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            {{- toYaml . | nindent 12 }}
+      ports:
+        - { protocol: TCP, port: 9090 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-to-tunnel
+  namespace: {{ $.Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-tunnel
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            {{- toYaml . | nindent 12 }}
+      ports:
+        - { protocol: TCP, port: 8091 }
+{{- end }}
+{{- end }}
+{{- $probeIngress := and (eq (include "gameplane.operatorEnabled" .) "true") (.Values.networkPolicies.probeIngress | default dict).enabled }}
+{{- if or (not $probeIngress) .Values.networkPolicies.probePorts }}
+---
+# Allow probe traffic from kubelet. Source IP depends on the CNI; by
+# default we scope to RFC1918 + link-local, which covers most single-
+# cluster installs without opening the public internet. Operators on
+# clusters where nodes sit outside those ranges should set
+# networkPolicies.kubeletCIDRs explicitly.
+#
+# With networkPolicies.probeIngress.enabled (the default) the operator
+# admits each server's probes to that server's probe ports only, and this
+# rule is rendered only for the extra probePorts listed explicitly.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubelet-probes
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        {{- $cidrs := (.Values.networkPolicies.kubeletCIDRs | default (list)) }}
+        {{- if $cidrs }}
+        {{- range $cidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+        {{- else }}
+        - ipBlock: { cidr: 10.0.0.0/8 }
+        - ipBlock: { cidr: 172.16.0.0/12 }
+        - ipBlock: { cidr: 192.168.0.0/16 }
+        - ipBlock: { cidr: 169.254.0.0/16 }
+        {{- end }}
+      {{- with .Values.networkPolicies.probePorts }}
+      ports:
+        {{- range . }}
+        - { protocol: {{ .protocol }}, port: {{ .port }} }
+        {{- end }}
+      {{- end }}
+{{- end }}
+{{- if .Values.networkPolicies.gameEgress.enabled }}
+---
+# Allow game pods to reach the public internet for binary/asset/mod
+# downloads on startup. Without this, the default-deny egress policy
+# above blocks the download and the server hangs in "Starting" forever.
+# Private ranges are excepted so game pods still can't reach in-cluster
+# services or link-local metadata (anti-SSRF / tenant isolation).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-game-public-egress
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- range .Values.networkPolicies.gameEgress.privateCIDRs }}
+              - {{ . | quote }}
+              {{- end }}
+      ports:
+        {{- range .Values.networkPolicies.gameEgress.ports }}
+        - { protocol: {{ .protocol }}, port: {{ .port }} }
+        {{- end }}
+{{- end }}
+{{- /* `helm upgrade --reuse-values` from a release older than this key
+       (F-214) carries no networkPolicies.backupEgress; fall back to the
+       values.yaml defaults so upgraded clusters keep backup egress. */ -}}
+{{- $backupEgress := .Values.networkPolicies.backupEgress | default (dict "enabled" true "ports" (list (dict "protocol" "TCP" "port" 443) (dict "protocol" "TCP" "port" 22))) }}
+{{- if $backupEgress.enabled }}
+---
+# Allow Backup/Restore restic Job pods to reach their configured
+# repository (F-215). Job pods carry no chart-managed label of their
+# own (only the Job controller's batch.kubernetes.io/job-name) until
+# the operator's Backup/Restore reconcilers stamp them with
+# app.kubernetes.io/name=gameplane-backup-restore — this policy
+# selects that label. The destination is whatever an admin's repo
+# Destination Secret points at (s3/b2/rest/sftp/swift/azure/gcs,
+# in-cluster or public), so, unlike allow-game-public-egress, no
+# private-range exception is applied here: the destination is
+# operator-configured, not attacker-influenced, and restic
+# repositories are at least as often private (an in-cluster or LAN
+# store, like this chart's own e2e fixture) as they are public.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backup-restore-egress
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-backup-restore
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        {{- range $backupEgress.ports }}
+        - { protocol: {{ .protocol }}, port: {{ .port }} }
+        {{- end }}
+{{- end }}
+---
+# Allow inbound traffic to the wake sentinel on its advertised ports.
+# The sentinel pod holds the advertised ports while a game is asleep, and must
+# accept player traffic on the same CIDRs allowed to game pods — reusing
+# networkPolicies.gameIngress.fromCIDRs (not a sentinel-specific key) is
+# deliberate: whatever CIDRs are trusted to reach the game port while it's
+# awake are exactly the CIDRs that should be trusted to reach the sentinel
+# standing in for it while asleep.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-sentinel-ingress
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-waker
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        {{- $ingressCidrs := (.Values.networkPolicies.gameIngress.fromCIDRs | default (list "0.0.0.0/0")) }}
+        {{- range $ingressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+      {{- with .Values.networkPolicies.gameIngress.ports }}
+      ports:
+        {{- range . }}
+        - { protocol: {{ .protocol }}, port: {{ .port }} }
+        {{- end }}
+      {{- end }}
+---
+# Allow the sentinel to reach the kube-apiserver for patching the
+# wake-requested annotation.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-sentinel-to-apiserver
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-waker
+  policyTypes: [Egress]
+  egress:
+    - to:
+        {{- $apiCidrs := (.Values.networkPolicies.apiServerCIDRs | default (list)) }}
+        {{- if $apiCidrs }}
+        {{- range $apiCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+        {{- else }}
+        - ipBlock: { cidr: 10.0.0.0/8 }
+        - ipBlock: { cidr: 172.16.0.0/12 }
+        - ipBlock: { cidr: 192.168.0.0/16 }
+        - ipBlock: { cidr: 169.254.0.0/16 }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+---
+# Legacy sentinel proxy allowance, ingress half. This grants ALL ports between
+# non-isolated sentinels and games. NetworkPolicies are additive; per-server
+# player ingress does not narrow it. Opted-in templates use operator policies.
+# NetworkPolicy requires both sides to agree: the destination (this policy)
+# admits the sentinel, but default-deny-egress's podSelector: {} still
+# governs the sentinel as a SOURCE and only opens DNS. allow-sentinel-to-game-egress
+# below is the matching Egress half on the sentinel's selector — without it
+# the sentinel can never actually dial a game pod's <gs>-game-direct Service,
+# ingress rule notwithstanding.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-sentinel-to-game
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+    matchExpressions:
+      - { key: gameplane.local/sentinel-isolation, operator: NotIn, values: ["true"] }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-waker
+            matchExpressions:
+              - { key: gameplane.local/sentinel-isolation, operator: NotIn, values: ["true"] }
+      # Intentionally unrestricted for templates that have not opted in.
+---
+# The Egress half of allow-sentinel-to-game (see its comment above): admits
+# the sentinel, as a traffic SOURCE, to reach game pods. Selects the
+# sentinel's own label (gameplane-waker) so default-deny-egress's
+# podSelector: {} — which otherwise limits every pod in the namespace,
+# sentinels included, to DNS-only egress — no longer blocks the sentinel's
+# proxy path to <gs>-game-direct.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-sentinel-to-game-egress
+  namespace: {{ .Values.gamesNamespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-waker
+    matchExpressions:
+      - { key: gameplane.local/sentinel-isolation, operator: NotIn, values: ["true"] }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-game
+            matchExpressions:
+              - { key: gameplane.local/sentinel-isolation, operator: NotIn, values: ["true"] }
+      # Intentionally unrestricted for templates that have not opted in.
+{{- end }}
+
+{{- end }}

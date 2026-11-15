@@ -1,0 +1,23 @@
+apiVersion: v2
+appVersion: 0.4.0
+dependencies:
+- condition: operator.enabled
+  name: gameplane-crds
+  repository: ""
+  version: 0.4.0
+description: Kubernetes-native game server control panel (open-source alternative
+  to CubeCoders AMP).
+home: https://github.com/GameplanePanel/gameplane
+keywords:
+- game-server
+- minecraft
+- valheim
+- operator
+- control-panel
+maintainers:
+- name: Gameplane contributors
+name: gameplane
+sources:
+- https://github.com/GameplanePanel/gameplane
+type: application
+version: 0.4.0

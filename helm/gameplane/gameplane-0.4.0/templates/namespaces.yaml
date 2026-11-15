@@ -1,0 +1,19 @@
+{{- if (eq (include "gameplane.operatorEnabled" .) "true") }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.gamesNamespace }}
+  labels:
+    {{- include "gameplane.labels" . | nindent 4 }}
+    {{- if .Values.podSecurity.enforceRestricted }}
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: {{ .Values.podSecurity.version | default "v1.34" | quote }}
+    {{- end }}
+  annotations:
+    # F-212: exclude the games Namespace from Helm's ownership so
+    # `helm uninstall` does not delete it (and, with it, every GameServer,
+    # StatefulSet, PVC and per-server Secret Kubernetes garbage-collects
+    # underneath it). Same pattern as the API PVC in api.yaml.
+    helm.sh/resource-policy: keep
+
+{{- end }}

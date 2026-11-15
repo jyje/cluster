@@ -1,0 +1,102 @@
+{{- /* Only deploy the bridge when it's actually the sink target: enabled AND
+       no explicit webhook.url (an explicit url points the API elsewhere, so the
+       bridge would just sit idle — the API auto-wires to it only when url is
+       empty, mirroring this condition in api.yaml). */ -}}
+{{- if and (eq (include "gameplane.apiEnabled" .) "true") .Values.api.audit.webhook.syslogBridge.enabled (not .Values.api.audit.webhook.url) }}
+{{- $b := .Values.api.audit.webhook.syslogBridge }}
+{{- if not $b.syslog.addr }}
+{{- fail "api.audit.webhook.syslogBridge.enabled=true requires api.audit.webhook.syslogBridge.syslog.addr (your collector host:port)" }}
+{{- end }}
+# Generic HTTP-JSON → syslog relay. The API's audit webhook POSTs each event
+# here; this forwards it as RFC 5424 syslog to the configured collector. It
+# touches no Kubernetes API, so it runs with the default ServiceAccount and no
+# RBAC.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gameplane-audit-syslog-bridge
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $b.replicas }}
+  selector:
+    matchLabels: { app.kubernetes.io/name: gameplane-audit-syslog-bridge }
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gameplane-audit-syslog-bridge
+        {{- include "gameplane.labels" . | nindent 8 }}
+    spec:
+      {{- include "gameplane.placement" $b | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: bridge
+          image: {{ include "gameplane.auditSyslogBridgeImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: LISTEN_ADDR,    value: ":8514" }
+            - { name: SYSLOG_ADDR,    value: {{ $b.syslog.addr | quote }} }
+            - { name: SYSLOG_NETWORK, value: {{ $b.syslog.network | quote }} }
+            - { name: SYSLOG_TLS,     value: {{ $b.syslog.tls | quote }} }
+            - { name: APP_NAME,       value: {{ $b.appName | quote }} }
+            - { name: FACILITY,       value: {{ $b.facility | quote }} }
+            - { name: SEVERITY,       value: {{ $b.severity | quote }} }
+            {{- if .Values.api.audit.webhook.authSecretRef.name }}
+            # Require the same shared token the API sends as its Authorization
+            # header, so the bridge rejects unauthenticated POSTs from other
+            # workloads. Sourced from the Secret, never a flag/plain value.
+            - name: AUTH_HEADER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.audit.webhook.authSecretRef.name }}
+                  key:  {{ .Values.api.audit.webhook.authSecretRef.key }}
+            {{- end }}
+          ports:
+            - { name: http, containerPort: 8514 }
+          livenessProbe:  { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 5 }
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 2 }
+          resources: {{ toYaml $b.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gameplane-audit-syslog-bridge
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: gameplane-audit-syslog-bridge }
+  ports:
+    - { name: http, port: 8514, targetPort: http }
+{{- if .Values.networkPolicies.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gameplane-audit-syslog-bridge
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-audit-syslog-bridge
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-api
+      ports:
+        - protocol: TCP
+          port: 8514
+{{- end }}
+{{- end }}
