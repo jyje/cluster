@@ -38,6 +38,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
 | ingress | ingress-nginx | https://kubernetes.github.io/ingress-nginx |
 | traefik | traefik | https://traefik.github.io/charts |
+| envoy-gateway | envoyproxy | oci://docker.io/envoyproxy/gateway-helm and oci://docker.io/envoyproxy/gateway-crds-helm |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
 | jyje | — | (this repo; no external Helm repo) |
 | litellm | berriai | oci://docker.litellm.ai/berriai/litellm-helm |
