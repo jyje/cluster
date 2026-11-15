@@ -255,9 +255,9 @@ spec:
                 # Almost every card is discovered automatically from each app's
                 # Ingress annotations (see ingressSelector above), which build the
                 # groups via service.homer.rajsingh.info/name:
-                #   1. Applications — n8n, Open WebUI, LiteLLM, Hermes Agent, then Gameplane
+                #   1. Applications — n8n, Open WebUI, LiteLLM, Hermes Agent
                 #   2. Dashboards   — Grafana, Homer
-                #   3. Management   — Argo CD, Portainer, authentik
+                #   3. Management   — Argo CD, Portainer, authentik, then Gameplane
                 # Group names carry a numeric prefix everywhere they're set
                 # (here and in each app's Ingress annotations) because the
                 # operator renders groups sorted alphabetically by name, not
@@ -266,12 +266,12 @@ spec:
                 # Gameplane and external links are intentionally manual. Infisical
                 # is intentionally hidden from the dashboard for now.
                 services:
-                  # Same group name as the discovered Applications cards, so the
+                  # Same group name as the discovered Management cards, so the
                   # operator merges them. The icon repeats the one the Ingress
                   # annotations set, because the manual definition wins.
                   - parameters:
-                      name: "1. Applications"
-                      icon: "fas fa-rocket"
+                      name: "3. Management"
+                      icon: "fas fa-microchip"
                     items:
                       # Manual: this card has to survive the move from the bridge
                       # Ingress to the HTTPRoute. Items sort by name, and a lower
@@ -281,7 +281,7 @@ spec:
                           name: "Gameplane"
                           logo: "https://avatars.githubusercontent.com/u/339341021"
                           subtitle: "Kubernetes-native game server control panel"
-                          tag: "gameplane #game-server #kubernetes #control-panel #self-hosted"
+                          tag: "gameplane #game-server #control-panel #self-hosted"
                           url: "https://gameplane.app.jyje.online"
                           target: "_blank"
                           # A plain request to the dashboard root answers 404, so
