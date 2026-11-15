@@ -4,6 +4,10 @@ Do not sync this change until the live UDP echo proof of concept for
 [#274](https://github.com/jyje/cluster/issues/274) has passed before and after
 replacement of the echo Pod. Leave legacy ingress-nginx routes unchanged.
 
+The game Gateway stays on ClusterIP in this draft. Before rollout, carry
+forward the exact reserved LoadBalancer allocation that passed the live UDP
+proof. Do not use an automatically selected address from a shared pool.
+
 When submitting a manual sync directly through the Kubernetes Application
 resource, copy `spec.syncPolicy.syncOptions` into
 `operation.sync.syncOptions`. Argo CD's CLI/API does this by default. Without
