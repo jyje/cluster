@@ -72,6 +72,18 @@ spec:
                       from: Same
                     kinds:
                       - kind: HTTPRoute
+                # Plain HTTP listener for the bridge Ingress below. Traffic on
+                # it never leaves the cluster, like the hop from ingress-nginx
+                # to every other app. Remove it at the cutover.
+                - name: http-bridge
+                  protocol: HTTP
+                  port: 8080
+                  hostname: gameplane.app.jyje.online
+                  allowedRoutes:
+                    namespaces:
+                      from: Same
+                    kinds:
+                      - kind: HTTPRoute
           - apiVersion: gateway.networking.k8s.io/v1
             kind: HTTPRoute
             metadata:
@@ -81,6 +93,8 @@ spec:
               parentRefs:
                 - name: gameplane
                   sectionName: https
+                - name: gameplane
+                  sectionName: http-bridge
               hostnames:
                 - gameplane.app.jyje.online
               rules:
@@ -88,10 +102,13 @@ spec:
                     - name: gameplane-web
                       port: 80
           # Bridge: ingress-nginx still owns ports 80/443 on the nodes, so it
-          # terminates TLS with the Certificate above and forwards to the Envoy
-          # proxy, which routes by the HTTPRoute. Remove both objects at the
-          # cutover, when Envoy takes the ports. The Service gives the Ingress a
-          # backend in this namespace for the proxy in envoy-gateway-system.
+          # terminates TLS with the Certificate above and forwards plain HTTP
+          # to the Envoy proxy, which routes by the HTTPRoute. (HTTPS to Envoy
+          # would need proxy-ssl-secret, because ingress-nginx ignores the
+          # other proxy-ssl-* annotations without it, and no SNI is sent.)
+          # Remove both objects and the http-bridge listener at the cutover,
+          # when Envoy takes the ports. The Service gives the Ingress a backend
+          # in this namespace for the proxy in envoy-gateway-system.
           - apiVersion: v1
             kind: Service
             metadata:
@@ -101,8 +118,8 @@ spec:
               type: ExternalName
               externalName: envoy-web.envoy-gateway-system.svc.cluster.local
               ports:
-                - name: https
-                  port: 8443
+                - name: http
+                  port: 8080
                   protocol: TCP
           - apiVersion: networking.k8s.io/v1
             kind: Ingress
@@ -110,10 +127,6 @@ spec:
               name: gameplane
               namespace: "{{ .Release.Namespace }}"
               annotations:
-                # The Envoy listener is HTTPS and picks its certificate by SNI.
-                nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-                nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
-                nginx.ingress.kubernetes.io/proxy-ssl-name: gameplane.app.jyje.online
                 # The dashboard API answers 401 and 404 itself and the SPA reads
                 # them, so keep ingress-nginx from swapping them for its global
                 # error pages. An unused code overrides the global list.
@@ -141,7 +154,7 @@ spec:
                           service:
                             name: gameplane-envoy
                             port:
-                              number: 8443
+                              number: 8080
           - apiVersion: bitnami.com/v1alpha1
             kind: SealedSecret
             metadata:
