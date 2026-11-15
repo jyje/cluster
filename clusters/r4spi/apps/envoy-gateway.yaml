@@ -12,6 +12,11 @@ spec:
       valuesObject:
         crds:
           enabled: false
+        deployment:
+          pod:
+            annotations:
+              # Roll the controller when the watch configuration changes.
+              networking.jyje.io/watch-profile: factorio-and-henry-v1
         config:
           envoyGateway:
             provider:
@@ -21,6 +26,8 @@ spec:
                   type: Namespaces
                   namespaces:
                     - envoy-gateway-system
+                    - factorio
+                    - hermes-agent-henry
   destination:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
