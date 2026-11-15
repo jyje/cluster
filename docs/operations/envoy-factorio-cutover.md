@@ -52,3 +52,11 @@ sync the previous routing and namespace watch configuration before retiring
 any old controller or backend. Confirm an echo round trip and any previously
 active Traefik routes. Leave the shared Gateway API CRDs and Factorio data claim
 in place.
+
+## Node placement
+
+Envoy proxies must not run on the 4 KB page nodes (`app.jyje.live/raspi.type: 4b`).
+Their kernel uses a 39-bit address space, and the proxy's TCMalloc fails to map
+its heap there (`MmapAligned() failed`, exit code 133, CrashLoopBackOff). Both
+`EnvoyProxy` resources therefore carry a `NotIn 4b` node affinity. A node
+without the label, such as one added later, is still eligible.

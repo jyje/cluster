@@ -14,6 +14,19 @@ spec:
   provider:
     type: Kubernetes
     kubernetes:
+      envoyDeployment:
+        pod:
+          # Envoy's TCMalloc cannot map its heap on the 39-bit address space of
+          # the 4 KB page (Raspberry Pi 4) nodes and crashes at startup. Keep the
+          # proxies on the other nodes.
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: app.jyje.live/raspi.type
+                        operator: NotIn
+                        values: ["4b"]
       envoyService:
         type: LoadBalancer
         annotations:
@@ -56,6 +69,19 @@ spec:
   provider:
     type: Kubernetes
     kubernetes:
+      envoyDeployment:
+        pod:
+          # Envoy's TCMalloc cannot map its heap on the 39-bit address space of
+          # the 4 KB page (Raspberry Pi 4) nodes and crashes at startup. Keep the
+          # proxies on the other nodes.
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: app.jyje.live/raspi.type
+                        operator: NotIn
+                        values: ["4b"]
       envoyService:
         type: ClusterIP
 ---
