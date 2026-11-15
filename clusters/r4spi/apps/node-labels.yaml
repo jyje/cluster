@@ -16,11 +16,11 @@ spec:
         # deleted by Argo CD, so every Node carries Prune=false and Delete=false.
         #
         # Migration to a single `app.jyje.online` domain (the `app.jyje.live`
-        # domain is being retired):
+        # domain is retired):
         #   1. Declare the labels exactly as they were (done).
-        #   2. Add the `app.jyje.online` keys to every node and keep the old ones (this change).
-        #   3. Move the workloads to the `app.jyje.online` keys.
-        #   4. Remove the `app.jyje.live` keys.
+        #   2. Add the `app.jyje.online` keys to every node and keep the old ones (done).
+        #   3. Move the workloads to the `app.jyje.online` keys (done).
+        #   4. Remove the `app.jyje.live` keys (this change).
         manifests:
           - |
             apiVersion: v1
@@ -30,9 +30,6 @@ spec:
               annotations:
                 argocd.argoproj.io/sync-options: Prune=false,Delete=false
               labels:
-                app.jyje.live/node.family: raspberry-pi
-                app.jyje.live/raspi.ram: 8g
-                app.jyje.live/raspi.type: 4b
                 app.jyje.online/node.family: raspberry-pi
                 app.jyje.online/raspi.ram: 8g
                 app.jyje.online/raspi.type: 4b
@@ -44,9 +41,6 @@ spec:
               annotations:
                 argocd.argoproj.io/sync-options: Prune=false,Delete=false
               labels:
-                app.jyje.live/node.family: raspberry-pi
-                app.jyje.live/raspi.ram: 8g
-                app.jyje.live/raspi.type: 4b
                 app.jyje.online/node.family: raspberry-pi
                 app.jyje.online/raspi.ram: 8g
                 app.jyje.online/raspi.type: 4b
