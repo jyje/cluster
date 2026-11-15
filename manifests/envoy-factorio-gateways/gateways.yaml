@@ -110,3 +110,39 @@ spec:
               kubernetes.io/metadata.name: hermes-agent-henry
         kinds:
           - kind: HTTPRoute
+    # HTTPS listeners for the apps that move first. They have no public entry
+    # point yet: ingress-nginx still owns 80/443 on the nodes, so reach them
+    # in-cluster or through a port-forward until the cutover. One listener per
+    # host keeps each route attachable only from its own namespace.
+    - name: https-app
+      protocol: HTTPS
+      port: 8443
+      hostname: app.jyje.online
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: envoy-app-jyje-online-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: homer-instance
+        kinds:
+          - kind: HTTPRoute
+    - name: https-error
+      protocol: HTTPS
+      port: 8443
+      hostname: error.app.jyje.online
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: envoy-error-app-jyje-online-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: error-pages
+        kinds:
+          - kind: HTTPRoute
