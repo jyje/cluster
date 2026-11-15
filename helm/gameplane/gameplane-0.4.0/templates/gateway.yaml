@@ -1,0 +1,263 @@
+{{- $gateway := .Values.gateway | default dict }}
+{{- if $gateway.enabled }}
+{{- $cluster := required "gateway.clusterID is required when gateway.enabled=true" $gateway.clusterID }}
+{{- $peer := required "gateway.peerURI is required when gateway.enabled=true" $gateway.peerURI }}
+{{- $serverSecret := required "gateway.serverTLSSecret is required when gateway.enabled=true" $gateway.serverTLSSecret }}
+{{- $clientCA := required "gateway.centralClientCASecret is required when gateway.enabled=true" $gateway.centralClientCASecret }}
+{{- $namespaces := $gateway.namespaces | default (list .Values.gamesNamespace) | uniq }}
+{{- if not (or $gateway.networkPolicy.peerCIDRs $gateway.networkPolicy.peerSelectors) }}
+{{- fail "gateway.networkPolicy requires peerCIDRs or peerSelectors; no peer is trusted by default" }}
+{{- end }}
+{{- if not $gateway.networkPolicy.apiServerCIDRs }}
+{{- fail "gateway.networkPolicy.apiServerCIDRs must identify this cluster's Kubernetes API endpoints" }}
+{{- end }}
+{{- range $gateway.networkPolicy.peerCIDRs }}
+{{- if or (eq . "0.0.0.0/0") (eq . "::/0") }}
+{{- fail "gateway peerCIDRs must identify private management peers, not the public internet" }}
+{{- end }}
+{{- end }}
+{{- range $gateway.networkPolicy.peerSelectors }}
+{{- if or (not .namespaceSelector) (not .podSelector) (hasKey . "ipBlock") }}
+{{- fail "each gateway peerSelector requires both namespaceSelector and podSelector" }}
+{{- end }}
+{{- if or (not (or .namespaceSelector.matchLabels .namespaceSelector.matchExpressions)) (not (or .podSelector.matchLabels .podSelector.matchExpressions)) }}
+{{- fail "gateway peerSelectors must not contain empty selectors" }}
+{{- end }}
+{{- end }}
+{{- range $namespaces }}
+{{- if or (gt (len .) 63) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" .)) }}
+{{- fail "gateway.namespaces must contain explicit DNS-label namespace names" }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gameplane-gateway
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+{{- range $namespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $.Release.Name }}-gateway-read
+  namespace: {{ . }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: ["gameplane.local"]
+    resources: [gameservers, networkcaptures]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $.Release.Name }}-gateway-read
+  namespace: {{ . }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $.Release.Name }}-gateway-read
+subjects:
+  - kind: ServiceAccount
+    name: gameplane-gateway
+    namespace: {{ $.Release.Namespace }}
+{{- if $.Values.networkPolicies.enabled }}
+---
+# Match both sides of default-deny policies: only this gateway can reach
+# agents and capture sidecars, only in its declared namespaces.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $.Release.Name }}-gateway-to-agent
+  namespace: {{ . }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-game
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Release.Namespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-gateway
+              app.kubernetes.io/instance: {{ $.Release.Name }}
+      ports:
+        - { protocol: TCP, port: 8090 }
+        - { protocol: TCP, port: 9091 }
+{{- end }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gameplane-gateway
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $gateway.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gameplane-gateway
+        {{- include "gameplane.labels" . | nindent 8 }}
+    spec:
+      {{- include "gameplane.placement" $gateway | nindent 6 }}
+      serviceAccountName: gameplane-gateway
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: gateway
+          image: {{ include "gameplane.apiImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - gateway
+            - --addr=:8443
+            - {{ printf "--cluster=%s" $cluster | quote }}
+            - {{ printf "--namespaces=%s" (join "," $namespaces) | quote }}
+            - {{ printf "--peer-uri=%s" $peer | quote }}
+            - --tls-cert=/tls/server/tls.crt
+            - --tls-key=/tls/server/tls.key
+            - --tls-client-ca=/tls/central/ca.crt
+            - --agent-client-cert=/tls/agent-client/tls.crt
+            - --agent-client-key=/tls/agent-client/tls.key
+            - --agent-ca=/tls/agent-ca/ca.crt
+            - {{ printf "--max-request-duration=%s" $gateway.maxRequestDuration | quote }}
+            - {{ printf "--capture-enabled=%t" (.Values.capture.enabled | default false) | quote }}
+            - {{ printf "--capture-default-retention=%d" (.Values.capture.defaultRetentionSeconds | int64) | quote }}
+            - {{ printf "--capture-max-retention=%d" (.Values.capture.maxRetentionSeconds | int64) | quote }}
+            - {{ printf "--capture-default-max-duration=%d" (.Values.capture.defaultMaxDurationSeconds | int64) | quote }}
+            - {{ printf "--capture-default-max-size=%d" (.Values.capture.defaultMaxSizeBytes | int64) | quote }}
+          ports:
+            - { name: mtls, containerPort: 8443 }
+          # The listener requires mTLS on every request; no unauthenticated
+          # HTTP health exception. TCP probes check listener readiness only.
+          readinessProbe:
+            tcpSocket: { port: mtls }
+            initialDelaySeconds: 3
+          livenessProbe:
+            tcpSocket: { port: mtls }
+            initialDelaySeconds: 10
+          resources: {{ toYaml $gateway.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: server-tls, mountPath: /tls/server, readOnly: true }
+            - { name: central-ca, mountPath: /tls/central, readOnly: true }
+            - { name: agent-client, mountPath: /tls/agent-client, readOnly: true }
+            - { name: agent-ca, mountPath: /tls/agent-ca, readOnly: true }
+      volumes:
+        - name: server-tls
+          secret:
+            secretName: {{ $serverSecret }}
+            items:
+              - { key: tls.crt, path: tls.crt }
+              - { key: tls.key, path: tls.key }
+        - name: central-ca
+          secret:
+            secretName: {{ $clientCA }}
+            items:
+              - { key: ca.crt, path: ca.crt }
+        - name: agent-client
+          secret:
+            secretName: {{ $gateway.agentClientSecret }}
+            items:
+              - { key: tls.crt, path: tls.crt }
+              - { key: tls.key, path: tls.key }
+        - name: agent-ca
+          secret:
+            secretName: {{ $gateway.agentCASecret }}
+            # Do not mount ca.key from the operator's agent CA Secret.
+            items:
+              - { key: ca.crt, path: ca.crt }
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gameplane-gateway
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gameplane-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - { name: mtls, port: 8443, targetPort: mtls }
+---
+# Dedicated gateway policy remains active even if game network policies are
+# disabled. An empty peer/API allowlist is rejected during rendering above.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-gateway
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        {{- range $gateway.networkPolicy.peerCIDRs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+        {{- with $gateway.networkPolicy.peerSelectors }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 8443 }
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $gateway.networkPolicy.dnsNamespace }}
+          podSelector:
+            matchLabels: {{ toYaml $gateway.networkPolicy.dnsPodLabels | nindent 14 }}
+        {{- range $gateway.networkPolicy.dnsCIDRs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        {{- range $gateway.networkPolicy.apiServerCIDRs }}
+        - ipBlock: { cidr: {{ . | quote }} }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+    - to:
+        {{- range $namespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gameplane-game
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 8090 }
+        - { protocol: TCP, port: 9091 }
+{{- end }}

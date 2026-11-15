@@ -1,0 +1,495 @@
+{{- if (eq (include "gameplane.operatorEnabled" .) "true") }}
+{{- $gameNamespaces := include "gameplane.operatorGameNamespaces" . | fromJsonArray }}
+{{- $secretNamespaces := include "gameplane.operatorSecretNamespaces" . | fromJsonArray }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gameplane-operator
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+---
+# Cluster-wide reads for Gameplane CRDs and non-Secret workload primitives.
+# Secret reads and informers share an explicit namespace set; the Roles below
+# grant no Secret access outside that set. Workload writes are namespace-local.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-operator-watch
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+rules:
+  # Direct node identity/readiness checks for durable Hostport wake endpoints.
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [get]
+  - apiGroups: ["gameplane.local"]
+    resources: [gameservers, gametemplates, backups, backupschedules, restores, modules, modulesources, networkcaptures]
+    verbs: [get, list, watch]
+  # GameTemplate is cluster-scoped; the gametemplate controller updates
+  # status (inUseCount) and the module controller creates/deletes
+  # templates owned by Module objects.
+  - apiGroups: ["gameplane.local"]
+    resources: [gametemplates, gametemplates/status]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # Module is cluster-scoped; the module controller updates its own
+  # status, manages a finalizer (so a Module can't be deleted while a
+  # GameServer references its template), and patches spec mid-reconcile
+  # when version tracking resolves "latest" to a concrete tag.
+  - apiGroups: ["gameplane.local"]
+    resources: [modules, modules/status]
+    verbs: [get, update, patch]
+  - apiGroups: ["gameplane.local"]
+    resources: [modules/finalizers]
+    verbs: [update]
+  # ModuleSource is cluster-scoped, read-only on spec; controller writes
+  # the cached catalog into status.
+  - apiGroups: ["gameplane.local"]
+    resources: [modulesources/status]
+    verbs: [get, update, patch]
+  # Cluster is cluster-scoped; the cluster-status controller watches
+  # registered clusters and writes their health into status.
+  - apiGroups: ["gameplane.local"]
+    resources: [clusters]
+    verbs: [get, list, watch]
+  - apiGroups: ["gameplane.local"]
+    resources: [clusters/status]
+    verbs: [get, update, patch]
+  - apiGroups: ["apps"]
+    resources: [statefulsets, deployments]
+    verbs: [get, list, watch]
+  - apiGroups: ["batch"]
+    resources: [jobs]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [services, persistentvolumeclaims, configmaps, pods, pods/log, serviceaccounts]
+    verbs: [get, list, watch]
+  # The GameServer controller owns per-server agent RBAC objects and
+  # watches them for drift repair; writes stay namespace-scoped below.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, get, list, patch, watch]
+  - apiGroups: ["events.k8s.io"]
+    resources: [events]
+    verbs: [create, patch]
+  # PVC-provisioning-failure detection Gets the StorageClass a pending PVC
+  # names, to tell "the class does not exist" apart from "not bound yet" and
+  # surface PVCProvisioningFailed. Without this the check 403s and the
+  # GameServer sits in a generic Pending. Read-only, cluster-scoped.
+  - apiGroups: ["storage.k8s.io"]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+  # CSI VolumeSnapshots back the volume-snapshot backup strategy: the
+  # backup controller watches them cluster-wide for readyToUse and reads
+  # the (cluster-scoped) content objects they bind to. Creation/deletion is
+  # namespace-scoped in the manage Role below.
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: [volumesnapshots, volumesnapshotcontents]
+    verbs: [get, list, watch]
+  # Abort reclamation is restricted in the controller to recorded snapshot
+  # references and exact content UIDs; VolumeSnapshotContent is cluster-scoped.
+  - apiGroups: [snapshot.storage.k8s.io]
+    resources: [volumesnapshotcontents]
+    verbs: [delete]
+  # The GameServer controller registers Owns(&networkingv1.NetworkPolicy{})
+  # unconditionally (regardless of networkPolicies.enabled), and the
+  # manager's cache is cluster-scoped (no Cache/DefaultNamespaces option
+  # in operator/cmd/main.go), so that Owns() informer issues a
+  # cluster-wide LIST/WATCH on networkpolicies. Without this rule the
+  # informer's initial list is denied and the cache never syncs, so the
+  # manager exits after CacheSyncTimeout and crash-loops — taking down
+  # ALL reconciliation, not just game-ingress. Writes stay namespace-scoped
+  # in the manage Role below.
+  - apiGroups: ["networking.k8s.io"]
+    resources: [networkpolicies]
+    verbs: [get, list, watch]
+  # checkMetalLBPoolExists GETs MetalLB's namespaced IPAddressPool CR by name
+  # so a missing pool can be reported (PoolNotFound) without waiting for a
+  # MetalLB event. Read-only and deliberately narrow — the operator never
+  # creates, updates, or deletes MetalLB's own CRs. A cluster running the
+  # metallb flavor without MetalLB's CRDs installed still starts fine: the
+  # GET fails soft (see poolExistence in gameserver_controller.go).
+  - apiGroups: ["metallb.io"]
+    resources: [ipaddresspools]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-operator-watch
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-operator-watch
+subjects:
+  - kind: ServiceAccount
+    name: gameplane-operator
+    namespace: {{ .Release.Namespace }}
+---
+# Namespace-scoped writes: the operator mutates StatefulSets, Services,
+# PVCs, Secrets (for RCON passwords + mTLS server certs), Jobs (for
+# backups), and the Gameplane CRDs themselves — but only in the games
+# namespaces explicitly configured in gamesNamespace/operator.gameNamespaces.
+{{- range $namespace := $gameNamespaces }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $.Release.Name }}-operator-manage
+  namespace: {{ $namespace }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: ["gameplane.local"]
+    resources: [gameservers, backups, backupschedules, restores, networkcaptures]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["gameplane.local"]
+    resources: [gameservers/status, backups/status, backupschedules/status, restores/status, networkcaptures/status]
+    verbs: [get, update, patch]
+  - apiGroups: ["gameplane.local"]
+    resources: [gameservers/finalizers, backups/finalizers, backupschedules/finalizers, restores/finalizers, networkcaptures/finalizers]
+    verbs: [update]
+  - apiGroups: ["apps"]
+    resources: [statefulsets, deployments]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["batch"]
+    resources: [jobs]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [services, persistentvolumeclaims, configmaps, secrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # softStop writes the module-declared stop sequence to a consoleMode:
+  # pty game's stdin via this subresource when it has no RCON to run the
+  # sequence over instead (see operator/internal/controller/gameserver_stop_attach.go).
+  # Namespace-scoped, not cluster-wide: each configured games namespace
+  # gets its own Role, and pods/attach create is exec-equivalent — granting
+  # it cluster-wide would let the operator attach to stdin of any pod in
+  # any namespace, including kube-system and the API pod.
+  - apiGroups: [""]
+    resources: [pods/attach]
+    verbs: [create]
+  # Network capture sidecar injection via ephemeral containers (reconcileCapture
+  # in gameserver_controller.go). Namespace-scoped to this managed namespace.
+  - apiGroups: [""]
+    resources: [pods/ephemeralcontainers]
+    verbs: [get, patch, update]
+  # Per-GameServer agent identity: SA + heartbeat Role/RoleBinding
+  # (resourceNames-scoped to one GameServer's status subresource).
+  # Granting gameservers/status passes the RBAC escalation check
+  # because this Role already holds that permission above.
+  - apiGroups: [""]
+    resources: [serviceaccounts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # The backup controller creates VolumeSnapshots in the games namespace
+  # for the volume-snapshot backup strategy (deleted via owner GC when the
+  # Backup is trimmed).
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: [volumesnapshots]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # The game-ingress controller reconciles one NetworkPolicy per GameServer
+  # (<gameserver-name>-game-ingress), opening only that game's advertised
+  # ports to networkPolicies.gameIngress.fromCIDRs.
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $.Release.Name }}-operator-manage
+  namespace: {{ $namespace }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $.Release.Name }}-operator-manage
+subjects:
+  - kind: ServiceAccount
+    name: gameplane-operator
+    namespace: {{ $.Release.Namespace }}
+---
+{{- end }}
+{{- range $namespace := $secretNamespaces }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $.Release.Name }}-operator-secrets
+  namespace: {{ $namespace }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $.Release.Name }}-operator-secrets
+  namespace: {{ $namespace }}
+  labels: {{- include "gameplane.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $.Release.Name }}-operator-secrets
+subjects:
+  - kind: ServiceAccount
+    name: gameplane-operator
+    namespace: {{ $.Release.Namespace }}
+---
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gameplane-operator-leader-election
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [events, configmaps]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["events.k8s.io"]
+    resources: [events]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gameplane-operator-leader-election
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gameplane-operator-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: gameplane-operator
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gameplane-operator
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.operator.replicas }}
+  {{- if not (or .Values.operator.leaderElect (gt (int .Values.operator.replicas) 1)) }}
+  # Without leader election, prevent a rolling update from overlapping writers.
+  strategy:
+    type: Recreate
+    rollingUpdate: null
+  {{- else }}
+  # Explicitly restore rolling updates when election is re-enabled after a
+  # singleton install; the migration hook may own the previous Recreate field.
+  strategy:
+    type: RollingUpdate
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gameplane-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gameplane-operator
+        {{- include "gameplane.labels" . | nindent 8 }}
+      annotations:
+        checksum/mtls: {{ include "gameplane.mtlsChecksum" . }}
+    spec:
+      {{- include "gameplane.placement" .Values.operator | nindent 6 }}
+      serviceAccountName: gameplane-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: manager
+          image: {{ include "gameplane.operatorImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- include "gameplane.auxiliaryResourceArgs" .Values.operator | nindent 12 }}
+            {{- if or .Values.operator.leaderElect (gt (int .Values.operator.replicas) 1) }}
+            - --leader-elect
+            {{- end }}
+            - --agent-image={{ include "gameplane.agentImage" . }}
+            # A floating tag (e.g. :edge) defaults to ImagePullPolicy
+            # IfNotPresent under plain Kubernetes rules (only ":latest"
+            # defaults to Always), so a node reuses whatever agent image it
+            # already cached and game pods run a stale agent indefinitely.
+            # Inherit the same policy the chart uses for its own images
+            # (Always for :edge installs, IfNotPresent for pinned tags) so
+            # the agent sidecar rolls in step with the rest of Gameplane.
+            - --agent-image-pull-policy={{ .Values.image.pullPolicy }}
+            - --sentinel-image={{ include "gameplane.sentinelImage" . }}
+            - --tunnel-frp-image={{ include "gameplane.tunnelFrpImage" . }}
+            - --tunnel-tailscale-image={{ include "gameplane.tunnelTailscaleImage" . }}
+            - --tunnel-playit-image={{ include "gameplane.tunnelPlayitImage" . }}
+            {{- if .Values.operator.configInitImage }}
+            - --config-init-image={{ .Values.operator.configInitImage }}
+            {{- end }}
+            {{- if .Values.operator.resticImage }}
+            - --restic-image={{ .Values.operator.resticImage }}
+            {{- end }}
+            {{- with .Values.operator.backupPreparationTimeout }}
+            - --backup-preparation-timeout={{ . }}
+            {{- end }}
+            {{- with .Values.operator.backupQuiesceTimeout }}
+            - --backup-quiesce-timeout={{ . }}
+            {{- end }}
+            {{- with .Values.operator.backupCSICaptureTimeout }}
+            - --backup-csi-capture-timeout={{ . }}
+            {{- end }}
+            {{- if and (hasKey .Values.operator "backupHardSameNode") (ne .Values.operator.backupHardSameNode nil) }}
+            - --backup-hard-same-node={{ .Values.operator.backupHardSameNode }}
+            {{- end }}
+            {{- /* Omit the flags when the keys are absent/null (e.g. --reuse-values
+                   from a release predating them) so the operator's defaults
+                   (2 / 86400) apply. Not `| default`: an explicit 0 backoff is
+                   valid and must be honoured; a 0 deadline falls back. */}}
+            {{- /* Validate before `| int64`: it turns any non-integer (e.g. "abc",
+                   1.5) into 0 instead of failing. YAML numbers arrive as
+                   float64 (1000000 prints as 1e+06), so check by kind. */}}
+            {{- $backoff := .Values.operator.backupJobBackoffLimit }}
+            {{- if not (kindIs "invalid" $backoff) }}
+            {{- $whole := or (and (kindIs "float64" $backoff) (eq ($backoff | int64 | float64) $backoff)) (kindIs "int" $backoff) (kindIs "int64" $backoff) (and (kindIs "string" $backoff) (regexMatch "^[0-9]+$" $backoff)) }}
+            {{- if or (not $whole) (lt ($backoff | int64) 0) }}
+            {{- fail "operator.backupJobBackoffLimit must be an integer >= 0" }}
+            {{- end }}
+            - --backup-job-backoff-limit={{ $backoff | int64 }}
+            {{- end }}
+            {{- $deadline := .Values.operator.backupJobActiveDeadlineSeconds }}
+            {{- if $deadline }}
+            {{- $whole := or (and (kindIs "float64" $deadline) (eq ($deadline | int64 | float64) $deadline)) (kindIs "int" $deadline) (kindIs "int64" $deadline) (and (kindIs "string" $deadline) (regexMatch "^[0-9]+$" $deadline)) }}
+            {{- if or (not $whole) (lt ($deadline | int64) 0) }}
+            {{- fail "operator.backupJobActiveDeadlineSeconds must be an integer > 0" }}
+            {{- end }}
+            {{- if gt ($deadline | int64) 0 }}
+            - --backup-job-active-deadline-seconds={{ $deadline | int64 }}
+            {{- end }}
+            {{- end }}
+            - --agent-ca-bundle=/etc/gameplane/agent-ca/ca.crt
+            - --agent-client-cert=/etc/gameplane/agent-client/tls.crt
+            - --agent-client-key=/etc/gameplane/agent-client/tls.key
+            - --agent-ca-secret-name={{ .Values.api.agentMTLS.caSecretRef.name }}
+            - --game-namespaces={{ join "," $gameNamespaces }}
+            - --control-plane-namespace={{ .Values.operator.controlPlaneNamespace | default .Release.Namespace }}
+            - --agent-ca-secret-namespace={{ .Values.operator.agentCASecretNamespace | default .Release.Namespace }}
+            - --module-namespace={{ .Values.operator.moduleNamespace | default .Release.Namespace }}
+            - --restricted-workloads={{ .Values.podSecurity.enforceRestricted }}
+            - --agent-token-expiration-seconds={{ .Values.operator.agentTokenExpirationSeconds | default 3600 }}
+            {{- if and .Values.capture .Values.capture.enabled }}
+            - --capture-enabled=true
+            - --capture-sidecar-image={{ include "gameplane.captureImage" . }}
+            {{- $diagnostics := include "gameplane.nodeDiagnostics" . | fromJson }}
+            {{- if $diagnostics.enabled }}
+            - --diagnostics-namespace={{ $diagnostics.namespace }}
+            - --diagnostics-storage-class={{ $diagnostics.storageClass | default "" }}
+            {{- end }}
+            - --capture-default-retention-seconds={{ .Values.capture.defaultRetentionSeconds | int64 }}
+            - --capture-max-retention-seconds={{ .Values.capture.maxRetentionSeconds | int64 }}
+            - --capture-default-max-duration-seconds={{ .Values.capture.defaultMaxDurationSeconds | int64 }}
+            - --capture-default-max-size-bytes={{ .Values.capture.defaultMaxSizeBytes | int64 }}
+            {{- else }}
+            - --capture-enabled=false
+            {{- end }}
+            {{- if not (has .Values.operator.addressManager (list "metallb" "cilium" "none")) }}
+            {{- fail (printf "operator.addressManager must be one of metallb, cilium or none (got %q). The operator refuses to start on an unknown flavor rather than silently leaving every addressPool preference untranslated." (.Values.operator.addressManager | toString)) }}
+            {{- end }}
+            - --address-manager={{ .Values.operator.addressManager }}
+            - --metallb-namespace={{ .Values.operator.metalLBNamespace | default "metallb-system" }}
+            - --zap-log-level={{ .Values.operator.logLevel }}
+            {{- if .Values.operator.localModules.enabled }}
+            - --module-local-root={{ .Values.operator.localModules.mountPath }}
+            {{- end }}
+            {{- if .Values.operator.agentLogLevel }}
+            - --agent-log-level={{ .Values.operator.agentLogLevel }}
+            {{- end }}
+            {{- if and .Values.operator.gameDataStorage .Values.operator.gameDataStorage.storageClassName }}
+            - --game-data-storage-class={{ .Values.operator.gameDataStorage.storageClassName }}
+            {{- end }}
+            {{- if and .Values.networkPolicies.enabled .Values.networkPolicies.gameIngress.enabled }}
+            {{- if not .Values.networkPolicies.gameIngress.fromCIDRs }}
+            {{- fail "networkPolicies.gameIngress.fromCIDRs is empty: the operator cannot distinguish an explicit empty list from an unset flag and falls back to its own default (0.0.0.0/0), which OPENS player ingress to the whole internet instead of restricting it. An empty fromCIDRs is not a way to disable player ingress — set networkPolicies.gameIngress.enabled: false for that, or provide at least one CIDR to restrict access to." }}
+            {{- end }}
+            - --game-ingress-policy=true
+            {{- range .Values.networkPolicies.gameIngress.fromCIDRs }}
+            - --game-ingress-from-cidr={{ . }}
+            {{- end }}
+            {{- else }}
+            - --game-ingress-policy=false
+            {{- end }}
+            {{- if and .Values.networkPolicies.enabled (.Values.networkPolicies.probeIngress | default dict).enabled }}
+            - --probe-ingress-policy=true
+            {{- range (.Values.networkPolicies.kubeletCIDRs | default (list "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "169.254.0.0/16")) }}
+            - --probe-ingress-from-cidr={{ . }}
+            {{- end }}
+            {{- else }}
+            - --probe-ingress-policy=false
+            {{- end }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - { name: metrics, containerPort: 8080 }
+            - { name: health,  containerPort: 8081 }
+          # Generous startup grace. On a resource-constrained node the manager
+          # can take well over the default ~15s to bind its health server while
+          # it syncs informer caches (e.g. VolumeSnapshot). With a tight probe
+          # the kubelet kills it mid-startup (connection refused on :8081), the
+          # SIGTERM cancels the in-flight cache sync ("problem running manager:
+          # ... cache to be synced"), and it crash-loops — stalling all
+          # reconciliation. 30s delay + 6×15s tolerance keeps it alive through a
+          # slow start; readiness is even more lenient (it only gates traffic).
+          livenessProbe:
+            httpGet: { path: /healthz, port: health }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /readyz, port: health }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          resources: {{ toYaml .Values.operator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: agent-ca, mountPath: /etc/gameplane/agent-ca, readOnly: true }
+            - { name: agent-client, mountPath: /etc/gameplane/agent-client, readOnly: true }
+            {{- if .Values.operator.localModules.enabled }}
+            - { name: local-modules, mountPath: {{ .Values.operator.localModules.mountPath }}, readOnly: true }
+            {{- end }}
+      volumes:
+        - name: agent-ca
+          secret: { secretName: {{ .Values.api.agentMTLS.caSecretRef.name }} }
+        - name: agent-client
+          secret: { secretName: {{ .Values.api.agentMTLS.clientCertRef.name }} }
+        {{- if .Values.operator.localModules.enabled }}
+        - name: local-modules
+          {{- if .Values.operator.localModules.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.operator.localModules.existingClaim }}
+          {{- else if .Values.operator.localModules.hostPath }}
+          hostPath:
+            path: {{ .Values.operator.localModules.hostPath }}
+            type: Directory
+          {{- else }}
+          {{- fail "operator.localModules.enabled requires existingClaim or hostPath" }}
+          {{- end }}
+        {{- end }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- end }}

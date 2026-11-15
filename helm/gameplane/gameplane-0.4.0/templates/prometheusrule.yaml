@@ -1,0 +1,92 @@
+{{- if (eq (include "gameplane.operatorEnabled" .) "true") }}
+{{- if .Values.prometheusRules.enabled }}
+# Alerts on the operator's standard controller-runtime metrics (scraped by the
+# operator ServiceMonitor). Deliberately uses only the operator's own metric
+# series (controller_runtime_*, workqueue_*) with their built-in labels, so the
+# rules are portable — they don't assume any install-specific job names or
+# Prometheus relabeling. A sustained reconcile-error alert would have caught the
+# operator crash-loop classes this chart has hit (cache-sync, leader-election).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gameplane-operator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gameplane.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRules.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: gameplane.operator
+      rules:
+        - alert: GameplaneOperatorReconcileErrors
+          # Any controller failing reconciles steadily for 10m. The most useful
+          # single signal that the operator is unhealthy.
+          expr: sum by (controller) (rate(controller_runtime_reconcile_errors_total[5m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Gameplane operator reconcile errors ({{`{{ $labels.controller }}`}})
+            description: >-
+              The {{`{{ $labels.controller }}`}} controller has been returning
+              reconcile errors for over 10 minutes
+              ({{`{{ $value | printf "%.2f" }}`}}/s). Check the operator logs.
+        - alert: GameplaneOperatorWorkqueueBacklog
+          # Work piling up faster than it's processed — reconciliation falling
+          # behind (stuck dependency, throttled apiserver, etc.).
+          expr: sum by (name) (workqueue_depth) > 50
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Gameplane operator workqueue backlog ({{`{{ $labels.name }}`}})
+            description: >-
+              The {{`{{ $labels.name }}`}} workqueue has held more than 50 items
+              for 15 minutes ({{`{{ $value }}`}}); the operator is not keeping up.
+        - alert: GameplaneOperatorReconcileStuck
+          # A single reconcile running for >5m usually means a wedged controller.
+          expr: max by (name) (workqueue_longest_running_processor_seconds) > 300
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Gameplane operator reconcile stuck ({{`{{ $labels.name }}`}})
+            description: >-
+              A {{`{{ $labels.name }}`}} reconcile has been running for over 5
+              minutes ({{`{{ $value | printf "%.0f" }}`}}s).
+    - name: gameplane.fleet
+      # Alerts on the operator's domain metrics (gameplane_gameservers,
+      # gameplane_backups), labelled by phase. max() collapses each series across
+      # operator replicas — every replica's /metrics reports the same
+      # cache-derived counts, so without it a 2-replica install would double-count.
+      rules:
+        - alert: GameplaneGameServerFailed
+          # One or more GameServers stuck in the Failed phase — a crashed game
+          # process, a bad template, or a wedged reconcile the user should see.
+          expr: max(gameplane_gameservers{phase="Failed"}) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Gameplane GameServer(s) in the Failed phase
+            description: >-
+              {{`{{ $value }}`}} GameServer(s) have been in the Failed phase for
+              over 10 minutes. Check the GameServer status and the operator logs.
+        - alert: GameplaneBackupFailed
+          # A failed Backup is a data-loss risk and lingers as a Failed object
+          # until retention prunes it or a later backup succeeds — page on it.
+          expr: max(gameplane_backups{phase="Failed"}) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Gameplane Backup(s) in the Failed phase
+            description: >-
+              {{`{{ $value }}`}} Backup(s) are in the Failed phase. A backup
+              failed and has not been superseded; check the Backup status and the
+              operator logs before relying on restore.
+{{- end }}
+
+{{- end }}

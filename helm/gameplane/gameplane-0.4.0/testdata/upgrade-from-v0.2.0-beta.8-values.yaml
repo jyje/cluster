@@ -1,0 +1,478 @@
+## Gameplane Helm values.
+##
+## Top-level layout:
+##   image.*        — registry/tag shared by all component images
+##   operator.*     — operator Deployment tunables
+##   api.*          — API Deployment tunables (incl. DB + OIDC)
+##   ingress.*      — dashboard ingress
+##   gamesNamespace — namespace Gameplane creates GameServers in
+##   networkPolicies — default-deny policies in gamesNamespace
+##   serviceMonitors — Prometheus Operator integration
+##   podSecurity     — cluster-wide hardening knobs
+
+image:
+  # Component images are published to {registry}/{operator,api,agent} by the
+  # release workflow. The release matches this default; override only to pin a
+  # mirror or fork.
+  registry: ghcr.io/valgulnecron/gameplane
+  # Empty tag => the chart's appVersion (so chart vX pulls images vX). Set to a
+  # channel like "edge" to track the rolling images published on every main push.
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# CRD lifecycle. Helm installs the files under crds/ only on the FIRST install
+# and NEVER updates them on `helm upgrade` (a documented Helm limitation). This
+# hook closes that gap: a pre-UPGRADE Job runs `kubectl apply --server-side`
+# over the CRDs, so a plain `helm upgrade` always brings the CRD schema up to
+# date. First installs get the CRDs from Helm's native crds/ (no pod), so the
+# hook only runs on upgrades — air-gapped first installs need no extra image.
+# It never deletes CRDs, so `helm uninstall` still leaves your GameServers
+# intact.
+crds:
+  autoApply:
+    enabled: true
+    # kubectl image the apply Job runs. Any image with kubectl on PATH works;
+    # retag to a private mirror for air-gapped installs (only needed at upgrade
+    # time — first installs don't run the hook).
+    image: registry.k8s.io/kubectl:v1.36.3
+    # Pull policy for the kubectl image above. Kept separate from image.pullPolicy
+    # so tracking :edge components (image.pullPolicy=Always) doesn't force a
+    # re-pull of this pinned tag on every upgrade.
+    pullPolicy: IfNotPresent
+
+operator:
+  replicas: 1
+  logLevel: info     # zap log level: debug|info|error (warn not supported by zap's --zap-log-level)
+  agentLogLevel: ""  # injected into every agent sidecar as GAMEPLANE_LOG_LEVEL (debug|info|warn|error); empty injects nothing, avoiding StatefulSet rollouts on upgrade
+  # Leader election guards against two operators reconciling at once. With a
+  # single replica it's unnecessary, and on a resource-starved node a missed
+  # lease renewal makes controller-runtime exit (the operator then crash-loops
+  # and stops reconciling). Leave on for HA installs; turn off for single-replica
+  # or constrained clusters (the e2e install sets it false).
+  leaderElect: true
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  agentImage: ""   # defaults to {image.registry}/agent:{image.tag}
+  sentinelImage: ""   # defaults to {image.registry}/sentinel:{image.tag}
+  # Which load-balancer address manager runs in this cluster, so the operator
+  # knows how to express a GameServer's spec.networking.addressPool/address
+  # preference. One of:
+  #   metallb — Service annotations metallb.io/address-pool and
+  #             metallb.io/loadBalancerIPs
+  #   cilium  — Service label gameplane.local/lb-pool (mirror it in your
+  #             CiliumLoadBalancerIPPool's spec.serviceSelector — Cilium does
+  #             not recognise the key on its own) plus annotation
+  #             lbipam.cilium.io/ips
+  #   none    — (default) no Service is mutated; a pool/address preference is
+  #             recorded on the GameServer's AddressAssignment condition as
+  #             unhonored rather than silently falling back to the default pool
+  # Any other value fails the operator at startup.
+  addressManager: none
+  # Namespace MetalLB's IPAddressPool custom resources (metallb.io/v1beta1,
+  # namespaced) live in. Only consulted when addressManager: metallb — the
+  # operator GETs a requested pool directly there to report PoolNotFound on
+  # the GameServer's AddressAssignment condition without waiting for a
+  # MetalLB event. "metallb-system" is MetalLB's own install convention, not
+  # a contract, hence configurable.
+  metalLBNamespace: metallb-system
+  # Tunnel provider images: relay binaries wrapped in OCI images for reaching
+  # players through relay services when the cluster has no public IP or port-
+  # forwarding. Each wraps a third-party relay binary (frpc, tailscaled, playit)
+  # and is cosign-signed like other Gameplane images.
+  tunnelImages:
+    frp: ""   # defaults to {image.registry}/tunnel-frp:{image.tag}
+    tailscale: ""   # defaults to {image.registry}/tunnel-tailscale:{image.tag}
+    playit: ""   # defaults to {image.registry}/tunnel-playit:{image.tag}
+  # Images the operator injects into game/backup pods. Retag these to a
+  # private registry mirror for air-gapped installs (Docker Hub blocked).
+  configInitImage: busybox:1.38.0
+  resticImage: restic/restic:0.19.1
+  # Mount a directory of module bundles into the operator so local-type
+  # ModuleSources can index it (homelab: drop module dirs on disk and
+  # they appear in the catalog). Provide exactly one of existingClaim
+  # or hostPath.
+  localModules:
+    enabled: false
+    existingClaim: ""
+    hostPath: ""
+    mountPath: /var/lib/gameplane/modules
+
+api:
+  replicas: 1        # SQLite driver is single-writer on a RWO volume; only values >1 are safe with db.driver=postgres
+  logLevel: info     # API log verbosity (debug|info|warn|error), passed as GAMEPLANE_LOG_LEVEL
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+
+  # Trusted reverse proxy networks for client IP extraction. Comma-separated
+  # list of CIDR blocks. The API determines the real client IP from the
+  # X-Forwarded-For header only from requests originating within these networks
+  # (to prevent IP spoofing). Used for rate limiting and audit records.
+  # Default: loopback + RFC1918 + link-local ranges, which work out-of-the-box
+  # for in-cluster ingress (nginx, ALB, etc.). For direct exposure without an
+  # ingress, override this to only your actual public IP or leave it empty.
+  trustedProxies: "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,::1/128,fc00::/7,fe80::/10"
+
+  db:
+    driver: sqlite       # sqlite | postgres
+    dsn: "file:/data/gameplane.db?_pragma=journal_mode(WAL)"
+    # When driver=postgres, set dsn to a postgres connection string and
+    # rebuild the api image with -tags postgres. Example:
+    # dsn: "postgres://gameplane:***@postgres/gameplane?sslmode=require"
+
+  # PVC attached to the API for SQLite storage. Only used when db.driver=sqlite.
+  storage:
+    size: 2Gi
+    storageClassName: ""
+
+  # Audit-event retention. 0 keeps audit rows forever (default); set a
+  # positive number of days to have the API prune older events daily so the
+  # audit_events table doesn't grow unbounded on long-lived installs.
+  audit:
+    retentionDays: 0
+    # When true, the API also emits each audit event as a structured JSON
+    # line on stdout, so a cluster log aggregator (Loki/ELK/CloudWatch) can
+    # capture the audit trail as an external sink. Events always land in the
+    # database regardless; this just mirrors them to the log pipeline.
+    stdout: false
+    # Outbound webhook push sink. When url is set, the API POSTs each audit
+    # event as JSON to it (best-effort, non-blocking — events always land in
+    # the database regardless). Point it at any HTTP/JSON receiver: a log
+    # aggregator (Loki push, Splunk HEC, Vector), a SIEM, or the bundled
+    # audit-syslog bridge (see syslogBridge below).
+    webhook:
+      url: ""
+      # Optional Authorization header for the webhook, sourced from a Secret
+      # (never passed as a flag, so the credential isn't visible in the pod
+      # spec). Leave name empty to send no Authorization header. The Secret's
+      # value is used verbatim, e.g. "Bearer <token>".
+      authSecretRef:
+        name: ""
+        key: token
+      # Bundled HTTP-JSON → syslog bridge (the audit-syslog-bridge image). When
+      # enabled, the chart deploys the relay and — unless webhook.url is set
+      # above — automatically points the API's audit webhook at it, so each
+      # audit event is forwarded to your syslog/SIEM collector. Off by default.
+      #
+      # Auth: the bridge Service is a ClusterIP other pods can reach. Set
+      # `authSecretRef` above and the SAME token guards both the API→bridge call
+      # and the bridge's inbound check, so only the API can inject records —
+      # strongly recommended. Without it the bridge accepts unauthenticated POSTs
+      # (rely on NetworkPolicies to restrict who can reach :8514).
+      #
+      # Setting webhook.url explicitly disables the auto-wiring, so don't enable
+      # the bridge and set webhook.url at the same time (the bridge would run
+      # idle while the API points elsewhere).
+      syslogBridge:
+        enabled: false
+        syslog:
+          addr: ""        # collector host:port, e.g. syslog.example:514 (required when enabled)
+          # tcp is recommended: udp gives no delivery confirmation (a down
+          # collector still shows result=sent), and audit records over ~64 KiB
+          # exceed the single-datagram limit. Prefer tcp for a reliable trail.
+          network: tcp    # tcp | udp
+          tls: false      # wrap a tcp connection in (verified) TLS
+        appName: gameplane-audit
+        facility: local0  # RFC 5424 facility: kern/user/daemon/auth/.../local0..local7
+        severity: info    # emerg/alert/crit/err/warning/notice/info/debug
+        replicas: 1
+        resources: {}
+    # Native S3-compatible audit sink. When endpoint and bucket are set, the API
+    # batches audit events as NDJSON and uploads them to S3 (or MinIO, Backblaze,
+    # etc.). Best-effort delivery: events always land in the database regardless,
+    # and S3 acts as an external mirror. Batching thresholds: 100 events, 1 MiB,
+    # or 5 seconds (whichever comes first). Retries 3 times on transient errors.
+    s3:
+      endpoint: ""        # S3-compatible endpoint host:port (e.g., "minio:9000" or "s3.amazonaws.com")
+      bucket: ""          # S3 bucket name (required when endpoint is set)
+      prefix: ""          # object key prefix, e.g. "gameplane-audit" (empty = root)
+      region: ""          # S3 region, e.g. "us-east-1" (empty = path-style requests)
+      insecure: false     # disable TLS certificate verification (for self-signed certs)
+      # S3 credentials sourced from a Secret (never passed as flags). Leave
+      # credentialsSecretRef.name empty to disable the S3 sink entirely.
+      credentialsSecretRef:
+        name: ""          # name of a Secret in the API's namespace
+        accessKeyKey: access-key   # key containing the access key ID
+        secretKeyKey: secret-key    # key containing the secret access key
+
+  # Anonymous usage telemetry ({version, servers, templates} once a day —
+  # see docs/install.md). Two independent gates: the admin toggle in the
+  # dashboard decides WHETHER anything is sent, this block decides WHERE.
+  # With endpoint empty and receiver.enabled false (the defaults),
+  # telemetry is off entirely.
+  telemetry:
+    # External receiver URL, e.g. https://telemetry.example.com/ingest.
+    # Setting it disables the receiver auto-wiring below.
+    endpoint: ""
+    # Optional shared ingest token, sourced from a Secret (never a flag).
+    # The API sends it verbatim as the Authorization header and the
+    # bundled receiver requires it — recommended when the receiver is
+    # enabled, since its Service is reachable by other in-cluster pods.
+    authSecretRef:
+      name: ""
+      key: token
+    # Bundled in-cluster receiver (the telemetry-receiver image): accepts
+    # reports on /ingest and exposes aggregate Prometheus metrics on
+    # /metrics. When enabled and endpoint is empty above, the API is
+    # pointed at it automatically.
+    receiver:
+      enabled: false
+      replicas: 1
+      resources: {}
+
+  oidc:
+    enabled: false
+    issuer: ""
+    clientID: ""
+    clientSecretRef:
+      name: gameplane-oidc
+      key:  clientSecret
+    redirectURL: ""
+
+  # mTLS material the API presents to in-pod agents. When unset, the
+  # chart provisions a self-signed CA + cert via a post-install hook.
+  agentMTLS:
+    caSecretRef:     { name: gameplane-agent-ca,     key: ca.crt }
+    clientCertRef:   { name: gameplane-agent-client, key: tls.crt }
+    clientKeyRef:    { name: gameplane-agent-client, key: tls.key }
+
+# The dashboard front end: an nginx pod that serves the built SPA and proxies
+# API/WebSocket/SSE traffic to the API. The ingress points at this service, so
+# `helm install` yields a working dashboard with no external build step.
+# Disable only for a headless/API-only install — the ingress then falls back
+# to the API directly and there is no UI at /.
+web:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits:   { cpu: 200m, memory: 128Mi }
+
+ingress:
+  enabled: true
+  className: nginx
+  host: gameplane.local
+  # TLS is on by default because session cookies + login credentials
+  # travel this path. Provide a cert via cert-manager (annotations) or
+  # by pre-creating the `gameplane-tls` Secret. For throwaway dev clusters
+  # where HTTPS is overkill, override `ingress.tls=false` explicitly.
+  tls: true
+  # Sensible default annotations for nginx-ingress. Override to swap in
+  # cert-manager cluster-issuer, tune limits, etc.
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"  # long-lived WS
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+
+gamesNamespace: gameplane-games
+
+networkPolicies:
+  enabled: true
+  # CIDRs that hold kubelet source IPs for liveness/readiness probes.
+  # If unset, the chart falls back to RFC1918 + link-local ranges,
+  # which cover most clusters without opening the public internet.
+  # Set this explicitly when your node pool sits outside those ranges
+  # (some managed providers do).
+  kubeletCIDRs: []
+  # Ports the kubelet may reach on game pods for liveness/readiness probes.
+  # Probe ports vary per game module (e.g. the Minecraft game port, Valheim's
+  # status port, Terraria's game port), so the default is empty, which allows
+  # the kubelet (already scoped to kubeletCIDRs) to reach ANY port on a game
+  # pod. Player traffic no longer rides along on this: it's admitted by the
+  # operator-managed per-server ingress policy below (gameIngress), so it's
+  # safe to restrict this to a known fixed set once your modules settle on
+  # one, e.g. [{ protocol: TCP, port: 8090 }].
+  probePorts: []
+  # CIDRs that hold the kube-apiserver endpoint(s) the agent sidecar
+  # patches its status heartbeat through. Same fallback semantics as
+  # kubeletCIDRs: unset means RFC1918 + link-local on TCP 443/6443.
+  apiServerCIDRs: []
+  # Egress allowance for game pods to reach the public internet. Game
+  # servers download their binaries, assets, and mods on first start
+  # (Fabric meta, Mojang, Steam, mod registries); without this the
+  # default-deny egress policy blocks the download and the server hangs
+  # in "Starting" forever. Private ranges are excepted so game pods still
+  # cannot reach in-cluster services or link-local metadata (anti-SSRF).
+  gameEgress:
+    enabled: true
+    # Ports opened to the public internet (downloads are HTTP/HTTPS).
+    ports:
+      - { protocol: TCP, port: 443 }
+      - { protocol: TCP, port: 80 }
+    # CIDRs excluded from the public-egress allowance. Defaults to
+    # RFC1918 + link-local; add your pod/service CIDRs if they sit
+    # outside these ranges so game pods can't reach them.
+    privateCIDRs:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 169.254.0.0/16
+  # Ingress allowance for the game port(s) themselves. The operator
+  # reconciles one NetworkPolicy per GameServer, opening only that game's
+  # `Advertise: true` container ports (read from its GameTemplate) — this
+  # policy itself does not open RCON or the agent's own port. However,
+  # those ports remain reachable from kubeletCIDRs via the separate
+  # allow-kubelet-probes policy until probePorts (above) is narrowed from
+  # its default of []; this policy now makes that safe to do.
+  # 0.0.0.0/0 is the default because game servers exist to be reached by
+  # players, wherever they connect from. Narrow fromCIDRs to restrict who
+  # can reach the game port, e.g. to a LAN range for a homelab install.
+  # fromCIDRs must not be set to an empty list to "close" ingress — the
+  # operator falls back to 0.0.0.0/0 when it can't tell an empty list from
+  # an unset flag, so an empty list would fail open. Set enabled: false
+  # instead if you want no per-server ingress policy at all.
+  gameIngress:
+    enabled: true
+    fromCIDRs:
+      - 0.0.0.0/0
+    # Ports the wake sentinel (allow-sentinel-ingress) accepts while a
+    # server is asleep and the sentinel is holding its advertised ports.
+    # Unlike the operator's per-GameServer <gs>-game-ingress policy — which
+    # reads the exact advertised ports off that one GameServer's
+    # GameTemplate — this is a single chart-wide policy shared by every
+    # sentinel pod in the fleet, so it has no per-server template to read
+    # and can't be narrowed automatically. Empty (default) allows any port
+    # on the sentinel, same as before this was configurable; list the union
+    # of ports your game templates advertise to narrow it, e.g.
+    # [{ protocol: TCP, port: 25565 }].
+    ports: []
+
+# Credential-minting cluster operations surfaced in the dashboard's
+# Cluster page (Add node = create a bootstrap token; Download kubeconfig =
+# mint a short-lived client cert). Off by default: enabling grants the API
+# powerful kube-system + CSR-approval RBAC. Downloaded kubeconfigs carry
+# the group "gameplane:dashboard", bound to the read-only "view" ClusterRole.
+clusterOps:
+  enabled: false
+
+# Optional, strictly read-only MCP (Model Context Protocol) server: lets an
+# AI assistant read cluster state (the 7 Gameplane CRDs, Pods, Events, pod
+# logs) and propose fixes as text, over stdio JSON-RPC only — never a
+# network port, and never a create/update/patch/delete tool. Off by default.
+# See mcp-server/README.md for how to connect (kubectl exec -i ... -- serve).
+mcpServer:
+  enabled: false
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 32Mi }
+    limits:   { cpu: 200m, memory: 128Mi }
+
+# Informational release-channel label shown read-only in the dashboard's
+# Admin Settings → Updates section. Nothing consumes it — Gameplane is
+# upgraded via Helm (image tags / chart versions). Empty (default)
+# auto-derives from image.tag (or the chart's appVersion when image.tag is
+# unset): "edge" if either tracks the rolling :edge images, "stable"
+# otherwise. Set explicitly only to override that derivation — an
+# unconditional hardcoded default here previously made every :edge install
+# lie in the dashboard by always reporting "stable".
+updates:
+  channel: ""
+
+serviceMonitors:
+  enabled: false   # when true, creates ServiceMonitors for operator/api and a PodMonitor for agent sidecars on port 8090
+  labels: {}       # additional labels applied to ServiceMonitor/PodMonitor objects for Prometheus selector matching
+
+# PrometheusRule (alerts) for the operator, off by default like serviceMonitors.
+# Alerts use only the operator's own metrics — controller-runtime internals plus
+# the gameplane_* fleet gauges (scraped by the operator ServiceMonitor above) —
+# so they are portable across Prometheus setups with no install-specific
+# job/relabel assumptions. `labels` are added to the rule so a Prometheus
+# Operator ruleSelector can pick it up.
+prometheusRules:
+  enabled: false
+  labels: {}
+
+# Grafana dashboard for the operator, shipped as a ConfigMap for the Grafana
+# sidecar to auto-import. Off by default. The default label is what the
+# kube-prometheus-stack / grafana sidecar watches for; override if yours differs.
+grafanaDashboards:
+  enabled: false
+  labels:
+    grafana_dashboard: "1"
+
+podSecurity:
+  enforceRestricted: false   # label gamesNamespace with pod-security.kubernetes.io/enforce=restricted
+
+# Default ModuleSource shipped with the chart. Disable when you manage
+# ModuleSource resources via GitOps. The operator indexes this source on a
+# schedule and the dashboard's Modules page renders the resulting catalog.
+defaultModuleSource:
+  enabled: true
+  name: default
+  refreshInterval: 1h
+  # Where the official catalog comes from:
+  #   oci — pull pre-built, cosign-signed bundles from a registry (default).
+  #         Each published tag is a version, so the catalog offers a real
+  #         version history: you can pin, roll back, and a new release ADDS a
+  #         version rather than replacing one. The official bundles are pushed
+  #         and signed by the release workflow.
+  #   git — index the gameplane-module repository directly. Simpler (nothing to
+  #         publish), but SINGLE-VERSION by construction: a git ref has exactly
+  #         one module.yaml, so it offers exactly one version. Bumping a module
+  #         REPLACES the old version rather than adding to it, and any Module
+  #         pinned to the old one goes VersionUnavailable/Failed. Use it to
+  #         track an unreleased branch, not for a stable install.
+  type: oci
+  git:
+    url: https://github.com/ValgulNecron/gameplane-module.git
+    # Pinned to the module-repo tag validated against this chart's backend
+    # release, not "main": a git source only ever offers the module version
+    # present at its ref, so tracking main means a module version bump
+    # upstream can orphan every already-installed Module CR on this cluster
+    # (they stay pinned to the old version, which the ref no longer serves,
+    # and go Failed/VersionUnavailable — this happened on the maintainer's
+    # own cluster). Bump this ref only in lockstep with a chart release that
+    # was actually tested against the matching module-repo tag. Set to
+    # "main" explicitly if you want the bleeding edge instead.
+    ref: v0.2.0-beta.6
+    subPath: ""           # module directories live at the repo root
+  oci:
+    url: ghcr.io/valgulnecron/gameplane-modules
+    insecure: false       # set true for plain-HTTP local registries
+    # The official catalog. Each name is an OCI repo under url/ above; the
+    # operator discovers that module's versions from its tags.
+    modules:
+      - 7-days-to-die
+      - ark-survival-ascended
+      - cs2
+      - dayz
+      - dont-starve-together
+      - enshrouded
+      - factorio
+      - garrys-mod
+      - minecraft-java
+      - palworld
+      - project-zomboid
+      - rust
+      - satisfactory
+      - terraria
+      - valheim
+      - v-rising
+    # Reference to a kubernetes.io/dockerconfigjson Secret in the operator
+    # namespace for private registries. Leave empty for public registries.
+    pullSecretName: ""
+    # Cosign signature verification (oci only). The official Gameplane
+    # module-signing public key (ECDSA P-256) ships below; set enabled: true
+    # (with type: oci) to refuse any official bundle not signed by the matching
+    # private key. Module-bundle verification is keyed and offline (no Rekor) by
+    # default. Keep this key byte-identical to the repo-root cosign.pub. See
+    # docs/module-authoring.md "Signing official bundles".
+    verify:
+      enabled: false
+      cosignPublicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEptXw/hWES+fiWwez02SAqfPvvXzb
+        DleBuL5fwB4MM20CXQWykjj12Kx3ZHLmf0KTb6TN4QCjJ7B4tj2pc066ow==
+        -----END PUBLIC KEY-----
+
+# Upload-backed ModuleSource: bundles uploaded through the dashboard
+# (stored as labeled ConfigMaps in the operator namespace) are indexed
+# into this source's catalog. Disable if you don't want UI uploads.
+uploadModuleSource:
+  enabled: true
+  name: uploads
+  refreshInterval: 1h

@@ -1,0 +1,114 @@
+{{- if or (eq (include "gameplane.operatorEnabled" .) "true") (and (eq (include "gameplane.apiEnabled" .) "true") (not .Values.api.standalone)) }}
+{{- /*
+  Agent mTLS material.
+
+  Generated at install time via Helm's built-in crypto. On upgrade we
+  `lookup` the existing CA Secret and reuse it verbatim so the CA stays
+  stable. The default-named client Secret (`gameplane-agent-client`) is
+  reused only while its `gameplane.local/ca-fingerprint` annotation
+  matches the sha256 of the active CA cert; otherwise (the CA changed, or
+  the Secret predates the annotation) the client cert is re-issued against
+  the active CA. A pre-annotation install therefore re-issues its client
+  cert once, signed by the same CA, on its first upgrade; after that the
+  API doesn't roll its client cert on every upgrade.
+
+  Users who want to bring their own CA can pre-create a Secret by name via
+  `api.agentMTLS.caSecretRef.name` (data keys `ca.crt` and `ca.key`) and
+  `api.agentMTLS.clientCertRef.name` (data keys `tls.crt` and `tls.key`);
+  the lookup path then reuses them and nothing is generated. The data key
+  names are fixed because the API and operator read those exact names. On a
+  live install or upgrade a referenced Secret that does not exist fails the
+  release.
+*/}}
+{{- $caSecretName := (.Values.api.agentMTLS.caSecretRef.name | default "gameplane-agent-ca") -}}
+{{- $caSecret := lookup "v1" "Secret" .Release.Namespace $caSecretName -}}
+{{- $live := eq (include "gameplane.liveCluster" .) "true" -}}
+{{- $haveCA := and $caSecret (hasKey ($caSecret.data | default dict) "ca.crt") (hasKey ($caSecret.data | default dict) "ca.key") -}}
+{{- $caCrt := "" -}}
+{{- $caKey := "" -}}
+{{- if $haveCA -}}
+  {{- $caCrt = (index $caSecret.data "ca.crt" | b64dec) -}}
+  {{- $caKey = (index $caSecret.data "ca.key" | b64dec) -}}
+{{- else -}}
+  {{- $ca := genCA "gameplane-agent-ca" 3650 -}}
+  {{- $caCrt = $ca.Cert -}}
+  {{- $caKey = $ca.Key -}}
+{{- end }}
+{{- /* Fingerprint of the active CA cert. Stamped onto the client Secret so
+       that a later render can tell whether the client cert was signed by
+       the CA currently in effect (e.g. caSecretRef.name switched to a
+       different pre-created CA) and must be re-issued rather than reused. */ -}}
+{{- $caFingerprint := $caCrt | sha256sum -}}
+{{- /* Validate or generate CA Secret */ -}}
+{{- if eq $caSecretName "gameplane-agent-ca" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gameplane-agent-ca
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    gameplane.local/managed-by: helm
+type: Opaque
+data:
+  ca.crt: {{ $caCrt | b64enc }}
+  ca.key: {{ $caKey | b64enc }}
+---
+{{- else if and (not $haveCA) (or $caSecret $live) }}
+  {{- /* A custom CA Secret must exist with ca.crt and ca.key. Offline renders (helm template, client dry-run) always see an empty lookup, so there only a found-but-incomplete Secret fails; against a live cluster a missing Secret fails too, instead of issuing the client cert from a CA that is never persisted. */ -}}
+  {{- fail (printf "api.agentMTLS.caSecretRef.name=%q: Secret not found or missing required keys (ca.crt, ca.key)" $caSecretName) }}
+{{- end }}
+{{- $clientSecretName := (.Values.api.agentMTLS.clientCertRef.name | default "gameplane-agent-client") -}}
+{{- $clientSecret := lookup "v1" "Secret" .Release.Namespace $clientSecretName -}}
+{{- /* Reuse an existing client Secret only if well-formed AND its CA fingerprint annotation matches the active CA. */ -}}
+{{- $clientCAFingerprint := dig "gameplane.local/ca-fingerprint" "" (($clientSecret.metadata).annotations | default dict) -}}
+{{- $haveClientCreds := and $clientSecret (hasKey ($clientSecret.data | default dict) "tls.crt") (hasKey ($clientSecret.data | default dict) "tls.key") -}}
+{{- $caFingerprintMatches := eq $clientCAFingerprint $caFingerprint -}}
+{{- $reuseClient := false -}}
+{{- if and $haveClientCreds (eq $clientSecretName "gameplane-agent-client") -}}
+  {{- /* Default-name Secret: reuse only while the CA fingerprint matches; an unannotated Secret is re-issued once */ -}}
+  {{- if $caFingerprintMatches -}}
+    {{- $reuseClient = true -}}
+  {{- end -}}
+{{- else if and $haveClientCreds (ne $clientSecretName "gameplane-agent-client") $caFingerprintMatches -}}
+  {{- /* Custom-name Secret: reuse only if CA fingerprint matches */ -}}
+  {{- $reuseClient = true -}}
+{{- end -}}
+{{- $clientCrt := "" -}}
+{{- $clientKey := "" -}}
+{{- if $reuseClient -}}
+  {{- $clientCrt = (index $clientSecret.data "tls.crt" | b64dec) -}}
+  {{- $clientKey = (index $clientSecret.data "tls.key" | b64dec) -}}
+{{- else -}}
+  {{- /* The API presents this cert to every agent. Agents accept any
+           cert signed by our CA, so CN/SAN are informational only — we
+           still fill SANs so Go's verifier has something to anchor on. */ -}}
+  {{- $apiDNS := list (printf "gameplane-api.%s.svc" .Release.Namespace) (printf "gameplane-api.%s.svc.cluster.local" .Release.Namespace) "gameplane-api" -}}
+  {{- $ca := buildCustomCert (b64enc $caCrt) (b64enc $caKey) -}}
+  {{- $signed := genSignedCert "gameplane-api-client" nil $apiDNS 3650 $ca -}}
+  {{- $clientCrt = $signed.Cert -}}
+  {{- $clientKey = $signed.Key -}}
+{{- end }}
+{{- /* Validate or generate client Secret */ -}}
+{{- if eq $clientSecretName "gameplane-agent-client" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gameplane-agent-client
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "gameplane.labels" . | nindent 4 }}
+  annotations:
+    gameplane.local/managed-by: helm
+    gameplane.local/ca-fingerprint: {{ $caFingerprint }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $clientCrt | b64enc }}
+  tls.key: {{ $clientKey | b64enc }}
+{{- else if ne $clientSecretName "gameplane-agent-client" }}
+  {{- if and (not $haveClientCreds) (or $clientSecret $live) }}
+    {{- /* A custom client Secret must exist with tls.crt and tls.key. Offline renders (helm template, client dry-run) always see an empty lookup, so there only a found-but-incomplete Secret fails; against a live cluster a missing Secret fails too. */ -}}
+    {{- fail (printf "api.agentMTLS.clientCertRef.name=%q: Secret not found or missing required keys (tls.crt, tls.key)" $clientSecretName) }}
+  {{- end }}
+{{- end }}
+
+{{- end }}
