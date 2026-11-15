@@ -280,9 +280,16 @@ spec:
                       - parameters:
                           name: "Gameplane"
                           logo: "https://avatars.githubusercontent.com/u/339341021"
-                          subtitle: "Game server control panel"
+                          subtitle: "Kubernetes-native game server control panel"
+                          tag: "gameplane #game-server #kubernetes #control-panel #self-hosted"
                           url: "https://gameplane.app.jyje.online"
                           target: "_blank"
+                          # A plain request to the dashboard root answers 404, so
+                          # ping the health endpoint instead. CORS for the
+                          # dashboard origin is set on the Gameplane Ingress.
+                          type: "Ping"
+                          endpoint: "https://gameplane.app.jyje.online/healthz"
+                          method: "GET"
                           order: "-1"
                   # Branding links do not have an Ingress backing them.
                   - parameters:
