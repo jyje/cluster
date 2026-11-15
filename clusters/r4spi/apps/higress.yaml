@@ -57,6 +57,12 @@ spec:
                 memory: 256Mi
               limits:
                 memory: 768Mi
+          # Connections with no data for this many seconds are closed. The
+          # default of 180 cuts long waits and idle WebSockets, and the
+          # per-route higress.io/timeout cannot raise it. 3600 matches the
+          # proxy-read-timeout the real Ingresses set on ingress-nginx.
+          downstream:
+            idleTimeout: 3600
           gateway:
             replicas: 1
             # No entry point yet. Reach it with a port-forward while it is
