@@ -40,6 +40,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | traefik | traefik | https://traefik.github.io/charts |
 | envoy-gateway | envoyproxy | oci://docker.io/envoyproxy/gateway-helm and oci://docker.io/envoyproxy/gateway-crds-helm |
 | factorio | truecharts-factorio | oci://oci.trueforge.org/truecharts/factorio |
+| gameplane | gameplane | oci://ghcr.io/gameplanepanel/charts/gameplane (pre-v1; patched for extraResources) |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
 | jyje | — | (this repo; no external Helm repo) |
 | litellm | berriai | oci://docker.litellm.ai/berriai/litellm-helm |

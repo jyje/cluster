@@ -1,0 +1,126 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gameplane
+spec:
+  project: base
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/gameplane/gameplane-0.4.0
+    helm:
+      valuesObject:
+        crds:
+          # Argo CD syncs the CRDs with the chart (server-side apply, see
+          # syncOptions), so the pre-upgrade hook Job that applies them is not
+          # needed.
+          autoApply:
+            enabled: false
+        api:
+          # Anonymous usage telemetry is on by default. Turn it off for good.
+          telemetry:
+            enabled: false
+          # Argo CD renders the chart offline, so the chart cannot look up and
+          # reuse a generated CA: it would issue a new one on every render.
+          # Bring the CA and the client certificate as SealedSecrets instead
+          # (see extraResources). The "-v1" suffix is the rotation handle.
+          agentMTLS:
+            caSecretRef: {name: gameplane-external-ca-v1}
+            clientCertRef: {name: gameplane-external-client-v1}
+        # Public entry is a Gateway API route next to the app (see
+        # extraResources), not the chart's nginx Ingress.
+        ingress:
+          enabled: false
+        extraResources:
+          # Gateway API side of the Envoy Gateway migration (see
+          # docs/networks/envoy-gateway-migration.md). It is dormant: nothing
+          # reaches the Gateway from outside until the ports are swapped, so
+          # check it through a port-forward. The Gateway joins the shared
+          # envoy-web class, and the Certificate lives here so the TLS secret
+          # stays in this namespace. The chart's Ingress sends every path to
+          # gameplane-web, which serves the dashboard and proxies the API, so
+          # one rule is enough.
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: gameplane-envoy
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: gameplane-envoy-tls
+              dnsNames:
+                - gameplane.app.jyje.online
+              issuerRef:
+                kind: ClusterIssuer
+                name: nginx-letsencrypt-prod
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: gameplane
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              gatewayClassName: envoy-web
+              listeners:
+                - name: https
+                  protocol: HTTPS
+                  port: 8443
+                  hostname: gameplane.app.jyje.online
+                  tls:
+                    mode: Terminate
+                    certificateRefs:
+                      - name: gameplane-envoy-tls
+                  allowedRoutes:
+                    namespaces:
+                      from: Same
+                    kinds:
+                      - kind: HTTPRoute
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            metadata:
+              name: gameplane
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              parentRefs:
+                - name: gameplane
+                  sectionName: https
+              hostnames:
+                - gameplane.app.jyje.online
+              rules:
+                - backendRefs:
+                    - name: gameplane-web
+                      port: 80
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: gameplane-external-ca-v1
+              namespace: '{{ .Release.Namespace }}'
+            spec:
+              encryptedData:
+                ca.crt: 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
+                ca.key: AgAe8Bb7a2HsSX7RS1EZYxIa8nC45yyErfF37l7SNtJugVX4P38JQ8N+/IIDzJF4fYTLEjhrA1Ikc7veXZjJtd35aTHw7nS6K3ag61jY0Pdk3p7WTCwtSANpfR9c4MGrD8lwR9FlARsIsBC9nsEtIVkpttsdYjoJp4Btz1KDCLzuUDKdABD2MHwBIvW7S9sra2J8m5mOkpsa8jwNJv/5/EppZLJWFpqSwqOucep9ygbKEinQlkAJb7uhO9Q5NPaRNnYgVyNlShL3GdXxyt/MERaIrMegFI1eNR+kb2XGTTOV1ic6zBEzQ2pTVi0qDFddkrgPrHR+bh59WNFJkVCjkEfiLkrE0ylVbxpDk4j7izRlp44CeiFo6g3a4X7wggKUQRWDFKGevsG4wKGDWQlfXhzMlr8SV+85RBuMBBrfc1Usz4uA+4MrzDLchqXj02hsK8LGPnI4dhJEXLXjGVyIFp4dNnWKTfrQErSRm/G6wDlckBnKmvaMpttS8EuGHIkuNKibO3o8ZZx1ImkTGE29hyrq6nSWZRlmsmQA5Te37MukpmDNRzKh03An5zzBhboPmWt3lIGJyb97D8o38uUGVLmZPl02OwRy1eGyN7EiLP0uKiiK9Z2OwDl4WYuO8B09zbANbqoN1VEzq/Dbg2lvxKBDCzev9KOiVy++TuQs1Jbiy9uRkJ7zuryZZk+xP6dfGatr7wBfgk2I5DQ9i1JlYs9XxiTuY8+9SdUk3zNpEgHuRvbSUezEWJPmbMiMqImewEg+QEt/IMBZklKUk6UXnrCSw/HhQrimotyxgDq9FXiTysjzoa2fAK3VhwfP6Bw6sCCcEjmEw+uLbAZzZY3iAuPg28TP6dAoWgGkNcQ8Cu+oor/+E1QE2CoCs7vaUhgbqlPBnx+kMICdwhdBYLS9EznN0WcSSpbuvp3fK7IymzfI3Uf38EpEnNjOUoJw5pVD9SnI0t3E9rZeSMRY0ReXWusUFuwXSD4c7Tns0BoTw/SAbKXOgTaTaxT285I29ZsgWmmPU5a5ikW2ditgIPl4wdEdv08ztQ7VUrBX3FGC/OAqKJt4FcA6CyZYD1m7jN0q+q0tUqMqf6bBFm1s8XU2toN3ucJPR+yXiV64RWAVhoxwsMePTTZqgEOFNCDaFu8K0LKG4t+d0n9HB57nlTNgB/YZsCibhJud2RAnXFmxn1mJnft8P2fXXYy9F+FrvnIvxjbfdPhLDR1DsaW+Zg8aao3jbEUhCHkcJlXV23l8cM9fttHNP5eaZmqwUH4QgRpEhDXiP9b7hW2Z/uK0E5vI9E0gBw+GhHIdWjdIGtL4L98XQDYJcy2kZzsEE0STtSDZum+pVfNgi+kNKBkA67gOpGg5Rg/hzNksydaZyKTg+h6oDwc4d/Ck6g5+l3753apRrqf5Qc36nb7HVydpXefBEJVKIQICRtpSilL0zGI8/sLCXjRjG6WF2o8OR4unz1U4dWqW9sdL85/os12TFX4pAExVf8dkWanBf+MgiBb/G3/blOQbQy4qQB9YZyMDX+Ox3c7hMqRyb8Z+/9+qhCmhhtsDK/mJKjAlimnQrSIWNs5P35UGjezd+sKb/DIBUy8KbGo0I26nm7lq8kJXG+B3n4TBVgFWtB76mWhOrKMCp3c5Qr9HNYLX4NtlCyNv/6UA5XbY9BRyrxxGMZO6pSJMPSj1OJ/vIGxjj93ZpdIrvAxd+g9zE5NB66V4FKOx45+hOJMRuR9zXuPwFHhRUhn5Q6fb5NBp4OnsgT8Uy0iYa41r1f04Akpr4WBbCuighdxcmE3zr0VgDYKNnq9NC7vzH3ftG1fVmJAC/gZTfF2TjXve7lLWQkNadmSI8JrtQo0bWiiLJBjyG/s/UQ5SSFmP6A+wAaQNAkYZ140vGODNYKa2les//o2wjljeVD1/IzL+GAg7hY4V0oYgZcf3Mcg3bhYjLXiSR0vJ5TscVrjTatUlp9Ue/0nh6dwQ+YOcOrOwbbr3q2AHIq0grtw3AF8yUc/yUHrSpHFvbB/jVfa8J9ZErF0BsDJbKU7CwPyg1rO6I25D1dcPfkzhMu9tOMEy4Y1hs23QsFaFDRb67p5gI/IDTq9p3XrLL6CSprUmZJ1CDJHS8UJAnHXmuiyMuP5CtoaKeWGW2ECVmniHFLqO6YWrBERAQrO7oQdxMTRK6PcNw4T3c1ghY8tAErPk6rbavLc2ai9lLEnXjuwU41h5DiY+0HNQXCUmsZiODyKbH0GgiujyjHpzljDOnkT1OBhSIKDcoB+c7CEIXPM2T2wjZLD8Pe0c8wIbvybsmu7PmvCAUX6cVres0Cj7NrizPdEuJq1qrwoNBRi8xdXRLT//8nRTtsaCeFfkv4Fxu1PZWhm7mjT6+vSa/OeuCn23xnEbadYtYIPGOCtn+pb49AKIR3ljl36PFMCEnzjts/5+ZAUZCTPfQkprHqvGgMjd18QkbsJuXwnt63bxbS5Bwgp1HHTBxZfq04yAX0Hm7jSJrcU+LBBEmdVqZGjL1VSLeWDE1n21X3qzoZGTs64FhqmRisDvN/0op8jtF56ImkJvQuO2P57U39DZaaPx37lz+/m1XJdbsn56M2QD+ItzXCYf2lRtcoCr/E9ul4YJFyNswDu3EhuUx3C8kJHNz1IV/hvZ5tgM2Na9uykIX0xJAxG+azMguPwbNYvaxPK2IHYEwIwuFhlIJlcd85LNAdpZyTBdMMSXlvtMIl5gzX0N56eQNiPj7ChcfmabwiWXaeCrH7uKSObicKunhjrvgxsaMIu+tRntfjPd6Dl9XDhafNPKJhFeDIUR0Q1Yx709tWekvRrRaBiNcSztIwJcIUmzpfMVciJbqsdh792TM2ZQpcKlUOQwYVVnWPuiQUC/B/CZxDlLc7mWDFYW9znwTS4cT3VsSnkBy8eJdpdzeSfKhsFrjZazJQu9GrcMVZBi/URbcyLv1sKYlLaOrxTEvKAYY9Jyicsh85fIS5RZbFs=
+              template:
+                metadata:
+                  name: gameplane-external-ca-v1
+                  namespace: gameplane-system
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: gameplane-external-client-v1
+              namespace: '{{ .Release.Namespace }}'
+            spec:
+              encryptedData:
+                tls.crt: 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
+                tls.key: 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
+              template:
+                metadata:
+                  name: gameplane-external-client-v1
+                  namespace: gameplane-system
+                type: kubernetes.io/tls
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gameplane-system
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - CreateNamespace=true
+      # The CRD schemas are too large for the client-side apply annotation.
+      - ServerSideApply=true
