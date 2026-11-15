@@ -55,7 +55,7 @@ in place.
 
 ## Node placement
 
-Envoy proxies must not run on the 4 KB page nodes (`app.jyje.live/raspi.type: 4b`).
+Envoy proxies must not run on the 4 KB page nodes (`app.jyje.online/raspi.type: 4b`).
 Their kernel uses a 39-bit address space, and the proxy's TCMalloc fails to map
 its heap there (`MmapAligned() failed`, exit code 133, CrashLoopBackOff). Both
 `EnvoyProxy` resources therefore carry a `NotIn 4b` node affinity. A node
