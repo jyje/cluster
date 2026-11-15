@@ -39,7 +39,8 @@ English version: [factorio-server-guide.md](factorio-server-guide.md)
        settings.json: <kubeseal 출력, 평문 값은 절대 안 됨>
    ```
 
-   시크릿의 값은 작은 JSON 문서입니다: `{"game_password": "..."}`.
+   `settings.json` 값은 작은 JSON 문서입니다: `{"game_password": "..."}`.
+   아래의 관리자와 화이트리스트 파일은 같은 Secret에 키로 더합니다.
 
 2. 차트의 `persistence` 블록으로 ConfigMap 옆에 마운트합니다
    (`type: secret`, `objectName: factorio-secret`, `mountPath: /etc/factorio-secret`,
@@ -55,19 +56,25 @@ English version: [factorio-server-guide.md](factorio-server-guide.md)
 ## 관리자 지정
 
 예제 설정 파일에는 `admins` 키가 없습니다. 서버는 `--server-adminlist`로 넘기는 별도
-목록 파일을 읽습니다.
+목록 파일을 읽습니다. 이 목록과 아래 화이트리스트는 실제 계정을 가리키고 이 저장소는
+공개이므로 시크릿으로 다룹니다.
 
-1. Factorio 사용자 이름의 JSON 배열(예: `["alice", "bob"]`)을 저장 볼륨의 파일이나
-   ConfigMap에 둡니다. 사용자 이름은 비밀은 아니지만 저장소에 두면 공개됩니다.
-2. 시작 스크립트의 `exec` 줄에 `--server-adminlist /factorio/server-adminlist.json`을
-   추가하고 재시작합니다.
+1. 비밀번호와 같은 SealedSecret에 JSON 배열을 키로 더합니다. 예를 들어
+   `server-adminlist.json`에 `["alice", "bob"]`, `server-whitelist.json`에 같은 형식을
+   넣습니다. 각 값은 로컬에서 `kubeseal`로 암호화합니다. Secret은 위에서 보인 대로
+   `/etc/factorio-secret`에 마운트됩니다.
+2. 시작 스크립트의 `exec` 줄에
+   `--server-adminlist /etc/factorio-secret/server-adminlist.json`을 추가하고
+   재시작합니다. 파일은 읽기 전용이지만 서버가 시작할 때만 읽으므로 문제없습니다.
 3. 이후 관리자는 게임 안에서 `/promote 이름`, `/demote 이름`으로 다른 사람을 승격하거나
-   강등할 수 있습니다. 예제 설정에서 `allow_commands`는 `admins-only`,
-   `only_admins_can_pause_the_game`은 `true`라서 명령과 일시정지는 기본적으로 관리자만
-   쓸 수 있습니다.
-4. 닫힌 서버로 운영하려면 화이트리스트도 추가합니다: `--use-server-whitelist`와
-   `--server-whitelist /factorio/server-whitelist.json`(같은 JSON 배열 형식)입니다.
-   목록의 사용자만 접속할 수 있고, 관리자가 `/whitelist`로 관리합니다.
+   강등할 수 있습니다. 이 명령은 서버의 목록 파일을 고치는데 여기서는 읽기 전용이라,
+   게임 안에서 한 승격은 재시작하면 사라집니다. 영구 변경은 SealedSecret을 고치고
+   재시작하세요.
+4. 예제 설정에서 `allow_commands`는 `admins-only`, `only_admins_can_pause_the_game`은
+   `true`라서 명령과 일시정지는 기본적으로 관리자만 쓸 수 있습니다.
+5. 닫힌 서버로 운영하려면 `--use-server-whitelist`와
+   `--server-whitelist /etc/factorio-secret/server-whitelist.json`을 추가합니다. 목록의
+   사용자만 접속할 수 있습니다.
 
 RCON은 계속 꺼 둡니다. 위의 모든 것은 RCON 없이 동작합니다.
 

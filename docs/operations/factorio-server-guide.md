@@ -43,7 +43,8 @@ public repository.
        settings.json: <output of kubeseal, never the plain value>
    ```
 
-   The secret value is a small JSON document: `{"game_password": "..."}`.
+   The `settings.json` value is a small JSON document: `{"game_password": "..."}`.
+   The admin and whitelist files below go in the same Secret as further keys.
 
 2. Mount it next to the ConfigMap with the chart's `persistence` block
    (`type: secret`, `objectName: factorio-secret`, `mountPath: /etc/factorio-secret`,
@@ -59,20 +60,26 @@ the whitelist below when you want to name exactly who may play.
 ## Name administrators
 
 The example settings file has no `admins` key. The server reads a separate list
-file passed with `--server-adminlist`.
+file passed with `--server-adminlist`. Treat the list, and the whitelist below,
+as secrets: they name real accounts, and this repository is public.
 
-1. Put the JSON array of Factorio usernames in a file on the save claim or in a
-   ConfigMap, for example `["alice", "bob"]`. Usernames are not secret, but they
-   are public if you keep them in this repository.
-2. Add `--server-adminlist /factorio/server-adminlist.json` to the `exec` line of
-   the start script and restart.
+1. Add the JSON arrays to the same SealedSecret as the password, as extra keys,
+   for example `server-adminlist.json` with `["alice", "bob"]` and
+   `server-whitelist.json` in the same format. Encrypt each value locally with
+   `kubeseal`. The Secret is mounted at `/etc/factorio-secret` as shown above.
+2. Add `--server-adminlist /etc/factorio-secret/server-adminlist.json` to the
+   `exec` line of the start script and restart. The files are read-only, which is
+   fine: the server only reads them at start.
 3. Admins can then promote and demote others in game with `/promote name` and
-   `/demote name`. `allow_commands` is `admins-only` and
-   `only_admins_can_pause_the_game` is `true` in the example settings, so
-   commands and pausing are admin-only by default.
-4. For a closed server, also add a whitelist: `--use-server-whitelist` with
-   `--server-whitelist /factorio/server-whitelist.json` (same JSON array format).
-   Only listed users can join, and admins manage it with `/whitelist`.
+   `/demote name`. Those commands edit the server's own list, which is read-only
+   here, so a promotion made in game does not survive a restart. Make permanent
+   changes in the SealedSecret and restart.
+4. `allow_commands` is `admins-only` and `only_admins_can_pause_the_game` is
+   `true` in the example settings, so commands and pausing are admin-only by
+   default.
+5. For a closed server, also add `--use-server-whitelist` with
+   `--server-whitelist /etc/factorio-secret/server-whitelist.json`. Only listed
+   users can join.
 
 RCON stays off. Everything above works without it.
 
