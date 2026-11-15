@@ -34,22 +34,40 @@ VARIANTS = [
     ("higress", "higress, higress.io/timeout 3600", "higress-3600.compat.invalid"),
 ]
 
-PORTS = {"nginx": 18081, "higress": 18080}
+# Local ports are picked at run time, so a port that something else already
+# listens on is never reused (a clash would send the tests to the wrong server).
+PORTS = {}
+
+
+def free_port():
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
 
 
 def port_forward(context, controller):
     """Start a port-forward for the controller and return the process."""
+    PORTS[controller] = free_port()
     if controller == "higress":
-        target = ["-n", "higress-system", "svc/higress-gateway", f"{PORTS[controller]}:80"]
+        # Forward to the pod, as for ingress-nginx. A Service forward picks a
+        # pod once and was seen dropping long connections.
+        pod = subprocess.check_output(
+            ["kubectl", "--context", context, "-n", "higress-system", "get", "pods",
+             "-l", "app=higress-gateway",
+             "-o", "jsonpath={.items[0].metadata.name}"], text=True).strip()
+        target = ["-n", "higress-system", f"pod/{pod}", f"{PORTS[controller]}:80"]
     else:
         pod = subprocess.check_output(
             ["kubectl", "--context", context, "-n", "kube-system", "get", "pods",
              "-l", "app.kubernetes.io/name=ingress-nginx",
              "-o", "jsonpath={.items[0].metadata.name}"], text=True).strip()
         target = ["-n", "kube-system", f"pod/{pod}", f"{PORTS[controller]}:80"]
+    log = open(f"/tmp/compat-port-forward-{controller}.log", "w")
     proc = subprocess.Popen(["kubectl", "--context", context, "port-forward", *target],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            stdout=log, stderr=log)
     for _ in range(60):
+        if proc.poll() is not None:
+            raise SystemExit(f"port-forward for {controller} exited early")
         try:
             socket.create_connection(("127.0.0.1", PORTS[controller]), timeout=1).close()
             return proc
