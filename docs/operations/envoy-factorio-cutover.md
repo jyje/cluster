@@ -26,7 +26,14 @@ it, CRDs that require server-side apply can exceed the annotation size limit.
 5. Join with a Factorio 2.1.24 client and make a recognizable change. Wait for
    an autosave, replace the game Pod, and reconnect to verify the same world
    and change are still present. Verify there is no RCON Service or listener.
-6. Only after the checks pass, prune the old echo Deployment, Service, and
+6. Publish the Porkbun DNS record for `factorio.app.jyje.online` only after
+   validating the intended UDP entry point. Do not publish internal IPs or
+   point game clients at an HTTP-only tunnel hostname. Resolve the record
+   against authoritative DNS and join by hostname from the intended client
+   network. Only then merge the standalone Homer card change (Homer syncs
+   automatically). The card links to game instructions,
+   exposes the direct-connect address, and does not use HTTP Ping status.
+7. Only after the checks pass, prune the old echo Deployment, Service, and
    UDPRoute and remove Traefik in a separate cleanup change. Do not prune the
    Gateway API CRDs, the Envoy game Gateway, or the Factorio data claim.
 
