@@ -65,10 +65,17 @@ spec:
             idleTimeout: 3600
           gateway:
             replicas: 1
-            # No entry point yet. Reach it with a port-forward while it is
-            # evaluated. A dedicated MetalLB address comes later.
+            # Entry point on a dedicated MetalLB address. The pool is created
+            # outside this repository, in the environment's private
+            # configuration, and holds one reserved LAN address that is not a
+            # node address (a pool that overlaps node addresses caused an ARP
+            # conflict before). The address is never written here. ingress-nginx
+            # keeps the node ports, so both run side by side.
             service:
-              type: ClusterIP
+              type: LoadBalancer
+              annotations:
+                metallb.io/address-pool: web-private
+                metallb.universe.tf/address-pool: web-private
             resources:
               requests:
                 cpu: 100m
