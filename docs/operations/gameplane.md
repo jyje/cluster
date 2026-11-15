@@ -171,6 +171,22 @@ because they are specific to this cluster.
 **Clean up**: deleting the server in the dashboard removes the pod and Service.
 Check that its claim is gone too, so the NFS space is released.
 
+## A game stays at Starting with AgentStale
+
+The agent sidecar of each game reports its status through the Kubernetes API.
+Gameplane's default policies allow it to reach the API server only on TCP 443
+and 6443, but MicroK8s serves the API on 16443, and Calico checks the policy
+after the Service address is translated to the endpoint. The heartbeat then
+times out (`dial tcp 10.152.183.1:443: i/o timeout` in the agent log), and the
+server shows `Starting` with `AgentStale` although the game itself runs. The
+`allow-agent-to-microk8s-apiserver` policy in the Application opens 16443 for
+game and sentinel pods. If you see the symptom again, compare the endpoint port
+of `kubectl get endpoints kubernetes` with the policy.
+
+The game log also shows a line such as `New RCON connection from <node address>`
+every 10 seconds. These come from the kubelet probes, which check the RCON port,
+and are harmless.
+
 ## Verify a rollout
 
 1. Argo CD synced the intended revision and the Application is `Healthy`.
