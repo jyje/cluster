@@ -43,20 +43,25 @@ The public host is `gameplane.app.jyje.online`. The Gateway, Certificate and
 HTTPRoute live in the Application (`extraResources`) and join the shared
 `envoy-web` class. ingress-nginx still owns ports 80 and 443 on the nodes, so
 a small bridge Ingress in the Application terminates TLS with the Certificate
-and forwards to the Envoy proxy over HTTPS (through an `ExternalName` Service,
-`envoy-web` in `envoy-gateway-system`). The HTTPRoute then sends every path to
+and forwards plain HTTP to a dedicated `http-bridge` listener (port 8080) of the
+Envoy proxy, through an `ExternalName` Service for `envoy-web` in
+`envoy-gateway-system`. The hop stays inside the cluster, like the one from
+ingress-nginx to every other app. The HTTPRoute then sends every path to
 `gameplane-web`. Public traffic therefore already passes through Envoy
 Gateway. At the cutover described in
 [envoy-gateway-migration.md](../networks/envoy-gateway-migration.md), Envoy
-takes the ports and the bridge Ingress and Service are removed.
+takes the ports and the bridge Ingress, Service and listener are removed.
 
 Two details of the bridge matter:
 
 - ingress-nginx replaces some backend errors with its own error pages
   (`custom-http-errors`). The dashboard API answers 401 and 404 itself, and the
   SPA reads them, so the bridge Ingress overrides the list with an unused code.
-- The Envoy listener picks its certificate by SNI, so the Ingress sets
-  `proxy-ssl-server-name` and `proxy-ssl-name`.
+- ingress-nginx ignores the `proxy-ssl-*` annotations unless `proxy-ssl-secret`
+  is set, so it sends no SNI and the HTTPS listener of Envoy resets the
+  connection. That is why the bridge uses the plain HTTP listener and not the
+  HTTPS one. The HTTPS listener stays for the port-forward check and the final
+  state.
 
 The DNS record is a CNAME to the same DDNS host as the other `app.jyje.online`
 names. The Let's Encrypt HTTP-01 challenge needs it before the Certificate can
