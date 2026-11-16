@@ -37,7 +37,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | grafana | grafana | oci://ghcr.io/grafana/helm-charts/grafana-operator (grafana-operator only, published as OCI rather than to the Helm repo above) |
 | hermes-agent | jyje | oci://ghcr.io/jyje/hermes-agent-helm/hermes-agent |
 | infisical | infisical | https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/ |
-| traefik | traefik | https://traefik.github.io/charts |
+| traefik | traefik | https://traefik.github.io/charts (vendored only, not deployed since Traefik was replaced by Envoy Gateway and Higress) |
 | envoy-gateway | envoyproxy | oci://docker.io/envoyproxy/gateway-helm and oci://docker.io/envoyproxy/gateway-crds-helm |
 | gameplane | gameplane | oci://ghcr.io/gameplanepanel/charts/gameplane (pre-v1; patched for extraResources) |
 | istio | istio | https://istio-release.storage.googleapis.com/charts |
