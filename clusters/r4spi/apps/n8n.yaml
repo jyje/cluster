@@ -7,14 +7,35 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/n8n/n8n-2.1.1
+    path: helm/n8n-io/n8n-1.19.0
     helm:
       valueFiles:
         - values.yaml
       valuesObject:
-        image:
-          tag: "2.6.2"
-          pullPolicy: IfNotPresent
+        # Keep the release identity of the 8gears chart. The PVC, ConfigMap and
+        # ServiceAccount stay named "n8n". The official chart adds a "-main"
+        # suffix to the Deployment, Service and Ingress on its own.
+        fullnameOverride: n8n
+        # Single instance on SQLite, like the 8gears release. The official
+        # chart defaults to queue mode with PostgreSQL and Redis.
+        queueMode:
+          enabled: false
+        database:
+          type: sqlite
+          useExternal: false
+        # With existingSecret the chart reads N8N_ENCRYPTION_KEY, N8N_HOST,
+        # N8N_PORT and N8N_PROTOCOL from this Secret, not from values. The key
+        # already lives in the n8n data volume: copy that same value into the
+        # Secret before the first sync, or saved credentials stop decrypting.
+        # See docs/operations/n8n-official-chart.md.
+        secretRefs:
+          existingSecret: n8n-encryption
+        # One writer on a RWO volume: stop the old pod before the new one starts.
+        strategy:
+          type: Recreate
+        # No image.tag on purpose: the chart's appVersion (2.47.4) is used.
+        # The 8gears release pinned 2.6.2, so n8n runs its data migrations on
+        # the first start. Back up the volume first.
         ingress:
           enabled: true
           className: higress
@@ -45,39 +66,18 @@ spec:
             - secretName: n8n.app.jyje.online
               hosts:
                 - n8n.app.jyje.online
-        main:
-          persistence:
-            enabled: true
-            type: dynamic
-            storageClass: subdir-usb
-            accessModes:
-              - ReadWriteOnce
-            size: 10Gi
-          replicaCount: 1
-          service:
-            enabled: true
-            type: ClusterIP
-            port: 80
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 3
-        valkey:
+        persistence:
           enabled: true
+          storageClassName: subdir-usb
+          accessModes:
+            - ReadWriteOnce
+          size: 10Gi
   destination:
     namespace: n8n
     server: 'https://kubernetes.default.svc'
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-    automated: {}
+    # Manual sync on purpose. Merging this change must not start the cutover.
+    # Sync by hand after the backup, with pruning off. Turn automation back on
+    # once the rollout is verified.
