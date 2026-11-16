@@ -2,6 +2,31 @@
 
 Tracking issue: #207. This page records the design for moving web traffic from ingress-nginx to Envoy Gateway, and the checks to run before the ports are swapped.
 
+## Update: web traffic goes to Higress
+
+On 2026-11-16 the web hosts were set to move to Higress instead of Envoy Gateway (decision in #314, per-host rollout in #326). Higress reads most `nginx.ingress.kubernetes.io/*` annotations as they are, so the Ingresses can move with few edits, and it also speaks Gateway API. Games and any UDP stay on Envoy Gateway, because Higress has no UDP listener.
+
+What this changes in the plan below:
+
+- **Entry point.** Higress has its own LoadBalancer address from a MetalLB pool that lives outside this repository (only the pool name `web-private` is in git, never the address). ingress-nginx keeps the node ports, so both run side by side and no node port has to be freed first. The public switch is then a change of where the router or the Cloudflare Tunnel points, and the rollback is pointing it back.
+- **Certificates.** The Higress issuers (`higress-letsencrypt-stag` and `-prod`) use `ingressClassName: higress` for the challenge Ingress. A certificate only renews through Higress once the public port 80 reaches the Higress address. Until then it renews through ingress-nginx.
+- **One host at a time.** Add an `ingressClassName: higress` Ingress next to the nginx one, check it through the Higress address with its real name, then move the public entry and remove the nginx Ingress. The order and the checklist are in #326.
+- **Open question.** The dormant Envoy Gateway web routes for Homer, error-pages and Gameplane (below) are not used by public traffic. Whether they are kept or removed once those hosts move to Higress is not decided and is tracked in #326.
+
+Annotation mapping, from the tests in #314:
+
+| nginx annotation | On Higress |
+|---|---|
+| `enable-cors`, `cors-allow-*` | Same name works |
+| `affinity`, `session-cookie-*` | Same name works |
+| `proxy-read-timeout`, `proxy-send-timeout` | Not used. The gateway-wide `downstream.idleTimeout` (3600) covers it |
+| `limit-rps` | Rename to `higress.io/route-limit-rps` (per route, burst 5 times) |
+| `limit-connections`, `proxy-body-size` | No equivalent, any size passes |
+| `configuration-snippet` (CORS origin echo) | An explicit `cors-allow-origin` list |
+| `custom-http-errors` | Not supported, needs another answer |
+
+The sections below describe the Envoy Gateway design and still apply to the hosts that already have Gateways.
+
 ## Where things stand
 
 - Envoy Gateway runs in `envoy-gateway-system` with the `envoy-web` Gateway (ClusterIP, no public entry point yet) and the `games` Gateway (UDP).

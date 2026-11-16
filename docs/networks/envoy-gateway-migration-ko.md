@@ -2,6 +2,31 @@
 
 추적 이슈: #207. ingress-nginx에서 Envoy Gateway로 웹 트래픽을 옮기는 설계와, 포트를 바꾸기 전에 확인할 항목을 정리합니다.
 
+## 갱신: 웹 트래픽은 Higress로 간다
+
+2026-11-16에 웹 호스트를 Envoy Gateway가 아니라 Higress로 옮기기로 했다(결정은 #314, 호스트별 진행은 #326). Higress는 `nginx.ingress.kubernetes.io/*` 어노테이션 대부분을 그대로 읽으므로 Ingress를 적은 수정으로 옮길 수 있고, Gateway API도 지원한다. 게임과 UDP는 Higress에 UDP 리스너가 없어서 Envoy Gateway에 남긴다.
+
+아래 계획에서 달라지는 점은 다음과 같다.
+
+- **입구.** Higress는 이 저장소 밖에서 만든 MetalLB 풀에서 자기 LoadBalancer 주소를 받는다(저장소에는 풀 이름 `web-private`만 있고 주소는 없다). ingress-nginx는 노드 포트를 그대로 가지므로 둘이 나란히 돌고, 노드 포트를 먼저 비울 필요가 없다. 공개 전환은 공유기나 Cloudflare Tunnel이 가리키는 곳을 바꾸는 일이고, 롤백은 다시 되돌리는 것이다.
+- **인증서.** Higress용 발급자(`higress-letsencrypt-stag`, `-prod`)는 챌린지 Ingress에 `ingressClassName: higress`를 쓴다. 공개 80 포트가 Higress 주소에 닿아야 비로소 Higress를 통해 갱신된다. 그 전에는 ingress-nginx를 통해 갱신된다.
+- **호스트 하나씩.** nginx Ingress 옆에 `ingressClassName: higress` Ingress를 두고, 실제 이름으로 Higress 주소에서 확인한 뒤, 공개 입구를 옮기고 nginx Ingress를 지운다. 순서와 체크리스트는 #326에 있다.
+- **열린 질문.** 아래의 Homer, error-pages, Gameplane용 휴면 Envoy Gateway 웹 라우트는 공개 트래픽이 쓰지 않는다. 이 호스트들이 Higress로 옮겨간 뒤 유지할지 지울지는 정하지 않았고 #326에서 추적한다.
+
+어노테이션 대응표(#314의 시험 결과):
+
+| nginx 어노테이션 | Higress |
+|---|---|
+| `enable-cors`, `cors-allow-*` | 같은 이름으로 동작 |
+| `affinity`, `session-cookie-*` | 같은 이름으로 동작 |
+| `proxy-read-timeout`, `proxy-send-timeout` | 쓰지 않음. 게이트웨이 전체 `downstream.idleTimeout`(3600)이 대신함 |
+| `limit-rps` | `higress.io/route-limit-rps`로 이름 변경(라우트별, 버스트 5배) |
+| `limit-connections`, `proxy-body-size` | 대응 없음, 어떤 크기든 통과 |
+| `configuration-snippet` (CORS 출처 반사) | 명시적 `cors-allow-origin` 목록 |
+| `custom-http-errors` | 미지원, 다른 답이 필요 |
+
+아래 절은 Envoy Gateway 설계이고, 이미 Gateway가 있는 호스트에는 그대로 적용된다.
+
 ## 현재 상태
 
 - Envoy Gateway는 `envoy-gateway-system`에서 돌고 있습니다. `envoy-web` Gateway(ClusterIP, 아직 외부 진입점 없음)와 `games` Gateway(UDP)가 있습니다.
