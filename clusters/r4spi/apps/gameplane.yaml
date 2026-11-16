@@ -68,7 +68,7 @@ spec:
                 - gameplane.app.jyje.online
               issuerRef:
                 kind: ClusterIssuer
-                name: nginx-letsencrypt-prod
+                name: higress-letsencrypt-prod
           - apiVersion: gateway.networking.k8s.io/v1
             kind: Gateway
             metadata:
@@ -119,49 +119,27 @@ spec:
                 - backendRefs:
                     - name: gameplane-web
                       port: 80
-          # Bridge: ingress-nginx still owns ports 80/443 on the nodes, so it
-          # terminates TLS with the Certificate above and forwards plain HTTP
-          # to the Envoy proxy, which routes by the HTTPRoute. (HTTPS to Envoy
-          # would need proxy-ssl-secret, because ingress-nginx ignores the
-          # other proxy-ssl-* annotations without it, and no SNI is sent.)
-          # Remove both objects and the http-bridge listener at the cutover,
-          # when Envoy takes the ports. The Service gives the Ingress a backend
-          # in this namespace for the proxy in envoy-gateway-system.
-          - apiVersion: v1
-            kind: Service
-            metadata:
-              name: gameplane-envoy
-              namespace: "{{ .Release.Namespace }}"
-            spec:
-              type: ExternalName
-              externalName: envoy-web.envoy-gateway-system.svc.cluster.local
-              ports:
-                - name: http
-                  port: 8080
-                  protocol: TCP
+          # Served by Higress, straight to gameplane-web. The dashboard API
+          # answers 401 and 404 itself and the SPA reads them, and Higress
+          # passes them through (ingress-nginx swapped them for its global
+          # error pages, so the bridge had to switch that off). Limits: the
+          # request rate cap is per route on Higress, and there is no body size
+          # cap or connection cap. Uploads, WebSocket and SSE are covered by the
+          # gateway-wide idle timeout.
           - apiVersion: networking.k8s.io/v1
             kind: Ingress
             metadata:
               name: gameplane
               namespace: "{{ .Release.Namespace }}"
               annotations:
-                # The dashboard API answers 401 and 404 itself and the SPA reads
-                # them, so keep ingress-nginx from swapping them for its global
-                # error pages. An unused code overrides the global list.
-                nginx.ingress.kubernetes.io/custom-http-errors: "599"
-                # Same limits as the chart's own Ingress: uploads, long-lived
-                # WebSocket and SSE, and a request rate cap.
-                nginx.ingress.kubernetes.io/proxy-body-size: "512m"
-                nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-                nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-                nginx.ingress.kubernetes.io/limit-rps: "20"
-                nginx.ingress.kubernetes.io/limit-connections: "50"
+                nginx.ingress.kubernetes.io/ssl-redirect: "true"
+                higress.io/route-limit-rps: "20"
                 # The Homer card pings /healthz from the browser, so the
                 # dashboard origin has to be allowed. Only that origin.
                 nginx.ingress.kubernetes.io/enable-cors: "true"
                 nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online"
             spec:
-              ingressClassName: nginx
+              ingressClassName: higress
               tls:
                 - secretName: gameplane-envoy-tls
                   hosts:
@@ -174,9 +152,9 @@ spec:
                         pathType: Prefix
                         backend:
                           service:
-                            name: gameplane-envoy
+                            name: gameplane-web
                             port:
-                              number: 8080
+                              number: 80
           # MicroK8s serves the API on 16443, and the chart's own policies only
           # allow TCP 443 and 6443 to the API server. Calico checks the policy
           # after the Service address is translated to the endpoint, so the

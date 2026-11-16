@@ -322,7 +322,8 @@ spec:
               labels:
                 app.kubernetes.io/name: homer
               annotations:
-                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+                cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+                nginx.ingress.kubernetes.io/ssl-redirect: "true"
                 # Discovered by this same Dashboard CR via ingressSelector
                 # (matchExpressions: app.kubernetes.io/name in [...]) — the
                 # dashboard discovers its own Ingress.
@@ -334,7 +335,7 @@ spec:
                 service.homer.rajsingh.info/name: "2. Dashboards"
                 service.homer.rajsingh.info/icon: "fas fa-chart-line"
             spec:
-              ingressClassName: nginx
+              ingressClassName: higress
               tls:
                 - secretName: app.jyje.online
                   hosts:

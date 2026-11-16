@@ -39,11 +39,11 @@ spec:
             memory: 1536Mi
         ingress:
           enabled: true
-          class: nginx
+          class: higress
           annotations:
-            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
-            nginx.ingress.kubernetes.io/configuration-snippet: |
-              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online"
             nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
@@ -52,7 +52,6 @@ spec:
             nginx.ingress.kubernetes.io/session-cookie-name: "route"
             nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
             nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
-            nginx.ingress.kubernetes.io/proxy-body-size: "4096m"
             # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchExpressions: app.kubernetes.io/name in [...]).
             item.homer.rajsingh.info/name: "Open WebUI (AI Chat)"

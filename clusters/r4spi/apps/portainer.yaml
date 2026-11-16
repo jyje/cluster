@@ -16,11 +16,11 @@ spec:
           type: ClusterIP
         ingress:
           enabled: true
-          ingressClassName: nginx
+          ingressClassName: higress
           annotations:
-            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
-            nginx.ingress.kubernetes.io/configuration-snippet: |
-              more_set_headers "Access-Control-Allow-Origin: $http_origin";
+            cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.jyje.online"
             nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
             nginx.ingress.kubernetes.io/cors-allow-headers: X-Api-Key
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD

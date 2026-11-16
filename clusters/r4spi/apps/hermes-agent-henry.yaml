@@ -100,9 +100,10 @@ spec:
           enabled: true
         ingress:
           enabled: true
-          className: nginx
+          className: higress
           annotations:
-            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
             # Homer pings from the browser, so the response needs CORS headers
             # (same annotations as every other "online" card).
             nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
@@ -110,11 +111,9 @@ spec:
             nginx.ingress.kubernetes.io/cors-allow-methods: HEAD
             nginx.ingress.kubernetes.io/enable-cors: "true"
             # The Chat tab is a terminal over a websocket and streams model
-            # output, and the Files tab uploads. nginx closes a connection that
-            # is quiet for 60 seconds and rejects bodies over 1 MB by default.
-            nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-            nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-            nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+            # output, and the Files tab uploads. The Higress gateway keeps an
+            # idle connection for an hour and puts no cap on the body size,
+            # so no timeout or size annotation is needed.
             # Discovered by Homer's Dashboard CR via ingressSelector
             # (matchExpressions: app.kubernetes.io/name in [...]). The chart
             # stamps app.kubernetes.io/name=hermes-agent, matched there.
