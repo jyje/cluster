@@ -20,10 +20,83 @@ spec:
         persistence:
           storageClass: subdir-usb
         ingress:
-          enabled: true
+          # The chart's own Ingress is replaced by the bridge Ingress below, so
+          # the host is served by Higress while ingress-nginx still holds the
+          # public ports (#326).
+          enabled: false
           clusterIssuer: nginx-letsencrypt-prod
           host: attendee.dev.jyje.online
         extraResources:
+        # Bridge to Higress. ingress-nginx keeps the public ports, terminates
+        # the public TLS and keeps renewing the certificate, and passes the host
+        # to Higress over HTTPS (a plain HTTP hop makes Higress rewrite
+        # X-Forwarded-Proto to "http"). The Ingress keeps the name and the
+        # certificate secret of the chart's Ingress, so it is updated in place.
+        # proxy-body-size stays here, so the upload cap still applies in front.
+        # proxy-ssl-secret is needed: without it ingress-nginx ignores the SNI
+        # settings and Higress resets the handshake. Remove this bridge when
+        # the router points at Higress.
+        - apiVersion: v1
+          kind: Service
+          metadata:
+            name: higress-bridge
+          spec:
+            type: ExternalName
+            externalName: higress-gateway.higress-system.svc.cluster.local
+            ports:
+              - port: 443
+                targetPort: 443
+        - apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: open-attendee-dev
+            annotations:
+              cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+              nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+              nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+              nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+              nginx.ingress.kubernetes.io/proxy-ssl-name: "attendee.dev.jyje.online"
+              nginx.ingress.kubernetes.io/proxy-ssl-secret: "open-attendee-dev/open-attendee-dev-tls"
+          spec:
+            ingressClassName: nginx
+            tls:
+              - secretName: open-attendee-dev-tls
+                hosts:
+                  - attendee.dev.jyje.online
+            rules:
+              - host: attendee.dev.jyje.online
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: higress-bridge
+                          port:
+                            number: 443
+        # The Higress side: serves the host with the existing certificate
+        # secret. No cert-manager annotation (no second Certificate).
+        - apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: open-attendee-dev-higress
+          spec:
+            ingressClassName: higress
+            tls:
+              - secretName: open-attendee-dev-tls
+                hosts:
+                  - attendee.dev.jyje.online
+            rules:
+              - host: attendee.dev.jyje.online
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: open-attendee-dev
+                          port:
+                            number: 80
         - apiVersion: bitnami.com/v1alpha1
           kind: SealedSecret
           metadata:
