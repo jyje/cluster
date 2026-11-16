@@ -24,7 +24,10 @@ spec:
           # Gateway API stays with Envoy Gateway. The UDP check showed Higress
           # has no UDP listener, so there is nothing to test here (see #314).
           enableGatewayAPI: false
-          enableIstioAPI: false
+          # The Higress controller hands Istio resources to the gateway only
+          # when this is on. EnvoyFilter is the one used here (error pages).
+          # No other Istio resource exists in the cluster.
+          enableIstioAPI: true
         higress-core:
           controller:
             replicas: 1
