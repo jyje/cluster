@@ -6,7 +6,7 @@ Tracking issues: #207, #314 (the evaluation) and #326 (the move). This page reco
 
 - **Higress** is the ingress controller for every public host (17 Ingresses). It runs as a Deployment with one gateway pod on each worker node (the control plane node is left out), behind a LoadBalancer Service with `externalTrafficPolicy: Local`.
 - **The entry point** is the router's port-forward of ports 80 and 443 to the Higress address. The address comes from a MetalLB pool named `web-private` that lives outside this repository, in the environment's private configuration. The repository holds only the pool name, never the address.
-- **ingress-nginx is gone**, together with its issuers and the MetalLB pool of node addresses.
+- **ingress-nginx is no longer deployed.** Its Application, its issuers and the MetalLB pool of node addresses are gone. The vendored charts stay in `helm/ingress`.
 - **Envoy Gateway** stays for games and any UDP only (the `games` Gateway). Higress has no UDP listener, which was checked on the live gateway.
 
 ## Why Higress and not Envoy Gateway for the web
@@ -58,4 +58,4 @@ Checks that were worth their cost: compare status, certificate, body and redirec
 
 ## Rollback
 
-ingress-nginx is removed from git. To go back, restore its manifests from the git history before the removal, change the Ingresses back to `nginx` with the nginx issuers, and point the router at the nodes again. The Higress and ingress-nginx setups do not share state, so both directions are a configuration change.
+The ingress-nginx charts are still vendored in `helm/ingress` (not deployed). Only the deployment is gone. To go back, restore the `ingress-nginx` Application and the nginx ClusterIssuers from the git history before the removal, change the Ingresses back to `nginx` with the nginx issuers, and point the router at the nodes again. The Higress and ingress-nginx setups do not share state, so both directions are a configuration change.
