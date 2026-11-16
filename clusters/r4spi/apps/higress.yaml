@@ -929,6 +929,23 @@ spec:
                               number: 9000
                         path: "/"
                         pathType: "Prefix"
+          # ACME check through Higress on the public port 80 (#326). It asks
+          # Let's Encrypt staging for a certificate for a host that Higress
+          # already serves, with a secret of its own, so the real certificate is
+          # untouched. If it becomes Ready, the HTTP-01 challenge reaches the
+          # Higress solver through the redirect rules. Remove it after the check.
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: acme-probe-staging
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: acme-probe-staging
+              dnsNames:
+                - mungchilog.stg.jyje.online
+              issuerRef:
+                kind: ClusterIssuer
+                name: higress-letsencrypt-stag
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
