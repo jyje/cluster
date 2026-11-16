@@ -68,6 +68,12 @@ spec:
             # One gateway pod on each worker node (the control plane node is
             # left out), so losing a node does not take the web entry down.
             replicas: 3
+            # One pod per node is required, so a rollout cannot start a new pod
+            # before an old one leaves its node. With the default surge of 100%
+            # and no allowed unavailable pod, the new pods waited for nodes
+            # that the old pods held, and the rollout stuck in Pending.
+            rollingMaxSurge: 0
+            rollingMaxUnavailable: 1
             # Entry point on a dedicated MetalLB address. The pool is created
             # outside this repository, in the environment's private
             # configuration, and holds one reserved LAN address that is not a
