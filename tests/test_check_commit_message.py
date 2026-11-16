@@ -16,10 +16,15 @@ def errs(msg):
 class CommitMessageTests(unittest.TestCase):
     def test_valid(self):
         self.assertFalse(errs('📄 docs(networks): record the themed error pages\n\nWhy.'))
-        self.assertFalse(errs('🛠 fix(higress): x'))
-        self.assertFalse(errs('🛠\ufe0f fix(higress): x'))
+        self.assertFalse(errs('\U0001f6e0\ufe0f fix(higress): x'))
+        self.assertFalse(errs('\u2b06\ufe0f dep(helm): bump x to 1'))
         self.assertFalse(errs('🔧 chore(helm/chart): vendor foo 1.2.3'))
 
+
+    def test_requires_variation_selector(self):
+        self.assertTrue(errs('\U0001f6e0 fix(higress): x'))
+        self.assertTrue(errs('\u2b06 dep(helm): bump x to 1'))
+        self.assertIn('U+FE0F', errs('\u2b06 dep(helm): bump x to 1')[0])
 
     def test_bad_emoji_and_type(self):
         self.assertTrue(errs('🔥 chore(ingress): remove it'))
