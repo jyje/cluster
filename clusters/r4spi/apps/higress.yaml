@@ -119,9 +119,11 @@ spec:
           # errors with the themed pages of the error-pages service. Envoy has
           # a custom response filter that can do the same: on a given response
           # status it sends the request again, inside the gateway, to another
-          # route and returns that answer with the original status. This is the
-          # proof of concept. The filter is off by default and is switched on
-          # only for a test host, so no public host is affected.
+          # route and returns that answer with the original status. The
+          # filter is off by default and is switched on per host below. The
+          # Gameplane host and the error pages host are left out on purpose:
+          # Gameplane reads 401 and 404 itself, and the error pages host would
+          # redirect to itself. Requests with a body keep the original answer.
           - apiVersion: networking.istio.io/v1alpha3
             kind: EnvoyFilter
             metadata:
@@ -162,7 +164,7 @@ spec:
                         name: "t-errpages.higress.invalid:443"
                   patch:
                     operation: MERGE
-                    value:
+                    value: &errorPagesValue
                       typed_per_filter_config:
                         envoy.filters.http.custom_response:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.custom_response.v3.CustomResponse
@@ -340,6 +342,156 @@ spec:
           # Test backend and a TLS host for the proof of concept. The host does
           # not resolve, so it is reachable only through the gateway address
           # with a resolve override.
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.cd.app.jyje.online"
+                      vhost:
+                        name: "cd.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.authentik.app.jyje.online"
+                      vhost:
+                        name: "authentik.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.hermes-henry.app.jyje.online"
+                      vhost:
+                        name: "hermes-henry.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.app.jyje.online"
+                      vhost:
+                        name: "app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.mungchilog.dev.jyje.online"
+                      vhost:
+                        name: "mungchilog.dev.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.mungchilog.stg.jyje.online"
+                      vhost:
+                        name: "mungchilog.stg.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.mungchilog.app.jyje.online"
+                      vhost:
+                        name: "mungchilog.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.n8n.app.jyje.online"
+                      vhost:
+                        name: "n8n.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.grafana.app.jyje.online"
+                      vhost:
+                        name: "grafana.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.litellm.app.jyje.online"
+                      vhost:
+                        name: "litellm.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.llm.app.jyje.online"
+                      vhost:
+                        name: "llm.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.attendee.dev.jyje.online"
+                      vhost:
+                        name: "attendee.dev.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.attendee.stg.jyje.online"
+                      vhost:
+                        name: "attendee.stg.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.attendee.app.jyje.online"
+                      vhost:
+                        name: "attendee.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      name: "higress-rds-443.portainer.app.jyje.online"
+                      vhost:
+                        name: "portainer.app.jyje.online:443"
+                  patch:
+                    operation: MERGE
+                    value: *errorPagesValue
           - apiVersion: apps/v1
             kind: Deployment
             metadata:
