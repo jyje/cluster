@@ -6,7 +6,7 @@
 
 - **Higress**가 모든 공개 호스트(Ingress 17개)의 ingress 컨트롤러입니다. 워커 노드마다 게이트웨이 파드 하나(컨트롤 플레인 노드는 제외)로 도는 Deployment이고, `externalTrafficPolicy: Local`인 LoadBalancer Service 뒤에 있습니다.
 - **입구**는 공유기가 80, 443 포트를 Higress 주소로 포트포워드하는 것입니다. 주소는 이 저장소 밖(비공개 설정)에 있는 MetalLB 풀 `web-private`에서 옵니다. 저장소에는 풀 이름만 있고 주소는 없습니다.
-- **ingress-nginx는 제거됐습니다.** nginx용 발급자와 노드 주소를 담은 MetalLB 풀도 함께 없앴습니다.
+- **ingress-nginx는 더 이상 배포되지 않습니다.** Application, nginx용 발급자, 노드 주소를 담은 MetalLB 풀을 없앴고, 벤더링된 차트는 `helm/ingress`에 남겨 둡니다.
 - **Envoy Gateway**는 게임과 UDP(`games` Gateway)에만 남습니다. Higress에는 UDP 리스너가 없다는 것을 실제 게이트웨이에서 확인했습니다.
 
 ## 웹에 Envoy Gateway가 아니라 Higress를 쓴 이유
@@ -58,4 +58,4 @@ ClusterIssuer `higress-letsencrypt-stag`와 `higress-letsencrypt-prod`는 HTTP-0
 
 ## 롤백
 
-ingress-nginx는 git에서 제거됐습니다. 되돌리려면 제거 이전의 git 기록에서 매니페스트를 복원하고, Ingress를 nginx 발급자와 `nginx` 클래스로 되돌리고, 공유기가 노드를 다시 가리키게 합니다. Higress와 ingress-nginx는 상태를 공유하지 않으므로 양방향 모두 설정 변경입니다.
+ingress-nginx 차트는 `helm/ingress`에 벤더링된 채로 남아 있고(배포는 안 함) 배포만 사라졌습니다. 되돌리려면 제거 이전의 git 기록에서 `ingress-nginx` Application과 nginx ClusterIssuer를 복원하고, Ingress를 nginx 발급자와 `nginx` 클래스로 되돌리고, 공유기가 노드를 다시 가리키게 합니다. Higress와 ingress-nginx는 상태를 공유하지 않으므로 양방향 모두 설정 변경입니다.
