@@ -77,7 +77,7 @@ Homer는 Ingress 어노테이션으로 카드를 찾습니다. 차트가 모든 
 | 롤아웃 직후 Ingress가 502 | 파드가 아직 시작 중입니다(skill 동기화). Ready가 될 때까지 기다리세요. readiness probe가 그때까지 Ingress를 붙이지 않습니다. |
 | 파드가 Ready가 되지 않음 | 인증 provider가 없어 대시보드가 닫힌 채로 실패했습니다. issuer, client id, `dashboard.auth.provider`를 확인하세요. |
 | 쿠키에 `Secure`가 없음 | `trustedProxies`에 노드 네트워크나 파드 네트워크가 빠졌습니다. 둘 다 넣으세요. |
-| `networkPolicy`를 켠 뒤 Ingress 타임아웃 | 정책이 모든 인바운드를 막고, 호스트 네트워크 컨트롤러는 파드/네임스페이스 셀렉터에 걸리지 않습니다. `networkPolicy.extraIngress`에서 노드 네트워크와 파드 네트워크 모두에 9119 포트를 허용하세요. 차트에 측정된 예시 [`values-networkpolicy-dashboard.yaml`](../../helm/hermes-agent/hermes-agent-1.21.0/values-networkpolicy-dashboard.yaml)이 있습니다. henry는 지금 켜져 있지 않습니다. |
+| `networkPolicy`를 켠 뒤 Ingress 타임아웃 | 정책이 모든 인바운드를 막고, 호스트 네트워크 컨트롤러는 파드/네임스페이스 셀렉터에 걸리지 않습니다. `networkPolicy.extraIngress`에서 노드 네트워크와 파드 네트워크 모두에 9119 포트를 허용하세요. 차트에 측정된 예시 [`values-networkpolicy-dashboard.yaml`](../../helm/hermes-agent/hermes-agent-1.23.0/values-networkpolicy-dashboard.yaml)이 있습니다. henry는 지금 켜져 있지 않습니다. |
 | Homer 카드가 없음 | Homer `ingressSelector`에 `hermes-agent`가 없거나, Ingress에 Homer 어노테이션이 없습니다. |
 | 블루프린트가 적용되지 않음 | 이 클러스터에서 기본 flow slug나 자체 서명 키 쌍의 이름이 다릅니다. 블루프린트의 이름을 고치세요. 다른 블루프린트는 영향이 없습니다. |
 

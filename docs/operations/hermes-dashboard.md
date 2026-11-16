@@ -119,7 +119,7 @@ Without a session, `GET /` redirects to the sign-in page, and `/api/env` and
 | 502 from the Ingress right after rollout | The pod is still starting (skills sync). Wait for Ready; the readiness probe keeps the Ingress off it until then. |
 | The pod never gets Ready | No auth provider, so the dashboard failed closed. Check the issuer, the client id and `dashboard.auth.provider`. |
 | Cookies not `Secure` | `trustedProxies` misses the node network or the pod network. List both. |
-| The Ingress times out after enabling `networkPolicy` | The policy denies all inbound traffic and a host-network controller is not matched by pod or namespace selectors. Allow port 9119 in `networkPolicy.extraIngress` for both the node network and the pod network. The chart ships [`values-networkpolicy-dashboard.yaml`](../../helm/hermes-agent/hermes-agent-1.21.0/values-networkpolicy-dashboard.yaml) as a measured example. Not enabled for henry today. |
+| The Ingress times out after enabling `networkPolicy` | The policy denies all inbound traffic and a host-network controller is not matched by pod or namespace selectors. Allow port 9119 in `networkPolicy.extraIngress` for both the node network and the pod network. The chart ships [`values-networkpolicy-dashboard.yaml`](../../helm/hermes-agent/hermes-agent-1.23.0/values-networkpolicy-dashboard.yaml) as a measured example. Not enabled for henry today. |
 | No Homer card | `hermes-agent` is missing from the Homer `ingressSelector`, or the Ingress has no Homer annotations. |
 | The blueprint did not apply | A default flow slug or the self-signed key pair is named differently here. Fix the names in the blueprint; the other blueprints are not affected. |
 
