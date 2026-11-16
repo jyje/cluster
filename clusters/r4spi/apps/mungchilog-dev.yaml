@@ -20,6 +20,10 @@ spec:
         locationSharing:
           enabled: true
         ingress:
+          # The chart's own Ingress is replaced by the bridge Ingress below, so
+          # the host can be served by Higress while ingress-nginx still holds
+          # the public ports (#326).
+          enabled: false
           labels:
             app.kubernetes.io/name: mungchilog
             homer.jyje.online/discovery: disabled
@@ -40,11 +44,62 @@ spec:
           - secretRef:
               name: mungchilog-server-oidc
         extraResources:
-          # Higress copy of the Ingress, for the migration rehearsal (#326).
-          # Public traffic still reaches ingress-nginx, which ignores this
-          # class, so nothing changes until the entry point moves. It reuses
-          # the existing certificate secret and carries no cert-manager
-          # annotation and no labels (Homer discovery stays off).
+          # Bridge to Higress. Public traffic still arrives at ingress-nginx,
+          # which owns the public ports, and this Ingress passes the host to
+          # Higress over HTTPS. HTTPS matters: Higress rewrites
+          # X-Forwarded-Proto to "http" for a plain HTTP hop, which would
+          # break redirects and secure cookies. ingress-nginx still terminates
+          # the public TLS and keeps renewing the certificate. It takes over
+          # the name of the chart's Ingress, so the object is updated in
+          # place and the certificate secret is untouched. To roll back,
+          # revert this change. Remove it when the router points at Higress.
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: higress-bridge
+            spec:
+              type: ExternalName
+              externalName: higress-gateway.higress-system.svc.cluster.local
+              ports:
+                - port: 443
+                  targetPort: 443
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: mungchilog
+              labels:
+                app.kubernetes.io/name: mungchilog
+                homer.jyje.online/discovery: disabled
+              annotations:
+                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+                nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+                nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+                nginx.ingress.kubernetes.io/proxy-ssl-name: "mungchilog.dev.jyje.online"
+                # ingress-nginx ignores the two settings above without a
+                # secret, and then sends no SNI (the first try failed with a
+                # TLS reset because of that). The host's own certificate secret
+                # is used as the client secret. The upstream is not verified.
+                nginx.ingress.kubernetes.io/proxy-ssl-secret: "mungchilog-dev/mungchilog.dev.jyje.online"
+            spec:
+              ingressClassName: nginx
+              tls:
+                - secretName: mungchilog.dev.jyje.online
+                  hosts:
+                    - mungchilog.dev.jyje.online
+              rules:
+                - host: mungchilog.dev.jyje.online
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: higress-bridge
+                            port:
+                              number: 443
+          # The Higress side: serves the host with its real certificate secret.
+          # It carries no cert-manager annotation (no second Certificate) and
+          # no labels (Homer discovery stays off).
           - apiVersion: networking.k8s.io/v1
             kind: Ingress
             metadata:
