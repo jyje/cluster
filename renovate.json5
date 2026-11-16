@@ -78,6 +78,10 @@
       commitMessageTopic: "{{depName}}",
       commitMessageExtra: "{{newVersion}}",
       rebaseWhen: "behind-base-branch",
+      // Vendoring only adds a directory under helm/. Nothing deploys until an
+      // Application path changes, so major versions need no dashboard approval.
+      // This rule sits after the generic major rule above and overrides it.
+      dependencyDashboardApproval: false,
       prBodyNotes: [
         "Adds the selected upstream chart as a new versioned directory. The Argo CD promotion is reviewed separately.",
       ],
