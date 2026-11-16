@@ -155,7 +155,9 @@ spec:
                   match:
                     context: GATEWAY
                     routeConfiguration:
-                      portNumber: 443
+                      # The route configurations of this gateway are named
+                      # per host, so match by name and not by port.
+                      name: "higress-rds-443.t-errpages.higress.invalid"
                       vhost:
                         name: "t-errpages.higress.invalid:443"
                   patch:
