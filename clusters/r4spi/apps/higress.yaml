@@ -111,6 +111,301 @@ spec:
         # The web console is not used.
         higress-console:
           replicaCount: 0
+        extraResources:
+          # Error pages through Higress (#326). ingress-nginx replaced backend
+          # errors with the themed pages of the error-pages service. Envoy has
+          # a custom response filter that can do the same: on a given response
+          # status it sends the request again, inside the gateway, to another
+          # route and returns that answer with the original status. This is the
+          # proof of concept. The filter is off by default and is switched on
+          # only for a test host, so no public host is affected.
+          - apiVersion: networking.istio.io/v1alpha3
+            kind: EnvoyFilter
+            metadata:
+              name: higress-error-pages
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              workloadSelector:
+                labels:
+                  app: higress-gateway
+                  higress: higress-system-higress-gateway
+              configPatches:
+                - applyTo: HTTP_FILTER
+                  match:
+                    context: GATEWAY
+                    listener:
+                      portNumber: 443
+                      filterChain:
+                        filter:
+                          name: envoy.filters.network.http_connection_manager
+                  patch:
+                    operation: INSERT_FIRST
+                    value:
+                      name: envoy.filters.http.custom_response
+                      disabled: true
+                      typed_config:
+                        "@type": type.googleapis.com/envoy.extensions.filters.http.custom_response.v3.CustomResponse
+                - applyTo: VIRTUAL_HOST
+                  match:
+                    context: GATEWAY
+                    routeConfiguration:
+                      portNumber: 443
+                      vhost:
+                        name: "t-errpages.higress.invalid:443"
+                  patch:
+                    operation: MERGE
+                    value:
+                      typed_per_filter_config:
+                        envoy.filters.http.custom_response:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.custom_response.v3.CustomResponse
+                          custom_response_matcher:
+                            matcher_list:
+                              matchers:
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "401"
+                                on_match:
+                                  action:
+                                    name: error-page-401
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/401.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "403"
+                                on_match:
+                                  action:
+                                    name: error-page-403
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/403.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "404"
+                                on_match:
+                                  action:
+                                    name: error-page-404
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/404.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "405"
+                                on_match:
+                                  action:
+                                    name: error-page-405
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/405.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "408"
+                                on_match:
+                                  action:
+                                    name: error-page-408
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/408.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "409"
+                                on_match:
+                                  action:
+                                    name: error-page-409
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/409.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "410"
+                                on_match:
+                                  action:
+                                    name: error-page-410
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/410.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "429"
+                                on_match:
+                                  action:
+                                    name: error-page-429
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/429.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "500"
+                                on_match:
+                                  action:
+                                    name: error-page-500
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/500.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "502"
+                                on_match:
+                                  action:
+                                    name: error-page-502
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/502.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "503"
+                                on_match:
+                                  action:
+                                    name: error-page-503
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/503.html"
+                              - predicate:
+                                  single_predicate:
+                                    input:
+                                      name: status
+                                      typed_config:
+                                        "@type": type.googleapis.com/envoy.type.matcher.v3.HttpResponseStatusCodeMatchInput
+                                    value_match:
+                                      exact: "504"
+                                on_match:
+                                  action:
+                                    name: error-page-504
+                                    typed_config:
+                                      "@type": type.googleapis.com/envoy.extensions.http.custom_response.redirect_policy.v3.RedirectPolicy
+                                      uri: "https://error.app.jyje.online/504.html"
+          # Test backend and a TLS host for the proof of concept. The host does
+          # not resolve, so it is reachable only through the gateway address
+          # with a resolve override.
+          - apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: httpbin
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: httpbin
+              template:
+                metadata:
+                  labels:
+                    app: httpbin
+                spec:
+                  containers:
+                    - name: httpbin
+                      image: mccutchen/go-httpbin:v2.15.0
+                      ports:
+                        - containerPort: 8080
+                      resources:
+                        requests:
+                          cpu: 5m
+                          memory: 16Mi
+                        limits:
+                          memory: 64Mi
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: httpbin
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              selector:
+                app: httpbin
+              ports:
+                - port: 80
+                  targetPort: 8080
+          - apiVersion: cert-manager.io/v1
+            kind: Issuer
+            metadata:
+              name: selfsigned
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              selfSigned: {}
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: t-errpages
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              secretName: t-errpages
+              dnsNames:
+                - t-errpages.higress.invalid
+              issuerRef:
+                kind: Issuer
+                name: selfsigned
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-errpages
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            spec:
+              ingressClassName: higress
+              tls:
+                - secretName: t-errpages
+                  hosts:
+                    - t-errpages.higress.invalid
+              rules:
+                - host: t-errpages.higress.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: httpbin, port: {number: 80}}}}
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
