@@ -109,6 +109,12 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
 8. **Sync any floating image tag (upgrade only)**
    Run the `floating-image-tag-sync` skill against the Application manifest(s) being bumped. If it pins `image.tag` (or similar) to a bare `<major>.<minor>` floating tag, bump it to match the new chart's `appVersion` minor version in the same commit as the chart bump.
 
+9. **Audit every other image pin (upgrade only)**
+   A bare `<major>.<minor>` floating tag is only one case. Applications can also pin a full version, or repeat the image in an init container. Check them against the new chart's `appVersion` and the upstream latest image, as described in the `helm-batch-upgrade` skill (gap 3).
+
+10. **Point the Application at the new chart**
+    Vendoring alone deploys nothing. Update `path:` in `clusters/*/apps/<app>.yaml` to the new directory, normally in a separate PR from the vendoring. When upgrading many charts at once, follow the `helm-batch-upgrade` skill, including its cleanup rule for old chart directories.
+
 ## Convention summary
 
 - **Storage path:** `helm/<group>/<chart-name>-<version>/`
