@@ -94,17 +94,20 @@ Always compare the pin with the **new** chart's `appVersion` and with the upstre
 
 ## 6. Clean up after a successful rollout
 
-Only after the user confirms that the rollout is healthy:
+Only for charts whose Application already points at the newest vendored directory and whose rollout the user considers healthy. Skip any chart whose upgrade PR is still open.
 
-1. For each chart family, keep the directory the Application now uses and the **one directory immediately before it**. Delete every older directory.
-2. "Immediately before" means the previous version that was deployed or vendored before the current one, not an arbitrary old version.
-3. Never delete a directory that any Application still references. Check first:
+1. **Keep the three most recent chart directories that were actually deployed.** Read them from the history of the Application `path:` on the default branch, newest first, not from the directory listing. A chart that was vendored but never deployed does not count.
+2. **Always keep a directory that any Application uses now**, and any directory newer than the current one (vendored, waiting to be deployed).
+3. **Delete the rest** of that chart family, in the same group folder, matching `<chart-name>-<version>`.
+4. **Check for other references before deleting**, and keep a directory that something else needs:
    ```bash
-   git grep -n -F "<chart-dir-name>" -- clusters
+   git grep -n -F "<chart-dir-name>" -- . ':!helm'
    ```
-4. Do it in its own PR, titled with the `remove` type, so it can be reverted alone.
+   Examples: a script or test that names a fixed old and new chart. Mentions inside skill examples are not dependencies.
+5. Charts that no Application uses (kept on purpose, for example retired gateways) are not touched.
+6. Use `git rm -r`, put it in its own PR with the `remove` type, and let the PR list what was kept. It can be reverted alone.
 
-If the rollout fails, do not clean up. The previous directory is the rollback target.
+Real rollout health is not visible from the repository. Say so in the PR, and rely on the kept versions as rollback targets.
 
 ## Report format
 
