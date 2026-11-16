@@ -24,13 +24,13 @@ Envoy Gateway는 Ingress가 아니라 Gateway API만 처리해서 앱들이 쓰�
 | `ssl-redirect` | 같은 이름으로 동작하고, 필요함(Higress는 기본으로 HTTP를 HTTPS로 리다이렉트하지 않음) |
 | `limit-connections`, `proxy-body-size` | 대응 없음. 어떤 크기든 통과 |
 | `configuration-snippet` (CORS 출처 반사) | 명시적 `cors-allow-origin` |
-| `custom-http-errors` | 미지원. 아래 참고 |
+| `custom-http-errors` | `higress` Application의 EnvoyFilter로 대체. 아래 참고 |
 
 놓치기 쉬운 설정이 둘 있습니다. Higress 게이트웨이는 기본값으로 라우트 타임아웃과 상관없이 180초 동안 데이터가 없는 연결을 끊으므로 `downstream.idleTimeout`을 3600으로 올렸습니다. 그리고 `ssl-redirect`를 두지 않으면 Higress는 HTTP를 HTTPS로 리다이렉트하지 않습니다.
 
 ## 사용자에게 달라 보이는 점
 
-- 오류 응답이 이제 앱에서 옵니다. ingress-nginx는 상태 코드 401, 403, 404, 405, 408, 409, 410, 429, 500, 502, 503, 504 응답을 `error-pages` 서비스의 화면으로 바꿨습니다. Higress는 앱의 응답을 그대로 전달합니다. `error-pages` 서비스는 자기 호스트로 계속 돌지만 기본 백엔드로 트래픽을 받지는 않습니다.
+- 오류 화면이 다시 적용됩니다. EnvoyFilter(`higress-error-pages`)가 공개 호스트마다 Envoy custom response 필터를 켭니다. 상태 코드 401, 403, 404, 405, 408, 409, 410, 429, 500, 502, 503, 504에서 게이트웨이가 `error-pages` 서비스의 해당 화면을 받아 원래 상태 코드로 돌려줍니다. Gameplane 호스트(앱이 401과 404를 직접 읽음)와 `error-pages` 호스트(자기 자신으로 리다이렉트됨)는 제외했습니다. 본문이 있는 요청은 앱의 응답이 그대로 나가고, JSON을 요청해도 HTML 화면이 옵니다. 새 공개 호스트는 EnvoyFilter에 패치를 따로 추가해야 하며, 라우트 설정 이름 `higress-rds-443.<호스트>`로 매칭합니다.
 - 요청 본문 크기 상한과 클라이언트별 연결 수 상한이 없어졌습니다. 상한이 있던 Ingress는 인증 뒤에 있습니다.
 - 속도 제한은 클라이언트별이 아니라 라우트별입니다.
 
