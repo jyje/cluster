@@ -2,11 +2,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: error-pages
-  annotations:
-    # Must exist before ingress-nginx's default-backend-service extraArg
-    # points at it, so keep it in an earlier sync-wave (ingress-nginx has
-    # no wave set, i.e. the default "0").
-    argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: base
   source:

@@ -65,8 +65,8 @@ spec:
                         url: https://iptime.com/iptime
                       - name: error-pages
                         logo: https://hsto.org/webt/rm/9y/ww/rm9ywwx3gjv9agwkcmllhsuyo7k.png
-                        subtitle: Themed default backend for ingress-nginx
-                        tag: "error-pages #ingress-nginx #infra"
+                        subtitle: Themed HTTP error pages
+                        tag: "error-pages #errors #infra"
                         url: https://github.com/tarampampam/error-pages
                       - name: NVIDIA GeForce GTX 1660 Ti
                         logo: https://cdn.simpleicons.org/nvidia
