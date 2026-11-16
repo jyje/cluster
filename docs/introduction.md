@@ -179,7 +179,7 @@ Runbooks and tuning notes live under `docs/operations/`. Current entries:
 | Orchestration | [MicroK8s](https://microk8s.io/) |
 | GitOps | [ArgoCD](https://argo-cd.readthedocs.io/) |
 | Service Mesh | [Istio Ambient](https://istio.io/latest/docs/ambient/) *(evaluation)* |
-| Ingress | NGINX Ingress Controller |
+| Ingress | [Higress](https://higress.io/) (Envoy based, reads the nginx annotations) |
 | Load Balancer | MetalLB (L2) |
 | Distributed Block | [Longhorn](https://longhorn.io/) |
 | Object Storage | [SeaweedFS](https://github.com/seaweedfs/seaweedfs) |
@@ -188,4 +188,4 @@ Runbooks and tuning notes live under `docs/operations/`. Current entries:
 | LLM UI | [Open WebUI](https://github.com/open-webui/open-webui) |
 | Vector DB | [Qdrant](https://qdrant.tech/) |
 | DB Operator | [CloudNativePG](https://cloudnative-pg.io/) |
-| TLS | cert-manager + Let's Encrypt (HTTP-01 via NGINX ingress) |
+| TLS | cert-manager + Let's Encrypt (HTTP-01 via Higress) |

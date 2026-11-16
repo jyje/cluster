@@ -34,38 +34,22 @@ API와 operator가 롤링되게 합니다. 에이전트는 CA를 신뢰하므로
 
 ## 대시보드 접근
 
-공개 호스트는 `gameplane.app.jyje.online`입니다. Gateway, Certificate, HTTPRoute는 Application(`extraResources`)에 있고
-공용 `envoy-web` 클래스에 합류합니다. 80, 443 포트는 아직 ingress-nginx가 노드에서 쥐고 있어서, Application 안의
-작은 브리지 Ingress가 위 Certificate로 TLS를 끝내고 Envoy 프록시의 전용 `http-bridge` 리스너(8080 포트)로 평문 HTTP 전달을 합니다(`envoy-gateway-system`의
-`envoy-web`을 가리키는 `ExternalName` Service 사용). 이 구간은 ingress-nginx에서 다른 모든 앱으로 가는 구간처럼
-클러스터 안에 머뭅니다. 그다음 HTTPRoute가 모든 경로를 `gameplane-web`으로 보냅니다.
-즉 공개 트래픽은 이미 Envoy Gateway를 지납니다. [envoy-gateway-migration-ko.md](../networks/envoy-gateway-migration-ko.md)의
-컷오버에서 Envoy가 포트를 가져가면 브리지 Ingress, Service, 리스너는 지웁니다.
+공개 호스트는 `gameplane.app.jyje.online`입니다. Ingress와 Certificate는 Application(`extraResources`)에 있고, Ingress는
+`higress` 클래스를 씁니다. Higress가 모든 경로를 대시보드를 서빙하고 API를 프록시하는 `gameplane-web`으로 바로 보냅니다.
+Certificate는 Ingress가 쓰는 시크릿 옆에 둔 명시적 리소스입니다(이름 `gameplane-envoy`는 옛 이름 그대로입니다).
 
-브리지에서 알아 둘 점이 둘 있습니다.
+Ingress에서 알아 둘 점이 셋 있습니다.
 
-- ingress-nginx는 일부 백엔드 오류를 자체 오류 페이지로 바꿉니다(`custom-http-errors`). 대시보드 API는 401과 404를
-  직접 응답하고 SPA가 그 값을 읽으므로, 브리지 Ingress는 목록을 쓰지 않는 코드로 덮어씁니다.
-- ingress-nginx는 `proxy-ssl-secret`이 없으면 `proxy-ssl-*` 어노테이션을 모두 무시해서 SNI를 보내지 않고, Envoy의
-  HTTPS 리스너가 연결을 끊습니다. 그래서 브리지는 HTTPS가 아니라 평문 HTTP 리스너를 씁니다. HTTPS 리스너는
-  포트포워드 확인과 최종 구성을 위해 남겨 둡니다.
+- 대시보드 API는 401과 404를 직접 응답하고 SPA가 그 값을 읽습니다. Higress는 백엔드 오류를 그대로 전달하므로, 예전 컨트롤러처럼
+  전역 오류 페이지를 꺼 둘 필요가 없습니다.
+- 요청 속도 상한은 `higress.io/route-limit-rps`이고 클라이언트별이 아니라 라우트별입니다. 본문 크기 상한과 연결 수 상한은 없습니다.
+  업로드, WebSocket, SSE는 게이트웨이 전체의 한 시간 유휴 타임아웃이 맡습니다.
+- Homer 카드가 브라우저에서 `/healthz`로 ping하므로, Ingress가 대시보드 출처에 한해 CORS를 허용합니다.
 
 DNS 레코드는 다른 `app.jyje.online` 이름들과 같은 DDNS 호스트를 가리키는 CNAME입니다. Certificate가 발급되려면
 Let's Encrypt HTTP-01 챌린지 전에 이 레코드가 있어야 합니다.
 
-Homer 카드는 Ingress 어노테이션이 아니라 `homer-instance`의 `4. Games` 그룹에 둔 수동 항목입니다. 브리지 Ingress에서
-HTTPRoute로 옮겨도 카드가 유지됩니다.
-
-공개 구간 없이 Envoy 경로만 확인하려면 포트포워드를 씁니다.
-
-```bash
-kubectl -n envoy-gateway-system port-forward \
-  $(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gatewayclass=envoy-web -o name) 8443:8443
-```
-
-```bash
-curl -sI --resolve gameplane.app.jyje.online:8443:127.0.0.1 https://gameplane.app.jyje.online:8443/
-```
+Homer 카드는 Ingress 어노테이션이 아니라 `homer-instance`의 `3. Management` 그룹에 둔 수동 항목입니다.
 
 ## 첫 관리자
 

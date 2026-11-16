@@ -52,7 +52,7 @@ for 1.37 (jyje/cluster#158) is the template.
 2. Re-run the read-only checks recorded in the upgrade issue: cgroup version on
    every node, static pods that reference Secrets or ConfigMaps, kube-proxy mode,
    deprecated API requests, PodDisruptionBudgets and database replica placement.
-3. Check chart and operator compatibility: Argo CD, cert-manager, ingress-nginx,
+3. Check chart and operator compatibility: Argo CD, cert-manager, Higress,
    CloudNativePG, Istio ambient, MetalLB, Gateway API and the Prometheus stack.
 4. Confirm the preconditions: all Applications Synced and Healthy, all nodes Ready,
    a fresh backup of the certificate and credential directories outside Git, and a

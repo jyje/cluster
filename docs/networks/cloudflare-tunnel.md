@@ -1,5 +1,7 @@
 # Cloudflare Tunnel
 
+> **Historical.** The tunnel is no longer used. Public traffic reaches the cluster through the router's port-forward of ports 80 and 443 to the Higress gateway address (see [cluster-design.md](../architecture/cluster-design.md)). This page records how the tunnel was set up, when ingress-nginx was the ingress controller.
+
 ## Overview
 
 Replace direct DDNS exposure with a Cloudflare Tunnel to hide the home public IP and eliminate inbound port forwarding requirements.

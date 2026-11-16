@@ -1,102 +1,61 @@
-# Envoy Gateway migration
+# Moving web traffic to Higress
 
-Tracking issue: #207. This page records the design for moving web traffic from ingress-nginx to Envoy Gateway, and the checks to run before the ports are swapped.
-
-## Update: web traffic goes to Higress
-
-On 2026-11-16 the web hosts were set to move to Higress instead of Envoy Gateway (decision in #314, per-host rollout in #326). Higress reads most `nginx.ingress.kubernetes.io/*` annotations as they are, so the Ingresses can move with few edits, and it also speaks Gateway API. Games and any UDP stay on Envoy Gateway, because Higress has no UDP listener.
-
-What this changes in the plan below:
-
-- **Entry point.** Higress has its own LoadBalancer address from a MetalLB pool that lives outside this repository (only the pool name `web-private` is in git, never the address). ingress-nginx keeps the node ports, so both run side by side and no node port has to be freed first. The public entry is the router's port-forward of 80 and 443 to the nodes. It works by port, so it cannot split hosts. The last step moves the whole entry to the Higress address, and the rollback is pointing it back.
-- **Certificates.** The Higress issuers (`higress-letsencrypt-stag` and `-prod`) use `ingressClassName: higress` for the challenge Ingress. A certificate only renews through Higress once the public port 80 reaches the Higress address. Until then it renews through ingress-nginx.
-- **One host at a time, with a bridge.** The nginx Ingress of a host becomes a bridge that passes the request to Higress over HTTPS, and an `ingressClassName: higress` Ingress serves the host with its existing certificate secret. ingress-nginx still terminates the public TLS and still renews the certificate. Three details came from a failed first try: the bridge must use HTTPS (a plain HTTP hop makes Higress rewrite `X-Forwarded-Proto` to `http`), it must set `proxy-ssl-secret` together with the SNI settings (ingress-nginx ignores them without it, and Higress resets the handshake), and it keeps the nginx limits that still make sense, such as `proxy-body-size`. When every host is served this way, the router points at the Higress address, and the bridges and ingress-nginx are removed. The order and the checklist are in #326.
-- **Envoy web routes.** The dormant Envoy Gateway web routes for Homer, error-pages and Gameplane (below) are not used by public traffic. Those hosts move to Higress like the others, and the Envoy web routes, the shared `envoy-web` class and its proxy are removed after the last of them has moved. The Gateway for games stays.
-
-Annotation mapping, from the tests in #314:
-
-| nginx annotation | On Higress |
-|---|---|
-| `enable-cors`, `cors-allow-*` | Same name works |
-| `affinity`, `session-cookie-*` | Same name works |
-| `proxy-read-timeout`, `proxy-send-timeout` | Not used. The gateway-wide `downstream.idleTimeout` (3600) covers it |
-| `limit-rps` | Rename to `higress.io/route-limit-rps` (per route, burst 5 times) |
-| `limit-connections`, `proxy-body-size` | No equivalent, any size passes |
-| `configuration-snippet` (CORS origin echo) | An explicit `cors-allow-origin` list |
-| `custom-http-errors` | Not supported, needs another answer |
-
-The sections below describe the Envoy Gateway design and still apply to the hosts that already have Gateways.
+Tracking issues: #207, #314 (the evaluation) and #326 (the move). This page records how web traffic moved from ingress-nginx to Higress, what changed for the apps, and how the cluster is set up now. The file keeps its old name because other pages link to it.
 
 ## Where things stand
 
-- Envoy Gateway runs in `envoy-gateway-system` with the `envoy-web` Gateway (ClusterIP, no public entry point yet) and the `games` Gateway (UDP).
-- ingress-nginx still owns ports 80 and 443 on the node network. It serves every public host, so nothing public changes until the cutover.
-- The first two apps to move are `homer-instance` (`app.jyje.online`) and `error-pages` (`error.app.jyje.online`), because they are stateless and low risk.
+- **Higress** is the ingress controller for every public host (17 Ingresses). It runs as a Deployment with one gateway pod on each worker node (the control plane node is left out), behind a LoadBalancer Service with `externalTrafficPolicy: Local`.
+- **The entry point** is the router's port-forward of ports 80 and 443 to the Higress address. The address comes from a MetalLB pool named `web-private` that lives outside this repository, in the environment's private configuration. The repository holds only the pool name, never the address.
+- **ingress-nginx is gone**, together with its issuers and the MetalLB pool of node addresses.
+- **Envoy Gateway** stays for games and any UDP only (the `games` Gateway). Higress has no UDP listener, which was checked on the live gateway.
 
-## Design
+## Why Higress and not Envoy Gateway for the web
 
-### Listeners and routes
+Envoy Gateway handles only Gateway API, not Ingress, so it cannot read the `nginx.ingress.kubernetes.io/*` annotations that the apps used. Higress is Envoy based, reads most of those annotations as they are, and also supports Gateway API. That kept the move small: most Ingresses changed only their class and issuer.
 
-Each app owns its own routing. The `Gateway`, `Certificate` and `HTTPRoute` of an app are declared in that app's Argo CD Application (`extraResources`), in the app's namespace. The Gateway has one HTTPS listener on port 8443 for the app's host and only accepts routes from its own namespace (`allowedRoutes.namespaces.from: Same`), so an app cannot claim another app's host.
+## Annotation mapping
 
-All of these Gateways use the shared `envoy-web` GatewayClass (`manifests/envoy-gateways/web-gatewayclass.yaml`). Its `EnvoyProxy` sets `mergeGateways: true`, so every Gateway of the class runs on one proxy fleet. A new app therefore adds no proxy pod (memory is tight on the nodes), and the cutover has a single set of ports to move. The cost is that a listener must be unique by port, protocol and hostname across the whole class. A duplicate is rejected with `Accepted=False`. The `games` Gateway has its own class because its Service is a UDP LoadBalancer.
+| nginx annotation | On Higress |
+|---|---|
+| `enable-cors`, `cors-allow-*` | The same name works |
+| `affinity`, `session-cookie-*` | The same name works |
+| `proxy-read-timeout`, `proxy-send-timeout` | Not used. The gateway-wide `downstream.idleTimeout` (3600 seconds) covers it |
+| `limit-rps` | Renamed to `higress.io/route-limit-rps`. It limits per route, not per client |
+| `ssl-redirect` | The same name works, and is needed (Higress did not redirect HTTP to HTTPS by default) |
+| `limit-connections`, `proxy-body-size` | No equivalent. Any request size passes |
+| `configuration-snippet` (CORS origin echo) | An explicit `cors-allow-origin` |
+| `custom-http-errors` | Not supported. See below |
 
-These routes are dormant: they have the real hostnames, but no traffic reaches the Gateway from outside. The Ingress objects stay in place and keep serving.
+Two settings are easy to miss. The Higress gateway closes any connection that carries no data for 180 seconds by default, whatever the route timeout is, so `downstream.idleTimeout` is raised to 3600. And Higress does not redirect HTTP to HTTPS unless `ssl-redirect` is set.
 
-The controller only watches namespaces that are listed in the `envoy-gateway` Application. Add a namespace there before its first Gateway or route. Namespaces themselves stay managed separately.
+## What users see differently
 
-The Hermes Henry pilot Gateway still lives in `manifests/envoy-gateways/henry-gateway.yaml`. It moved onto the shared class and can follow the same pattern later.
+- Error responses now come from the apps. ingress-nginx replaced responses with the status codes 401, 403, 404, 405, 408, 409, 410, 429, 500, 502, 503 and 504 by the screens of the `error-pages` service. Higress passes the app's own response through. The `error-pages` service still runs and has its own host, but nothing sends traffic to it as a default backend.
+- There is no cap on request body size and no cap on connections per client any more. The Ingresses that had a cap are behind authentication.
+- Rate limiting is per route, not per client.
 
-### Certificates
+## Certificates
 
-Each app declares an explicit `Certificate` next to its Gateway, in the same namespace, so the TLS secret needs no cross-namespace `ReferenceGrant`. It is not a Gateway annotation.
+The ClusterIssuers `higress-letsencrypt-stag` and `higress-letsencrypt-prod` use `ingressClassName: higress` for the HTTP-01 challenge Ingress. Every Certificate was reissued through the production issuer when the Ingresses moved to Higress, and the first staging issuance through Higress took 31 seconds. A certificate renews through Higress only because the public port 80 reaches Higress, so a router rule that points port 80 anywhere else stops renewals.
 
-- While ingress-nginx answers port 80, only its HTTP-01 solver can finish a challenge. The Certificates therefore use the existing `nginx-letsencrypt-prod` issuer.
-- A Certificate keeps renewing after the old Ingress is removed, so the secret does not depend on the Ingress staying around.
-- At the cutover, port 80 moves to Envoy. Then the Certificates switch to an issuer with the Gateway API HTTP-01 solver, and cert-manager gets `config.gatewayAPI.enabled: true`. That change is not made yet because the solver cannot complete a challenge until port 80 points at Envoy, and it would restart cert-manager for no gain.
+## How the move was done, and what to reuse
 
-### Homer cards
+The router forwards by port, so it cannot split hosts. The plan of moving host by host with a bridge (an nginx Ingress that passes the host to Higress) was tried for two dev hosts. It works, with three rules:
 
-homer-operator still runs with `enableGatewayAPI: false`, so cards keep coming from the Ingress annotations. The cutover turns the option on, moves the annotations to the HTTPRoutes, and removes the Ingresses in the same change, so no card is duplicated.
+1. Pass the request to Higress over HTTPS. A plain HTTP hop makes Higress rewrite `X-Forwarded-Proto` to `http`.
+2. Set `proxy-ssl-secret` together with the SNI settings. Without a secret, ingress-nginx ignores `proxy-ssl-name` and the SNI switch, sends no SNI, and Higress resets the handshake. The first try failed with a 502 for exactly this reason.
+3. Keep the limits that still make sense on the bridge, such as the body size.
 
-## Check before the cutover
+In the end the move was done at once. Every host got a Higress Ingress first (a copy of the nginx one, checked through the Higress address with its real name), then the router was switched, then every Ingress was changed in place from `nginx` to `higress`. In place matters: the Certificate that cert-manager created for an Ingress is owned by it, so recreating the Ingress would delete the Certificate.
 
-Port-forward the Envoy service and request each host with its real name, so TLS and routing are tested without touching public traffic.
+Checks that were worth their cost: compare status, certificate, body and redirect of every host between the old and the new path, request a unique path and find it in the new gateway's log, and watch the public hosts every half second during each change. The tests are described in #314 and #326.
 
-```bash
-kubectl -n envoy-gateway-system port-forward \
-  $(kubectl -n envoy-gateway-system get svc -l gateway.envoyproxy.io/owning-gatewayclass=envoy-web -o name) 8443:8443
-```
+## Limits to know
 
-```bash
-curl -sI --resolve app.jyje.online:8443:127.0.0.1 https://app.jyje.online:8443/
-```
-
-```bash
-curl -sI --resolve error.app.jyje.online:8443:127.0.0.1 https://error.app.jyje.online:8443/
-```
-
-Also check that the Gateway reports `Programmed=True`, both listeners report `ResolvedRefs=True` once the certificates are issued, and each route reports `Accepted=True`.
-
-## Cutover outline
-
-1. Enable the cert-manager Gateway API support and add an issuer with the Gateway API solver, then move the two Certificates to it.
-2. Add an HTTP listener on the Gateway for the ACME challenge and an HTTP to HTTPS redirect.
-3. Free ports 80 and 443 on the nodes (stop the ingress-nginx DaemonSet) and expose Envoy on them. Plan this window, because a short outage is expected.
-4. Enable `enableGatewayAPI` in homer-operator and move the Homer annotations to the HTTPRoutes.
-5. Remove the Ingresses of the migrated apps and the bridge Ingress and ExternalName Service of Gameplane, which forward public traffic to Envoy while ingress-nginx holds the ports. Then repeat for the next batch.
+- The gateway needs a worker node. The control plane node does not run one, and with three workers, losing one leaves two pods.
+- The address is announced by one node at a time, chosen among the nodes that run a ready gateway pod. A change of the announcing node can drop connections for a few seconds.
+- The pool of the web address must hold an address that no node owns. A pool that overlaps node addresses caused an ARP conflict before (see [cluster-design.md](../architecture/cluster-design.md)).
 
 ## Rollback
 
-Keep the ingress-nginx manifests in git until the new path is verified. To roll back, restore the ingress-nginx DaemonSet on the host ports and point the Cloudflare Tunnel and the router back at it. The Ingress objects and their certificates are untouched until their own removal step, so no data is lost.
-
-## Changing the class of a Gateway
-
-Moving an existing Gateway to another GatewayClass does not remove the proxy of
-the old class: the controller no longer manages it, and it keeps running with
-the old Service. When `envoy-web` moved to the merged class, the old
-`envoy-envoy-gateway-system-envoy-web-*` Deployment, Service, ServiceAccount and
-ConfigMap stayed behind and crash-looped. They were deleted by hand after
-checking that no Gateway used the old Service address. Do the same after a class
-change: list the leftover objects by their `owning-gateway-name` label, check
-that nothing refers to them, and delete them by name.
+ingress-nginx is removed from git. To go back, restore its manifests from the git history before the removal, change the Ingresses back to `nginx` with the nginx issuers, and point the router at the nodes again. The Higress and ingress-nginx setups do not share state, so both directions are a configuration change.

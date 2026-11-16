@@ -1,6 +1,6 @@
 # Higress is the web entry of the cluster: the ingress controller for every
 # public host, and the owner of ports 80 and 443 through its own LoadBalancer
-# address. It replaced ingress-nginx (tracking issues #314 and #326). Games and
+# address. It replaced ingress-nginx, which is removed (issues #314, #326). Games and
 # any UDP stay on Envoy Gateway, because Higress has no UDP listener.
 apiVersion: argoproj.io/v1alpha1
 kind: Application

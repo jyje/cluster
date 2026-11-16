@@ -58,7 +58,7 @@ What those Applications compose into, bottom-up:
 
 | Layer | Components | Notes |
 |-------|-----------|-------|
-| **Edge / Ingress** | ingress-nginx, MetalLB (L2) | ingress is a hostNetwork DaemonSet — see [Decisions](#design-decisions) |
+| **Edge / Ingress** | Higress, MetalLB (L2) | the gateway has its own LoadBalancer address that no node owns, see [Decisions](#design-decisions) |
 | **Certificates** | cert-manager + Let's Encrypt (HTTP-01) | ClusterIssuers delivered as L4 inline manifests (`extraObjects`) |
 | **Service Mesh** | Istio Ambient | *evaluation / temporarily disabled* |
 | **Storage** | Longhorn (block), SeaweedFS (object), NFS (legacy) | hybrid governance |
@@ -79,32 +79,37 @@ The decisions that were not obvious — each one earned by an outage or a dead e
 
 The cluster previously fronted everything through a **Cloudflare Tunnel** (no
 public IP exposed). That was removed in favour of **direct ingress**: the home
-router port-forwards `:80/:443` to the nodes, and NGINX terminates there.
+router port-forwards `:80/:443` to the web address of the Higress gateway, and Higress terminates there.
 
 **Trade-off:** the tunnel hid the origin and needed no inbound ports, but added a
 hop, an external dependency, and an opaque failure surface. Direct ingress is
 fewer moving parts and keeps TLS issuance (HTTP-01) self-contained — at the cost
 of exposing the router's ports and trusting MetalLB/ingress to behave (see next).
 
-### Ingress is a hostNetwork DaemonSet, never a LoadBalancer
+### The web entry has an address that no node owns
 
-**The MetalLB L2 address pool overlaps the nodes' own addresses.** If the ingress
-controller is exposed as `type: LoadBalancer`, MetalLB hands it a VIP that a node
-**already owns**, and now two machines answer ARP for the same address. The L2
-conflict is not contained to ingress: it corrupts the affected node's
-**kubelet ↔ API server** path, which then cascades —
+**A MetalLB L2 address must never be an address a node already owns.** The first
+setup had a MetalLB pool that held the nodes' own addresses. A LoadBalancer
+Service that landed in it got an address a node already had, and now two
+machines answered ARP for it. The L2 conflict is not contained to the Service: it
+corrupts the affected node's **kubelet to API server** path, which then cascades
 
-> *Observed cascade:* a node goes `NotReady` → CloudNativePG instance managers
-> can't refresh their TLS secret from the API server → Postgres clusters lose
-> their primary and their `-rw` endpoint empties → every app behind those DBs
-> (dashboards, the LLM UI) returns 5xx. The root cause was **layer-2**, three
+> *Observed cascade:* a node goes `NotReady`, CloudNativePG instance managers
+> can't refresh their TLS secret from the API server, Postgres clusters lose
+> their primary and their `-rw` endpoint empties, and every app behind those DBs
+> (dashboards, the LLM UI) returns 5xx. The root cause was **layer 2**, three
 > layers down from the symptom.
 
-**Resolution / standing rule:** run ingress as a **hostNetwork DaemonSet**
-(`hostNetwork: true`, `dnsPolicy: ClusterFirstWithHostNet`, `service.type: ClusterIP`)
-so each node binds `:80/:443` directly and **no VIP is needed**. This also matches
-the old MicroK8s ingress addon and removes a hop. Keep MetalLB strictly for
-workloads whose addresses do **not** collide with the nodes.
+**Resolution / standing rule.** Ingress used to run as a hostNetwork DaemonSet,
+so that no VIP was needed. That worked, but it tied the web entry to the node
+ports. The entry is now the Higress gateway, a normal Deployment with one pod on
+each worker, behind a LoadBalancer Service. Its address comes from a dedicated
+MetalLB pool that holds one LAN address that no node owns. The pool lives in the
+environment's private configuration, never in this repository (only its name
+`web-private` is referenced). The pool of node addresses was removed, so no
+Service can land on a node address by accident. The Service uses
+`externalTrafficPolicy: Local`, so the apps keep the real client address and
+MetalLB announces the address from a node that runs a ready gateway pod.
 
 ### Declarative certificate trust
 
@@ -113,7 +118,7 @@ The whole certificate chain is reproducible from git. `ClusterIssuer`s are not
 cert-manager Application (through the chart's native `extraObjects`, which takes
 each object as a YAML string), so the trust anchors version with the operator that
 consumes them. cert-manager then issues Let's Encrypt certs via the HTTP-01
-challenge through the NGINX ingress above.
+challenge through the Higress gateway above (the ClusterIssuers use `ingressClassName: higress`).
 
 ### Prune with scope, never with the app-of-apps
 

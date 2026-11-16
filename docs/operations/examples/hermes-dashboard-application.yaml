@@ -45,7 +45,7 @@ spec:
           # Renders HERMES_DASHBOARD=1, a TCP readiness probe, and derives
           # config.dashboard.public_url from the first Ingress host below.
           enabled: true
-          # ingress-nginx runs on the host network of the nodes. Behind Calico
+          # The Higress gateway runs as pods on the worker nodes. Behind Calico
           # VXLAN the dashboard sees it as a node address or as a tunnel
           # address inside the pod network, so list both networks. Without
           # them the session cookies lose Secure depending on the entry node.
@@ -58,9 +58,9 @@ spec:
           enabled: true
         ingress:
           enabled: true
-          className: nginx
+          className: higress
           annotations:
-            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            cert-manager.io/cluster-issuer: higress-letsencrypt-prod
             # The Chat tab is a websocket terminal and streams output, and the
             # Files tab uploads. nginx's defaults (60 s quiet, 1 MB body) cut
             # both. Homer pings from the browser, so it also needs CORS headers.

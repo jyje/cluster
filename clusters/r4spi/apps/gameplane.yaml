@@ -67,8 +67,7 @@ spec:
                 name: higress-letsencrypt-prod
           # Served by Higress, straight to gameplane-web. The dashboard API
           # answers 401 and 404 itself and the SPA reads them, and Higress
-          # passes them through (ingress-nginx swapped them for its global
-          # error pages, so the bridge had to switch that off). Limits: the
+          # passes them through. Limits: the
           # request rate cap is per route on Higress, and there is no body size
           # cap or connection cap. Uploads, WebSocket and SSE are covered by the
           # gateway-wide idle timeout.
