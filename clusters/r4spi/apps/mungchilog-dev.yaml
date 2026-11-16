@@ -40,6 +40,32 @@ spec:
           - secretRef:
               name: mungchilog-server-oidc
         extraResources:
+          # Higress copy of the Ingress, for the migration rehearsal (#326).
+          # Public traffic still reaches ingress-nginx, which ignores this
+          # class, so nothing changes until the entry point moves. It reuses
+          # the existing certificate secret and carries no cert-manager
+          # annotation and no labels (Homer discovery stays off).
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: mungchilog-higress
+            spec:
+              ingressClassName: higress
+              tls:
+                - hosts:
+                    - mungchilog.dev.jyje.online
+                  secretName: mungchilog.dev.jyje.online
+              rules:
+                - host: mungchilog.dev.jyje.online
+                  http:
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: mungchilog
+                            port:
+                              number: 80
           - apiVersion: v1
             kind: ConfigMap
             metadata:
