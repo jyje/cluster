@@ -45,18 +45,14 @@ spec:
               admin: [AuthentikAdmin, ClusterAdmin]
               operator: []
               viewer: []
-        # Routing is a Gateway API route next to the app (see extraResources),
-        # not the chart's own nginx Ingress. A small bridge Ingress below hands
-        # public traffic to Envoy until ingress-nginx gives up ports 80/443.
+        # The Ingress is defined below in extraResources, because the chart's
+        # own Ingress cannot carry the Higress annotations this host needs.
         ingress:
           enabled: false
         extraResources:
-          # Gateway API side of the Envoy Gateway migration (see
-          # docs/networks/envoy-gateway-migration.md). The Gateway joins the
-          # shared envoy-web class, and the Certificate lives here so the TLS
-          # secret stays in this namespace. The chart's Ingress sends every path
-          # to gameplane-web, which serves the dashboard and proxies the API, so
-          # one rule is enough.
+          # The certificate of the host. It is an explicit Certificate (not an
+          # Ingress annotation) so it lives in this namespace next to the TLS
+          # secret that the Ingress below uses. The name is historical.
           - apiVersion: cert-manager.io/v1
             kind: Certificate
             metadata:
@@ -69,56 +65,6 @@ spec:
               issuerRef:
                 kind: ClusterIssuer
                 name: higress-letsencrypt-prod
-          - apiVersion: gateway.networking.k8s.io/v1
-            kind: Gateway
-            metadata:
-              name: gameplane
-              namespace: "{{ .Release.Namespace }}"
-            spec:
-              gatewayClassName: envoy-web
-              listeners:
-                - name: https
-                  protocol: HTTPS
-                  port: 8443
-                  hostname: gameplane.app.jyje.online
-                  tls:
-                    mode: Terminate
-                    certificateRefs:
-                      - name: gameplane-envoy-tls
-                  allowedRoutes:
-                    namespaces:
-                      from: Same
-                    kinds:
-                      - kind: HTTPRoute
-                # Plain HTTP listener for the bridge Ingress below. Traffic on
-                # it never leaves the cluster, like the hop from ingress-nginx
-                # to every other app. Remove it at the cutover.
-                - name: http-bridge
-                  protocol: HTTP
-                  port: 8080
-                  hostname: gameplane.app.jyje.online
-                  allowedRoutes:
-                    namespaces:
-                      from: Same
-                    kinds:
-                      - kind: HTTPRoute
-          - apiVersion: gateway.networking.k8s.io/v1
-            kind: HTTPRoute
-            metadata:
-              name: gameplane
-              namespace: "{{ .Release.Namespace }}"
-            spec:
-              parentRefs:
-                - name: gameplane
-                  sectionName: https
-                - name: gameplane
-                  sectionName: http-bridge
-              hostnames:
-                - gameplane.app.jyje.online
-              rules:
-                - backendRefs:
-                    - name: gameplane-web
-                      port: 80
           # Served by Higress, straight to gameplane-web. The dashboard API
           # answers 401 and 404 itself and the SPA reads them, and Higress
           # passes them through (ingress-nginx swapped them for its global
