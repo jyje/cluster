@@ -2,6 +2,31 @@
 
 Tracking issue: #207. This page records the design for moving web traffic from ingress-nginx to Envoy Gateway, and the checks to run before the ports are swapped.
 
+## Update: web traffic goes to Higress
+
+On 2026-11-16 the web hosts were set to move to Higress instead of Envoy Gateway (decision in #314, per-host rollout in #326). Higress reads most `nginx.ingress.kubernetes.io/*` annotations as they are, so the Ingresses can move with few edits, and it also speaks Gateway API. Games and any UDP stay on Envoy Gateway, because Higress has no UDP listener.
+
+What this changes in the plan below:
+
+- **Entry point.** Higress has its own LoadBalancer address from a MetalLB pool that lives outside this repository (only the pool name `web-private` is in git, never the address). ingress-nginx keeps the node ports, so both run side by side and no node port has to be freed first. The public entry is the router's port-forward of 80 and 443 to the nodes. It works by port, so it cannot split hosts. The last step moves the whole entry to the Higress address, and the rollback is pointing it back.
+- **Certificates.** The Higress issuers (`higress-letsencrypt-stag` and `-prod`) use `ingressClassName: higress` for the challenge Ingress. A certificate only renews through Higress once the public port 80 reaches the Higress address. Until then it renews through ingress-nginx.
+- **One host at a time, with a bridge.** The nginx Ingress of a host becomes a bridge that passes the request to Higress over HTTPS, and an `ingressClassName: higress` Ingress serves the host with its existing certificate secret. ingress-nginx still terminates the public TLS and still renews the certificate. Three details came from a failed first try: the bridge must use HTTPS (a plain HTTP hop makes Higress rewrite `X-Forwarded-Proto` to `http`), it must set `proxy-ssl-secret` together with the SNI settings (ingress-nginx ignores them without it, and Higress resets the handshake), and it keeps the nginx limits that still make sense, such as `proxy-body-size`. When every host is served this way, the router points at the Higress address, and the bridges and ingress-nginx are removed. The order and the checklist are in #326.
+- **Envoy web routes.** The dormant Envoy Gateway web routes for Homer, error-pages and Gameplane (below) are not used by public traffic. Those hosts move to Higress like the others, and the Envoy web routes, the shared `envoy-web` class and its proxy are removed after the last of them has moved. The Gateway for games stays.
+
+Annotation mapping, from the tests in #314:
+
+| nginx annotation | On Higress |
+|---|---|
+| `enable-cors`, `cors-allow-*` | Same name works |
+| `affinity`, `session-cookie-*` | Same name works |
+| `proxy-read-timeout`, `proxy-send-timeout` | Not used. The gateway-wide `downstream.idleTimeout` (3600) covers it |
+| `limit-rps` | Rename to `higress.io/route-limit-rps` (per route, burst 5 times) |
+| `limit-connections`, `proxy-body-size` | No equivalent, any size passes |
+| `configuration-snippet` (CORS origin echo) | An explicit `cors-allow-origin` list |
+| `custom-http-errors` | Not supported, needs another answer |
+
+The sections below describe the Envoy Gateway design and still apply to the hosts that already have Gateways.
+
 ## Where things stand
 
 - Envoy Gateway runs in `envoy-gateway-system` with the `envoy-web` Gateway (ClusterIP, no public entry point yet) and the `games` Gateway (UDP).
