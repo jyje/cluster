@@ -24,13 +24,13 @@ Envoy Gateway handles only Gateway API, not Ingress, so it cannot read the `ngin
 | `ssl-redirect` | The same name works, and is needed (Higress did not redirect HTTP to HTTPS by default) |
 | `limit-connections`, `proxy-body-size` | No equivalent. Any request size passes |
 | `configuration-snippet` (CORS origin echo) | An explicit `cors-allow-origin` |
-| `custom-http-errors` | Not supported. See below |
+| `custom-http-errors` | Replaced by an EnvoyFilter in the `higress` Application. See below |
 
 Two settings are easy to miss. The Higress gateway closes any connection that carries no data for 180 seconds by default, whatever the route timeout is, so `downstream.idleTimeout` is raised to 3600. And Higress does not redirect HTTP to HTTPS unless `ssl-redirect` is set.
 
 ## What users see differently
 
-- Error responses now come from the apps. ingress-nginx replaced responses with the status codes 401, 403, 404, 405, 408, 409, 410, 429, 500, 502, 503 and 504 by the screens of the `error-pages` service. Higress passes the app's own response through. The `error-pages` service still runs and has its own host, but nothing sends traffic to it as a default backend.
+- Error responses are themed again. An EnvoyFilter (`higress-error-pages`) turns on the Envoy custom response filter for each public host. On the status codes 401, 403, 404, 405, 408, 409, 410, 429, 500, 502, 503 and 504, the gateway asks the `error-pages` service for the matching screen and returns it with the original status. The Gameplane host (the app reads 401 and 404 itself) and the `error-pages` host (it would redirect to itself) are left out. Requests with a body keep the app's own answer, and clients that ask for JSON get the HTML screen. A new public host needs its own patch in the EnvoyFilter, matched by the route configuration name `higress-rds-443.<host>`.
 - There is no cap on request body size and no cap on connections per client any more. The Ingresses that had a cap are behind authentication.
 - Rate limiting is per route, not per client.
 
