@@ -58,6 +58,9 @@ Classify Helm and GitHub Actions updates by what changes, regardless of who runs
 
 Use the commit subject as the PR title. Configure the naming in Renovate or Dependabot; do not add a PR-only title format or rewrite existing bot commits just to change the title.
 
+#### Enforcement
+`scripts/check_commit_message.py` reads the table above, so edit the table here and nothing else. The `commit-msg` hook in `.githooks/` and the PR title check in CI both call it. Enable the hook once per clone with `git config core.hooksPath .githooks`.
+
 ---
 
 ## 3. Workflow Requirements
