@@ -8,10 +8,10 @@
 
 아래 계획에서 달라지는 점은 다음과 같다.
 
-- **입구.** Higress는 이 저장소 밖에서 만든 MetalLB 풀에서 자기 LoadBalancer 주소를 받는다(저장소에는 풀 이름 `web-private`만 있고 주소는 없다). ingress-nginx는 노드 포트를 그대로 가지므로 둘이 나란히 돌고, 노드 포트를 먼저 비울 필요가 없다. 공개 전환은 공유기나 Cloudflare Tunnel이 가리키는 곳을 바꾸는 일이고, 롤백은 다시 되돌리는 것이다.
+- **입구.** Higress는 이 저장소 밖에서 만든 MetalLB 풀에서 자기 LoadBalancer 주소를 받는다(저장소에는 풀 이름 `web-private`만 있고 주소는 없다). ingress-nginx는 노드 포트를 그대로 가지므로 둘이 나란히 돌고, 노드 포트를 먼저 비울 필요가 없다. 공개 입구는 공유기가 80과 443을 노드로 포트포워드하는 것이다. 포트 단위라 호스트를 나눌 수 없으므로, 마지막 단계에서 입구 전체를 Higress 주소로 옮기고, 롤백은 다시 되돌리는 것이다.
 - **인증서.** Higress용 발급자(`higress-letsencrypt-stag`, `-prod`)는 챌린지 Ingress에 `ingressClassName: higress`를 쓴다. 공개 80 포트가 Higress 주소에 닿아야 비로소 Higress를 통해 갱신된다. 그 전에는 ingress-nginx를 통해 갱신된다.
-- **호스트 하나씩.** nginx Ingress 옆에 `ingressClassName: higress` Ingress를 두고, 실제 이름으로 Higress 주소에서 확인한 뒤, 공개 입구를 옮기고 nginx Ingress를 지운다. 순서와 체크리스트는 #326에 있다.
-- **열린 질문.** 아래의 Homer, error-pages, Gameplane용 휴면 Envoy Gateway 웹 라우트는 공개 트래픽이 쓰지 않는다. 이 호스트들이 Higress로 옮겨간 뒤 유지할지 지울지는 정하지 않았고 #326에서 추적한다.
+- **호스트 하나씩, 브리지로.** 호스트의 nginx Ingress를 요청을 HTTPS로 Higress에 넘기는 브리지로 바꾸고, `ingressClassName: higress` Ingress가 기존 인증서 시크릿으로 그 호스트를 서빙한다. 공개 TLS 종료와 인증서 갱신은 계속 ingress-nginx가 한다. 첫 시도가 실패하면서 확인한 세 가지가 있다. 브리지는 HTTPS여야 하고(평문 HTTP로 넘기면 Higress가 `X-Forwarded-Proto`를 `http`로 덮어쓴다), SNI 설정과 함께 `proxy-ssl-secret`을 둬야 하며(없으면 ingress-nginx가 설정을 무시해서 Higress가 핸드셰이크를 끊는다), `proxy-body-size`처럼 아직 의미 있는 nginx 제한은 브리지에 남긴다. 모든 호스트가 이렇게 서빙되면 공유기를 Higress 주소로 돌리고, 브리지와 ingress-nginx를 제거한다. 순서와 체크리스트는 #326에 있다.
+- **Envoy 웹 라우트.** 아래의 Homer, error-pages, Gameplane용 휴면 Envoy Gateway 웹 라우트는 공개 트래픽이 쓰지 않는다. 이 호스트들도 다른 호스트처럼 Higress로 옮기고, 마지막 호스트가 옮겨간 뒤 Envoy 웹 라우트, 공용 `envoy-web` 클래스, 그 프록시를 제거한다. 게임용 Gateway는 남긴다.
 
 어노테이션 대응표(#314의 시험 결과):
 
