@@ -474,6 +474,40 @@ spec:
                   http:
                     paths:
                       - {path: /, pathType: Prefix, backend: {service: {name: whoami, port: {number: 80}}}}
+          # Bridge test (#326). An ingress-nginx Ingress for a host that does
+          # not resolve passes the request to Higress over HTTPS, like the
+          # bridge for a real host would. It targets the TLS test Ingress
+          # above (tls.compat.invalid). proxy-ssl-secret is set because
+          # ingress-nginx ignores proxy-ssl-name and the SNI setting without
+          # it, which made the first real bridge fail with a TLS reset.
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: higress-bridge
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              type: ExternalName
+              externalName: higress-gateway.higress-system.svc.cluster.local
+              ports:
+                - port: 443
+                  targetPort: 443
+          - apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: t-bridge
+              namespace: "{{ .Release.Namespace }}"
+              annotations:
+                nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+                nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+                nginx.ingress.kubernetes.io/proxy-ssl-name: "tls.compat.invalid"
+                nginx.ingress.kubernetes.io/proxy-ssl-secret: "higress-system/c-tls"
+            spec:
+              ingressClassName: nginx
+              rules:
+                - host: tls.compat.invalid
+                  http:
+                    paths:
+                      - {path: /, pathType: Prefix, backend: {service: {name: higress-bridge, port: {number: 443}}}}
   destination:
     server: https://kubernetes.default.svc
     namespace: higress-system
