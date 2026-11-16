@@ -141,13 +141,16 @@ spec:
                       filterChain:
                         filter:
                           name: envoy.filters.network.http_connection_manager
+                          subFilter:
+                            name: envoy.filters.http.custom_response
                   patch:
-                    operation: INSERT_FIRST
+                    # The Higress chart already inserts this filter with an empty
+                    # config (higress-gateway-global-custom-response). Istio does
+                    # not insert a second filter of the same name, so this merges
+                    # into the existing one and switches it off by default.
+                    operation: MERGE
                     value:
-                      name: envoy.filters.http.custom_response
                       disabled: true
-                      typed_config:
-                        "@type": type.googleapis.com/envoy.extensions.filters.http.custom_response.v3.CustomResponse
                 - applyTo: VIRTUAL_HOST
                   match:
                     context: GATEWAY
