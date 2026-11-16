@@ -16,7 +16,7 @@ spec:
           pod:
             annotations:
               # Roll the controller when the watch configuration changes.
-              networking.jyje.io/watch-profile: games-henry-homer-error-gameplane-v4
+              networking.jyje.io/watch-profile: games-only-v5
         config:
           envoyGateway:
             provider:
@@ -27,10 +27,6 @@ spec:
                   namespaces:
                     - envoy-gateway-system
                     - gameplane-games
-                    - hermes-agent-henry
-                    - homer-instance
-                    - error-pages
-                    - gameplane-system
   destination:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
