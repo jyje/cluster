@@ -20,10 +20,37 @@ spec:
         persistence:
           storageClass: subdir-usb
         ingress:
-          enabled: true
-          clusterIssuer: nginx-letsencrypt-prod
+          # The chart's Ingress cannot take annotations, so an Ingress of the
+          # same name below replaces it (updated in place, so the certificate
+          # it owns is kept).
+          enabled: false
+          clusterIssuer: higress-letsencrypt-prod
           host: attendee.app.jyje.online
         extraResources:
+        - apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: open-attendee-prd
+            annotations:
+              cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          spec:
+            ingressClassName: higress
+            tls:
+              - secretName: open-attendee-prd-tls
+                hosts:
+                  - attendee.app.jyje.online
+            rules:
+              - host: attendee.app.jyje.online
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: open-attendee-prd
+                          port:
+                            number: 80
         - apiVersion: bitnami.com/v1alpha1
           kind: SealedSecret
           metadata:

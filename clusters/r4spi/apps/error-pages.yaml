@@ -40,9 +40,10 @@ spec:
               name: error-pages
               namespace: "{{ .Release.Namespace }}"
               annotations:
-                cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+                cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+                nginx.ingress.kubernetes.io/ssl-redirect: "true"
             spec:
-              ingressClassName: nginx
+              ingressClassName: higress
               tls:
                 - secretName: error.app.jyje.online
                   hosts:

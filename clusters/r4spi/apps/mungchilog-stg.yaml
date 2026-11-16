@@ -20,11 +20,13 @@ spec:
         locationSharing:
           enabled: true
         ingress:
+          className: higress
           labels:
             app.kubernetes.io/name: mungchilog
             homer.jyje.online/discovery: disabled
           annotations:
-            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
           host: mungchilog.stg.jyje.online
           tlsSecretName: mungchilog.stg.jyje.online
         persistence:

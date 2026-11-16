@@ -87,9 +87,10 @@ spec:
             timeoutSeconds: 5
           ingress:
             enabled: true
-            ingressClassName: nginx
+            ingressClassName: higress
             annotations:
-              cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+              cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
               # Without this, Homer's browser-side Ping check is blocked by
               # CORS and shows the app as offline even though it's healthy
               # (same annotations as every other "online" card: Grafana,

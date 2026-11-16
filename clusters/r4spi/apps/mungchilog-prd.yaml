@@ -30,11 +30,13 @@ spec:
         # would create a conflicting second same-host Ingress for static
         # assets.
         ingress:
+          className: higress
           # Homer discovers only Ingresses selected by this standard label.
           labels:
             app.kubernetes.io/name: mungchilog
           annotations:
-            cert-manager.io/cluster-issuer: nginx-letsencrypt-prod
+            cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
             # Homer performs its Ping check in the browser. Allow only the
             # dashboard origin to read this public health endpoint.
             nginx.ingress.kubernetes.io/enable-cors: "true"
