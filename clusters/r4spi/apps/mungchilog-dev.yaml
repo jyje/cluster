@@ -104,6 +104,8 @@ spec:
             kind: Ingress
             metadata:
               name: mungchilog-higress
+              annotations:
+                nginx.ingress.kubernetes.io/ssl-redirect: "true"
             spec:
               ingressClassName: higress
               tls:

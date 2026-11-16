@@ -65,7 +65,9 @@ spec:
           downstream:
             idleTimeout: 3600
           gateway:
-            replicas: 1
+            # Two replicas on different Pi 5 nodes, so a node restart does not
+            # take the web entry down. The address is announced by MetalLB.
+            replicas: 2
             # Entry point on a dedicated MetalLB address. The pool is created
             # outside this repository, in the environment's private
             # configuration, and holds one reserved LAN address that is not a
@@ -523,6 +525,7 @@ spec:
               name: "argocd-server-higress"
               namespace: "argocd"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
@@ -551,6 +554,7 @@ spec:
               name: "authentik-server-higress"
               namespace: "authentik"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
@@ -578,6 +582,8 @@ spec:
             metadata:
               name: "error-pages-higress"
               namespace: "error-pages"
+              annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
             spec:
               ingressClassName: "higress"
               tls:
@@ -601,6 +607,7 @@ spec:
               name: "gameplane-higress"
               namespace: "gameplane-system"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-origin": "https://app.jyje.online"
                 "nginx.ingress.kubernetes.io/enable-cors": "true"
                 "higress.io/route-limit-rps": "20"
@@ -627,6 +634,7 @@ spec:
               name: "hermes-agent-henry-higress"
               namespace: "hermes-agent-henry"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
@@ -654,6 +662,8 @@ spec:
             metadata:
               name: "homer-higress"
               namespace: "homer-instance"
+              annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
             spec:
               ingressClassName: "higress"
               tls:
@@ -677,6 +687,7 @@ spec:
               name: "mungchilog-higress"
               namespace: "mungchilog-prd"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD, GET, OPTIONS"
                 "nginx.ingress.kubernetes.io/cors-allow-origin": "https://app.jyje.online"
                 "nginx.ingress.kubernetes.io/enable-cors": "true"
@@ -702,6 +713,8 @@ spec:
             metadata:
               name: "mungchilog-higress"
               namespace: "mungchilog-stg"
+              annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
             spec:
               ingressClassName: "higress"
               tls:
@@ -725,6 +738,7 @@ spec:
               name: "n8n-higress"
               namespace: "n8n"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
@@ -753,6 +767,7 @@ spec:
               name: "grafana-higress"
               namespace: "observability"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
@@ -781,6 +796,7 @@ spec:
               name: "litellm-higress"
               namespace: "ollama-system"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
@@ -809,6 +825,7 @@ spec:
               name: "open-webui-higress"
               namespace: "ollama-system"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/affinity": "cookie"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
@@ -840,6 +857,8 @@ spec:
             metadata:
               name: "open-attendee-prd-higress"
               namespace: "open-attendee-prd"
+              annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
             spec:
               ingressClassName: "higress"
               tls:
@@ -862,6 +881,8 @@ spec:
             metadata:
               name: "open-attendee-stg-higress"
               namespace: "open-attendee-stg"
+              annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
             spec:
               ingressClassName: "higress"
               tls:
@@ -885,6 +906,7 @@ spec:
               name: "portainer-higress"
               namespace: "portainer"
               annotations:
+                "nginx.ingress.kubernetes.io/ssl-redirect": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-credentials": "true"
                 "nginx.ingress.kubernetes.io/cors-allow-headers": "X-Api-Key"
                 "nginx.ingress.kubernetes.io/cors-allow-methods": "HEAD"
