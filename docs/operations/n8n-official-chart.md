@@ -16,6 +16,7 @@ The Application in this change is **not auto-synced**. Merging the change does n
 | Database | SQLite on the volume | SQLite on the volume (`queueMode` off, `database.type: sqlite`) |
 | Valkey | deployed | gone |
 | Image | `n8nio/n8n:2.6.2` | chart default `2.47.4`. n8n migrates its data on first start. |
+| Startup probe | n/a | 300 s fixed upstream. A local patch makes it configurable, and the Application allows 900 s. |
 | Host, TLS, Homer annotations | as before | as before |
 
 The Homer card keeps working because the chart's selector label `app.kubernetes.io/name: n8n` is the same.

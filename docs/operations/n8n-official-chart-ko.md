@@ -16,6 +16,7 @@
 | 데이터베이스 | 볼륨 안의 SQLite | 볼륨 안의 SQLite (`queueMode` 끔, `database.type: sqlite`) |
 | Valkey | 배포됨 | 없어짐 |
 | 이미지 | `n8nio/n8n:2.6.2` | 차트 기본값 `2.47.4`. 첫 시작에 n8n이 데이터를 옮깁니다. |
+| 시작 프로브 | 없음 | 업스트림에서 300초로 고정. 로컬 패치로 설정할 수 있게 했고, Application은 900초를 허용합니다. |
 | 호스트, TLS, Homer 어노테이션 | 그대로 | 그대로 |
 
 차트의 셀렉터 라벨 `app.kubernetes.io/name: n8n`이 같아서 Homer 카드는 계속 보입니다.

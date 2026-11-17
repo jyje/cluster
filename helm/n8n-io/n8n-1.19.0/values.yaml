@@ -501,6 +501,14 @@ networkPolicy:
 
 # ----- Health checks -----
 probes:
+  # Main process startup probe. The budget is failureThreshold x periodSeconds
+  # (300 s by default). Raise it when the first start runs long database
+  # migrations, so the kubelet does not restart the container mid-migration.
+  # Local patch, see PATCH.md.
+  startup:
+    path: /healthz
+    periodSeconds: 10
+    failureThreshold: 30
   liveness:
     enabled: true
     path: /healthz

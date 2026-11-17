@@ -30,6 +30,13 @@ spec:
         # See docs/operations/n8n-official-chart.md.
         secretRefs:
           existingSecret: n8n-encryption
+        # The first start runs database migrations (2.6.2 to 2.47.4) and took
+        # three to four minutes on a fast laptop. The chart default allows 300 s.
+        # Allow 15 minutes so the kubelet does not restart it mid-migration.
+        # Needs the local chart patch listed in helm/n8n-io/n8n-1.19.0/PATCH.md.
+        probes:
+          startup:
+            failureThreshold: 90
         # One writer on a RWO volume: stop the old pod before the new one starts.
         strategy:
           type: Recreate
