@@ -3,7 +3,8 @@
 
 The approved gitmoji/type pairs are read from the table in
 .claude/skills/git-commit-helper/SKILL.md, so the skill and this check
-cannot drift apart.
+cannot drift apart. The emoji must match the table exactly, including the
+variation selector U+FE0F that some of them carry.
 
 Usage:
   check_commit_message.py --file <commit-msg-file>   (githook)
@@ -24,16 +25,12 @@ ASSISTANT_TRAILER = re.compile(
 )
 
 
-def norm(emoji):
-    return emoji.replace('\ufe0f', '')
-
-
 def load_pairs(skill=SKILL):
     pairs = {}
     for line in skill.read_text(encoding='utf-8').splitlines():
         m = ROW.match(line)
         if m:
-            pairs[m.group(2)] = norm(m.group(1))
+            pairs[m.group(2)] = m.group(1)
     if not pairs:
         raise SystemExit(f'No emoji/type table found in {skill}')
     return pairs
@@ -48,8 +45,12 @@ def check_subject(subject, pairs):
     t = m.group('type')
     if t not in pairs:
         errors.append(f'Unknown type "{t}". Approved: {", ".join(sorted(pairs))}')
-    elif norm(m.group('emoji')) != pairs[t]:
-        errors.append(f'Type "{t}" must use {pairs[t]}, not {m.group("emoji")}')
+    elif m.group('emoji') != pairs[t]:
+        got, want = m.group('emoji'), pairs[t]
+        hint = ''
+        if got.replace('\ufe0f', '') == want.replace('\ufe0f', ''):
+            hint = ' (same symbol, but the variation selector U+FE0F differs; copy the emoji from the table)'
+        errors.append(f'Type "{t}" must use {want}, not {got}{hint}')
     return errors
 
 
