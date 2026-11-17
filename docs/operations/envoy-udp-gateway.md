@@ -26,6 +26,32 @@ which Service may take the pool. It honors the legacy
 `metallb.universe.tf/address-pool` key, and the manifest sets both that and the
 current key. Reinstate a selector restriction before upgrading the controller.
 
+### Renaming the pool
+
+A MetalLB pool cannot be renamed, and two pools cannot hold the same address, so
+a rename is a manual step outside Git. Why: the name must not describe what the
+Service carries. The reserved address is released for a short time, so expect
+the public UDP port to be down for one to three minutes. Do it when nobody is
+online.
+
+1. Merge the change that updates both annotations in `games-gateway.yaml`. The
+   `envoy-udp-poc` Application is a manual sync, so nothing changes yet.
+2. Save the old `IPAddressPool` and `L2Advertisement`, rename them in the saved
+   copy, and replace `ipAddressPools` in the `L2Advertisement` with the new name.
+   Delete the old pair and apply the new pair in one go.
+3. Sync `envoy-udp-poc`. The proxy Service takes the same address again.
+4. Check with `kubectl get svc -n envoy-gateway-system` that the `EXTERNAL-IP`
+   is the reserved address, then join the game once.
+
+Example with placeholder values (use your own address and names):
+
+```bash
+kubectl -n metallb-system get ipaddresspool old-pool -o yaml > pool.yaml
+# edit: metadata.name -> new-pool, spec.addresses stays "192.0.2.10/32"
+kubectl -n metallb-system delete ipaddresspool,l2advertisement old-pool
+kubectl apply -f pool.yaml
+```
+
 ## Placement
 
 The proxy must not run on the 4 KB page nodes (`raspi.type: 4b`): Envoy's
