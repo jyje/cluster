@@ -69,7 +69,7 @@ certmgr, lets = doc.icon_row(tx_certs, CERTS_W, TOP_Y + 55, [
 # -- Edge / Ingress ---------------------------------------------------------
 doc.box(tx_edge, TOP_Y, EDGE_W, TOP_H, "edge", COLOR["edge"], "Edge / Ingress")
 nginx, metallb = doc.icon_row(tx_edge, EDGE_W, TOP_Y + 55, [
-    ("icon", bundled("onprem/network/nginx.png"), "ingress-nginx", 56, 10),
+    ("icon", bundled("onprem/network/nginx.png"), "Higress gateway", 56, 10),
     ("icon", vendored("metallb.png"), "MetalLB (L2)", 56, 10),
 ])
 

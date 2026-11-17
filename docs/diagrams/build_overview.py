@@ -148,7 +148,7 @@ firewall, = icon_row(X0, ROW[3], [(bundled("generic/network/firewall.png"), "hom
 
 # -- Column 2: Network -------------------------------------------------------
 column(X1, "network", "2. Network Layer")
-nginx, = icon_row(X1, ROW[0], [(bundled("onprem/network/nginx.png"), "ingress-nginx (hostNetwork DS)", 60, 11)])
+nginx, = icon_row(X1, ROW[0], [(bundled("onprem/network/nginx.png"), "Higress gateway (3 workers)", 60, 11)])
 certmgr, = icon_row(X1, ROW[1], [(bundled("onprem/certificates/cert-manager.png"), "cert-manager + Let's Encrypt", 60, 11)])
 metallb, = icon_row(X1, ROW[2], [(vendored("metallb.png"), "MetalLB (L2 pool)", 60, 11)])
 istio, = icon_row(X1, ROW[3], [(bundled("onprem/network/istio.png"), "Istio Ambient (disabled)", 60, 11)])
