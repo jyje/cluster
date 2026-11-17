@@ -16,3 +16,9 @@ Renovate's auto-closed dashboard is not evidence of deployment. If a dashboard c
 Keep each workload in its own manifest file. Do not mix resources that serve different workloads, applications or namespaces in one YAML file, even when they share a directory or an Argo CD Application. For example, the UDP game Gateway and the Henry web Gateway live in separate files.
 
 When splitting an existing file, keep it in the same directory and Application so resource identity does not change, and verify that the new files concatenate to the original content.
+
+## Temporary worktrees
+
+Do not create git worktrees next to the regular project checkouts (for example under `~/repo/jyje/`). Create them outside that tree, such as `~/.claude/worktrees/jyje-cluster/<name>`.
+
+Remove the worktree, the local branch and the remote branch as soon as the PR is merged. Before deleting one, check that it is clean and that the PR is merged with the same head commit as the local branch. A squash merge needs `git branch -D` after that check.
