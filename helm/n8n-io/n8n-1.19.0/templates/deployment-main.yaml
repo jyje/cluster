@@ -151,10 +151,10 @@ spec:
           # Probes
           startupProbe:
             httpGet:
-              path: /healthz
+              path: {{ .Values.probes.startup.path }}
               port: http
-            failureThreshold: 30
-            periodSeconds: 10
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
 
           {{- if .Values.probes.readiness.enabled }}
           readinessProbe:

@@ -7,14 +7,42 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/n8n/n8n-2.1.1
+    path: helm/n8n-io/n8n-1.19.0
     helm:
       valueFiles:
         - values.yaml
       valuesObject:
-        image:
-          tag: "2.6.2"
-          pullPolicy: IfNotPresent
+        # Keep the release identity of the 8gears chart. The PVC, ConfigMap and
+        # ServiceAccount stay named "n8n". The official chart adds a "-main"
+        # suffix to the Deployment, Service and Ingress on its own.
+        fullnameOverride: n8n
+        # Single instance on SQLite, like the 8gears release. The official
+        # chart defaults to queue mode with PostgreSQL and Redis.
+        queueMode:
+          enabled: false
+        database:
+          type: sqlite
+          useExternal: false
+        # With existingSecret the chart reads N8N_ENCRYPTION_KEY, N8N_HOST,
+        # N8N_PORT and N8N_PROTOCOL from this Secret, not from values. The key
+        # already lives in the n8n data volume: copy that same value into the
+        # Secret before the first sync, or saved credentials stop decrypting.
+        # See docs/operations/n8n-official-chart.md.
+        secretRefs:
+          existingSecret: n8n-encryption
+        # The first start runs database migrations (2.6.2 to 2.47.4) and took
+        # three to four minutes on a fast laptop. The chart default allows 300 s.
+        # Allow 15 minutes so the kubelet does not restart it mid-migration.
+        # Needs the local chart patch listed in helm/n8n-io/n8n-1.19.0/PATCH.md.
+        probes:
+          startup:
+            failureThreshold: 90
+        # One writer on a RWO volume: stop the old pod before the new one starts.
+        strategy:
+          type: Recreate
+        # No image.tag on purpose: the chart's appVersion (2.47.4) is used.
+        # The 8gears release pinned 2.6.2, so n8n runs its data migrations on
+        # the first start. Back up the volume first.
         ingress:
           enabled: true
           className: higress
@@ -45,39 +73,34 @@ spec:
             - secretName: n8n.app.jyje.online
               hosts:
                 - n8n.app.jyje.online
-        main:
-          persistence:
-            enabled: true
-            type: dynamic
-            storageClass: subdir-usb
-            accessModes:
-              - ReadWriteOnce
-            size: 10Gi
-          replicaCount: 1
-          service:
-            enabled: true
-            type: ClusterIP
-            port: 80
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 3
-        valkey:
+        persistence:
           enabled: true
+          storageClassName: subdir-usb
+          accessModes:
+            - ReadWriteOnce
+          size: 10Gi
+        # The key n8n already uses (it was created inside the data volume),
+        # with the host, port and protocol. Sealed with the cluster controller.
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: n8n-encryption
+            spec:
+              encryptedData:
+                N8N_ENCRYPTION_KEY: AgBN5cnEHSe0CHd7Q7mSZ6QEh5613kQuCJ0WJeF3SS9RBzfzzbCy4mpSJbzIv7oZ8DE14E516N8YsuQcY/Mr/+UmbaHBEMXzTJ3FF/PnwOH46eUzAw+g1/WdkAhsXVIQqJlswjvGRFysQcDtLn6fTgo1V8812f0IwdgCBe0yEbOrUcl/ZzyfcD5mVg0LGbC0GmUpKmF6XoeVEamipbyQUu+Q8eOGfFJ/x3brvaAXWYX+7XUo6f052DJ74BxK7wf+U4QmdOwxeCfJLth0vDkXnApIlHpq74Km/N21SY48JuLt3CNIBwBXMGmmftAx+BZAcyqlThqD+o/x+LIhRk7wn8vYr0pf1rBpXQZPoVfK++Yhj6MRX5XjgUtARBVytvDGqh+PXJLtItcNErLlAQw7deKH9qsyvPknLnqiLuU4mTperAHNct616M8uN/VdxpQXTuTjUa8QsZFdSem5nLq5X6uy7aluKzW7J/dPevhcXS9q2qqu30ytnTFnOhf2YMIrk+DE//rLYAj4b98K0s80GO3axH+nUAxMEfVChPFbvRsiWxR8vAx4Hfs6LMvwFontiGhk5QCR8WclCxgMewqldxTf4F7gyTHaDFYQYvp8rjeTVgJcL5L/C2jGzdc6VeLaBqttFAGFZibMSiHTFLUMVFcv8DC3J0hnZzj2Y86/6JkKPEJO9+gx1B/NmzFxGuI2zX/367o6EmfyDIUqLpjZ/OqMpGjCI4sgRb0is6AwbcE7aw==
+                N8N_HOST: AgAfEFCpq0oNsrXWPVBgw/RSbMktEdl52zS6o8j1aUkYqzh+DqrzU2cU4vJdPjWnBBAIVDhLSNvMxvnP3W4coWzR28p6VRNxCtQvO1lbJXBtmbAS70xXbD5RbamJVXI8LbACL5uJJoFiWMlItX/tCJtbk4FD3AOBwchougqe2RLF0USQDSReVTnGBLDgNOWxY82O9KFqz/sfc16eEDkM74hPqTw8QrdulqccDw5sZj9vHLlVr01YJ5cZX9RCYeGzeeMwh0WgHaYS/e4b6VMG/RUCY/xG4BMVc8496JfAx5GRWSEk+5X96EsHQcEi/M9GlXsSUtJlzuSny1G1cS2H8G9q1Usc2XKMGE2/TXgQ5oBGxteko31JPGp5n09NHxg8DSV/+NKCvti4k0AaKOn/kk89v4jkrHrY1jr7Ou9igVEzaADcUMAe7ROJvjZ1TwsVEmEuVSnwD6+C3dB8bcCUj3akXY6HJ47w+fDt4O16dXIJFq0UKe5HyGoMfcP8aK22bbJTOLlgIpCAiek2M6r78bG9yAKx51TGLkojEkCxuYgWk9vLmgatcIWWVMNuFmviiaYLpynjW9k7cqpfXE31McRb5Q59Q0+2sK1uCSxRoRSYmOP098pQhNl3TxeMpOMEuUMcOSG7D10liOQ/7dy3A3yAswujLxkdBZ2oSrJ0jk/pWl0N0SOTm63n1xnE1PiVxgZxUH7BAP/sWj1DzcT1EbSamLj3
+                N8N_PORT: AgBhaExhwy3/QtsJPp3dNbSfrU1HXXR5zUhQwWl76CGTMaXKWOGwsyEwTrijzGf2JGNjBe7p2bPGMBjff7kd6LELF3yreua9Zp/vlEF+K8jihh6fR/zpTzhk1KrCLYlOGaZJLZqrjdyi2Y7JXLYkJRzMD4ozOx4oYcj+7VPpbwEMILsfPDyxFPZYaNDX5LCirjrJVsT1NO57+CdOiVzMtztVXjjeAnAyL+6quGWzY1fYltthlbA4p9aAHaPG1ONlEu26tNCIC+tngg6axxAw4XFe1dX1wLVgmrYpb5Sv1jfIKKLY+Ax/xmln6Vf5U7Uti57VuF22pr46d0mskQbj1Ael1D4lBz2dwULTxf5NvvrJv3dM+hTkLODWX3SiSrn1jmCD+L/3jp1gLKl0SrOFrxpGfqd+4tLxMnFh5h2w8eqeBB0Q5UFnmtzbNbRNl6qxMSj3YA7xsfScpppvln4223pirxPmFi2k9mgOKcItA67L9CLr45tpfa6E05/WmDmF+G33xLb3gOxeMxepFaYjO4YKa77IP8H4ZzPwyDsp/M0/N0yInraclED2KLdjvZ5L2yDg+6NPwjOaVjQSNmtXZcvlhSi5a7YR40F/yzljRqBL/QAAGJS3P00uZlG+LZLAy+OA2t8PpGPWTwXDX8h/L/in7cuNbT0R1oug77zNq5srrbvXLyVjXCtkr2ooPvIuANj+Ptcw
+                N8N_PROTOCOL: AgACXmHrFGX7oCUpzURY04nAhpNHzuBTlfnCk+SLlvJ74hEjLev601xjobJiXfDaLLhUdgVEyXkW92qwLCix7bRoIenOTwZZB9ygxzrD4rLEV9ILrx8zdIRQvgUKYcdKQfGZFX22348mF5KG8GmjzX88wlQ8x5Ju57bMSMbV/75zsp4tGhtoX6f66dD/AIsNPxCmb/QWEbVZocscNQUbrIhQup0DBNyaU5XPDMIQqj2ts04L3+QJiX/PCDy5T7bqKfqojIfUpB/iUUqwhX9k4ujlj7ADcw3LExfd2tZ3ov0kvZqq3y66GLAZCOkTktSVmT91/287QFZQWEPMwlDDq7SIeEgyE92esiGxelPSXZLHHwWzP+9jEPJNg8DPs0BZZs1aEOd7T1bT/hdiAllulwmtKPtTNRt6wdqalCXti7rTuIBUwkfMkK0jbUvqhZTyRk0VOTjbJq7TIbUTrXWQorEKEfWndxzCNagpOw5qsgkgOH/n05VbgdwB/2VVzLMvxkHGuNpb+NJ3I/D+qH1o8xLB2Ex5GtjPulm/SquAgIkE4I+X6SmocCM+/Ix/xNULwraNrOx4TV+pqYZLP7tX16WKnJYa+42xNjQ6p1+TrEqFoJ9A+NMN/JCDL+fkSB71Yi/QmzHgVDOuCJhYz4CSPv5oB5u62jbc4FvTPsJtSNCjtf0Florm7WtLxR4ruBPEvTVc4ubB+g==
+              template:
+                metadata:
+                  name: n8n-encryption
   destination:
     namespace: n8n
     server: 'https://kubernetes.default.svc'
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-    automated: {}
+    # Manual sync on purpose. Merging this change must not start the cutover.
+    # Sync by hand after the backup, with pruning off. Turn automation back on
+    # once the rollout is verified.

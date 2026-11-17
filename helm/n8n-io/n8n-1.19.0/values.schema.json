@@ -450,6 +450,14 @@
     "probes": {
       "type": "object",
       "properties": {
+        "startup": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "periodSeconds": { "type": "integer", "minimum": 1 },
+            "failureThreshold": { "type": "integer", "minimum": 1 }
+          }
+        },
         "liveness": {
           "type": "object",
           "properties": {
