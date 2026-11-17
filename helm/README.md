@@ -46,7 +46,7 @@ Top-level groups vendored here (dependency charts excluded). Check each group fo
 | litellm | berriai | oci://docker.litellm.ai/berriai/litellm-helm |
 | longhorn | longhorn | https://charts.longhorn.io |
 | metrics-server | metrics-server | https://kubernetes-sigs.github.io/metrics-server |
-| n8n | 8gears | oci://8gears.container-registry.com/library/n8n (OCI-only, no traditional Helm repo) |
+| n8n-io | n8n-io | oci://ghcr.io/n8n-io/n8n-helm-chart/n8n (OCI-only, official chart) |
 | prometheus | prometheus-community | https://prometheus-community.github.io/helm-charts |
 | milvus | milvus | https://zilliztech.github.io/milvus-helm/ |
 | nfs-subdir-external-provisioner | nfs-subdir-external-provisioner | https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/ |

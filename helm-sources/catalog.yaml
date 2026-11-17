@@ -38,9 +38,9 @@ repositories:
   berriai:
     type: oci
     url: oci://docker.litellm.ai/berriai
-  8gears:
+  n8n-io:
     type: oci
-    url: oci://8gears.container-registry.com/library
+    url: oci://ghcr.io/n8n-io/n8n-helm-chart
   nfs-subdir-external-provisioner:
     type: http
     url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
@@ -153,8 +153,8 @@ charts:
     applications:
       - clusters/r4spi/apps/litellm.yaml
   n8n:
-    repository: 8gears
-    group: n8n
+    repository: n8n-io
+    group: n8n-io
     chart: n8n
     applications:
       - clusters/r4spi/apps/n8n.yaml
