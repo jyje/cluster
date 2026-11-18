@@ -36,13 +36,9 @@
 
   packageRules: [
     {
+      // Only Helm chart majors wait for approval, in the chart's own tracking issue.
+      matchManagers: ["helm-vendor"],
       matchUpdateTypes: ["major"],
-      dependencyDashboardApproval: true,
-    },
-    {
-      // Runner image changes need review regardless of version classification.
-      matchDatasources: ["github-runners"],
-      matchPackageNames: ["ubuntu"],
       dependencyDashboardApproval: true,
     },
     {

@@ -215,6 +215,9 @@ jobs:
               ]')
           else
             export RENOVATE_PACKAGE_RULES='[{"matchManagers":["helm-vendor"],"enabled":false}]'
+            # The generic Dependency Dashboard is not used. Helm jobs keep their own
+            # per-chart tracking issue, which the Helm rollout steps rely on.
+            export RENOVATE_FORCE='{"dependencyDashboard":false}'
           fi
           checkout_options=()
           if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
@@ -227,6 +230,7 @@ jobs:
             --env RENOVATE_ONBOARDING --env RENOVATE_REQUIRE_CONFIG \
             --env HELM_VENDOR_PROFILE --env RENOVATE_PACKAGE_RULES \
             --env RENOVATE_DEPENDENCY_DASHBOARD_TITLE --env RENOVATE_DEPENDENCY_DASHBOARD_AUTOCLOSE \
+            --env RENOVATE_FORCE \
             --env RENOVATE_PRUNE_STALE_BRANCHES \
             --env LOG_LEVEL --env LOG_FILE --env LOG_FILE_LEVEL \
             --volume "$RUNNER_TEMP/renovate-out:/renovate-out" \

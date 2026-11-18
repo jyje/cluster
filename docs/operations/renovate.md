@@ -14,8 +14,10 @@ security fixes on any run. Dependabot remains enabled.
 4. Run **renovate** with the default `full` dry run and check that the App can access the alerts endpoint. Inspect the
    JSONL artifact for the `jyje/cluster` scan. The workflow retains the artifact for seven days.
 
-Approve major dependency updates and Ubuntu runner changes in the Dependency Dashboard before Renovate opens PRs.
-Major chart releases use their own Dependency Dashboard, named for the chart.
+The generic Dependency Dashboard is turned off. Major dependency updates and Ubuntu runner changes open as regular
+PRs, so merging or closing the PR is the approval.
+Helm chart updates keep their own tracking issue, named for the chart, because the Helm rollout steps use it. Major
+chart releases still wait for approval in that issue.
 
 ## Native Helm vendoring
 
