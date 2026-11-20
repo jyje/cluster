@@ -6,5 +6,10 @@
     },
     "githubConfigUrl": "https://github.com/example-org/example-repo",
     "githubConfigSecret": "helm-vendor-probe-existing-secret"
+  },
+  "helm/n8n-io/n8n": {
+    "secretRefs": {
+      "existingSecret": "helm-vendor-probe-existing-secret"
+    }
   }
 }
