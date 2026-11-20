@@ -47,7 +47,7 @@
 2. Application 값으로 차트를 렌더링해서 이름을 비교합니다.
    ```bash
    yq '.spec.source.helm.valuesObject' clusters/r4spi/apps/n8n.yaml > /tmp/n8n-values.yaml
-   helm template n8n helm/n8n-io/n8n-1.19.0 -f /tmp/n8n-values.yaml -n n8n
+   helm template n8n helm/n8n-io/n8n-1.20.0 -f /tmp/n8n-values.yaml -n n8n
    ```
 3. 복사본으로 새 차트와 이미지를 시험합니다. 백업을 임시 네임스페이스의 새 PVC로 복원하고, `ingress.enabled=false`와 `persistence.existingClaim=<복원한 PVC>`, 같은 시크릿으로 차트를 설치합니다. 포트 포워딩으로 로그인, 자격 증명, 워크플로 하나를 확인하세요. 시험하는 동안 외부 부작용(스케줄 트리거)은 막으세요.
 
