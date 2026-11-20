@@ -1,0 +1,60 @@
+{{- with include "n8n.editorBaseUrl" . }}
+
+n8n has been successfully deployed!
+
+Your n8n instance is available at:
+  {{ . }}
+
+{{- else }}
+
+n8n has been successfully deployed!
+
+To access n8n, run the following commands:
+
+1. Get the service URL:
+   kubectl get service {{ include "n8n.fullname" . }}-main{{- if .Release.Namespace }} --namespace {{ .Release.Namespace }}{{- end }}
+
+2. Port forward to access n8n locally:
+   kubectl port-forward service/{{ include "n8n.fullname" . }}-main{{- if .Release.Namespace }} --namespace {{ .Release.Namespace }}{{- end }} 5678:{{ .Values.service.port }}
+
+3. Open your browser to:
+   http://localhost:5678
+
+{{- end }}
+
+Deployment Configuration:
+{{- if .Values.queueMode.enabled }}
+  - Mode: Queue ({{ .Values.queueMode.workerReplicaCount }} workers)
+{{- if .Values.multiMain.enabled }}
+  - Multi-main: {{ .Values.multiMain.replicas }} main pods
+{{- else }}
+  - Main pods: {{ .Values.replicaCount }}
+{{- end }}
+{{- if .Values.webhookProcessor.enabled }}
+  - Webhook processors: {{ .Values.webhookProcessor.replicaCount }} pods
+{{- end }}
+{{- else }}
+  - Mode: Standalone
+  - Main pods: {{ .Values.replicaCount }}
+{{- end }}
+{{- if .Values.database.useExternal }}
+  - Database: {{ if eq .Values.database.type "postgresdb" }}PostgreSQL{{ else }}{{ .Values.database.type }}{{ end }} ({{ .Values.database.host }})
+{{- else }}
+  - Database: SQLite (local storage)
+{{- end }}
+{{- if .Values.redis.enabled }}
+  - Cache: Redis ({{ .Values.redis.host }})
+{{- end }}
+{{- if .Values.s3.enabled }}
+  - Storage: S3 ({{ .Values.s3.bucket.name }})
+{{- end }}
+
+{{- if .Values.database.ssl.key }}
+
+WARNING: database.ssl.key is set, but the chart ignores it. To supply a client
+key, set database.ssl.existingSecret.name and database.ssl.existingSecret.keyKey.
+From chart 2.0, setting database.ssl.key fails the render.
+{{- end }}
+
+Documentation: https://docs.n8n.io/
+Issues: https://github.com/n8n-io/n8n-hosting/issues
