@@ -32,6 +32,7 @@ spec:
     namespace: envoy-gateway-system
   # Sync after the separate Envoy Gateway CRDs are established.
   syncPolicy:
+    automated: {}
     syncOptions:
       - CreateNamespace=true
       - FailOnSharedResource=true
