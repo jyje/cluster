@@ -70,6 +70,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: kube-system
   syncPolicy:
+    automated: {}
     syncOptions:
       - ServerSideApply=true
       - FailOnSharedResource=true

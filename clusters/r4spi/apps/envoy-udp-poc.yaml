@@ -13,5 +13,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system
   syncPolicy:
+    automated: {}
     syncOptions:
       - FailOnSharedResource=true

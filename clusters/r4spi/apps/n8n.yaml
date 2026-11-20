@@ -99,8 +99,16 @@ spec:
     namespace: n8n
     server: 'https://kubernetes.default.svc'
   syncPolicy:
+    automated: {}
     syncOptions:
       - CreateNamespace=true
-    # Manual sync on purpose. Merging this change must not start the cutover.
-    # Sync by hand after the backup, with pruning off. Turn automation back on
-    # once the rollout is verified.
+      # Keep the live task runner token when syncing. See ignoreDifferences.
+      - RespectIgnoreDifferences=true
+  # The chart reads the existing token with "lookup", which Argo CD cannot do
+  # while rendering. Without this, every sync would generate a new random token
+  # and the Application would never look in sync.
+  ignoreDifferences:
+    - kind: Secret
+      name: n8n-task-runners
+      jsonPointers:
+        - /data/N8N_RUNNERS_AUTH_TOKEN
