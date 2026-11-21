@@ -144,6 +144,7 @@ spec:
               name: grafana-pg
             spec:
               instances: 3
+              imageName: ghcr.io/cloudnative-pg/postgresql:18.3-system-trixie
               storage:
                 size: 2Gi
               bootstrap:
