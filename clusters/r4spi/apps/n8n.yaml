@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/n8n-io/n8n-1.19.0
+    path: helm/n8n-io/n8n-1.20.0
     helm:
       valueFiles:
         - values.yaml
@@ -33,14 +33,14 @@ spec:
         # The first start runs database migrations (2.6.2 to 2.47.4) and took
         # three to four minutes on a fast laptop. The chart default allows 300 s.
         # Allow 15 minutes so the kubelet does not restart it mid-migration.
-        # Needs the local chart patch listed in helm/n8n-io/n8n-1.19.0/PATCH.md.
+        # Needs the local chart patch listed in helm/n8n-io/n8n-1.20.0/PATCH.md.
         probes:
           startup:
             failureThreshold: 90
         # One writer on a RWO volume: stop the old pod before the new one starts.
         strategy:
           type: Recreate
-        # No image.tag on purpose: the chart's appVersion (2.47.4) is used.
+        # No image.tag on purpose: the chart's appVersion (2.48.5) is used.
         # The 8gears release pinned 2.6.2, so n8n runs its data migrations on
         # the first start. Back up the volume first.
         ingress:
