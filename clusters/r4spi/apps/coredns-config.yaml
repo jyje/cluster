@@ -27,6 +27,13 @@ spec:
           # gets IPv4-only answers for external names, with no per-app
           # config needed. `reload` (already in the Corefile) picks this up
           # without a CoreDNS pod restart.
+          #
+          # The AAAA answer is NOERROR with no records (NODATA), not NXDOMAIN.
+          # NXDOMAIN says the name does not exist at all, so musl based
+          # clients (Alpine images such as n8n) failed the whole lookup with
+          # ENOTFOUND even though the A record exists, for internal service
+          # names too. NODATA says only that there is no IPv6 address, so those
+          # clients use IPv4 as intended.
           - apiVersion: v1
             kind: ConfigMap
             metadata:
@@ -51,7 +58,7 @@ spec:
                       fallthrough in-addr.arpa ip6.arpa
                     }
                     template IN AAAA . {
-                      rcode NXDOMAIN
+                      rcode NOERROR
                     }
                     prometheus :9153
                     forward . /etc/resolv.conf
