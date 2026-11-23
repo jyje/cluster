@@ -1,4 +1,7 @@
 repositories:
+  apache-airflow:
+    type: http
+    url: https://airflow.apache.org
   argo:
     type: http
     url: https://argoproj.github.io/argo-helm
@@ -55,6 +58,12 @@ repositories:
     url: https://qdrant.github.io/qdrant-helm
 
 charts:
+  airflow:
+    repository: apache-airflow
+    group: airflow
+    chart: airflow
+    applications:
+      - clusters/r4spi/apps/airflow.yaml
   error-pages:
     repository: tarampampam
     group: error-pages
