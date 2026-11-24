@@ -109,6 +109,10 @@ spec:
               # The limit is per route, not per client. It slows down password
               # guessing on the token endpoint.
               higress.io/route-limit-rps: "20"
+              # The Homer card pings the health endpoint from the browser, so the
+              # dashboard origin must be allowed (same as the other cards).
+              nginx.ingress.kubernetes.io/enable-cors: "true"
+              nginx.ingress.kubernetes.io/cors-allow-origin: https://app.jyje.online
               item.homer.rajsingh.info/name: "Airflow"
               item.homer.rajsingh.info/subtitle: "Workflow scheduler"
               item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/apache/airflow-site/main/landing-pages/site/static/images/airflow-logo.svg"
