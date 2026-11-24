@@ -41,6 +41,11 @@ spec:
             workers: "1"
           core:
             load_examples: "False"
+          dag_processor:
+            dag_bundle_config_list: '[{"name":"dags-folder","classpath":"airflow.dag_processing.bundles.local.LocalDagBundle","kwargs":{}},{"name":"pilot-mixed","classpath":"airflow.dag_processing.bundles.local.LocalDagBundle","kwargs":{"path":"/opt/airflow/pilot-profile/dags"},"importers":[{"classpath":"airflow.sdk.importers.yaml_importer.YamlDagImporter"}]}]'
+          sdk:
+            coordinators: '{"pilot-node":{"classpath":"airflow.sdk.coordinators.node.NodeCoordinator","kwargs":{"node_executable":"/opt/airflow/pilot-profile/runtime/node"}},"pilot-go":{"classpath":"airflow.sdk.coordinators.executable.ExecutableCoordinator"},"pilot-java":{"classpath":"airflow.sdk.coordinators.java.JavaCoordinator","kwargs":{"java_executable":"/opt/airflow/pilot-profile/runtime/openjdk/bin/java"}}}'
+            queue_to_coordinator: '{"typescript":"pilot-node","golang":"pilot-go","jvm":"pilot-java"}'
         # The chart jobs use Helm hooks. Argo CD does not run those, so they
         # are Argo CD sync hooks that delete themselves after they succeed.
         migrateDatabaseJob:
@@ -183,6 +188,11 @@ spec:
             limits:
               memory: 1Gi
         dagProcessor:
+          extraVolumeMounts:
+            - name: logs
+              mountPath: /opt/airflow/pilot-profile
+              subPath: .pilot-mixed-profile-20261124
+              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -190,6 +200,11 @@ spec:
             limits:
               memory: 768Mi
         workers:
+          extraVolumeMounts:
+            - name: logs
+              mountPath: /opt/airflow/pilot-profile
+              subPath: .pilot-mixed-profile-20261124
+              readOnly: true
           resources:
             requests:
               cpu: 50m
