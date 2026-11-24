@@ -260,6 +260,10 @@ spec:
                           tag: "airflow #workflow #dag #scheduler #orchestration"
                           url: "https://airflow.app.jyje.online"
                           type: "Ping"
+                          # The root page answers HEAD with 405 (GET only), so ping
+                          # the health endpoint with GET instead.
+                          endpoint: "https://airflow.app.jyje.online/api/v2/monitor/health"
+                          method: "GET"
                       - parameters:
                           name: "Hermes Agent"
                           logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
