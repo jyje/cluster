@@ -123,6 +123,42 @@ spec:
                   secretName: airflow.app.jyje.online
         # Requests follow the measured use of each component, not a guess.
         apiServer:
+          # Sign-in through authentik. The client secret is read from the
+          # Secret airflow-oidc. FAB maps the authentik groups in the ID token
+          # to Airflow roles, so nobody is named here.
+          apiServerConfig: |
+            import os
+
+            from flask_appbuilder.const import AUTH_OAUTH
+
+            AUTH_TYPE = AUTH_OAUTH
+            OAUTH_PROVIDERS = [
+                {
+                    "name": "authentik",
+                    "icon": "fa-key",
+                    "token_key": "access_token",
+                    "remote_app": {
+                        "client_id": "airflow",
+                        "client_secret": os.environ["AUTHENTIK_CLIENT_SECRET"],
+                        "server_metadata_url": "https://authentik.app.jyje.online/application/o/airflow/.well-known/openid-configuration",
+                        "api_base_url": "https://authentik.app.jyje.online/application/o/",
+                        "client_kwargs": {"scope": "openid profile email"},
+                    },
+                }
+            ]
+            AUTH_USER_REGISTRATION = True
+            AUTH_USER_REGISTRATION_ROLE = "Public"
+            AUTH_ROLES_SYNC_AT_LOGIN = True
+            AUTH_ROLES_MAPPING = {
+                "AuthentikAdmin": ["Admin"],
+                "ClusterAdmin": ["Admin"],
+            }
+          env:
+            - name: AUTHENTIK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-oidc
+                  key: client_secret
           resources:
             requests:
               cpu: 100m
@@ -191,6 +227,24 @@ spec:
             spec:
               encryptedData:
                 password: AgBi/Al3fprHghnCa43sPrREM1pCd1NE4QM+BINipIdPkmR3OSyJ/uj+9hIBSIjSKKIKYLTDPBJI9awrKLVEaRWiLHvQECyRlptV2DNz9mjS5Uj36hsPdjZP/Uu14xpf5ALHGppK7t5BhkJ5EI6oLRPlUWKQ3RjxlEVGJzvpi4Huf/y+Poagx3Wn+eXSgTCyiPJV14M3EcNSPa4+oqKdzrW+wwWNYUe8Cn7sU353kfBcZHayOOhxBcbO/zc3TVFzEd0UlzgEPjs4YdtNc4ZsOIdTZoOTo1jlchXC8R8McnKQm8jHqHkM306lid+KHTjzl0Z1WHfX8UGWhQh5tmQh8JcCSUB+y1CzTRNruTIC6MBSHwNZ3zjs76jxV0oBJSuqEuT1uucpQUmfZpWzZxOlRByJctgwYwSKcLC9sYpyKoETBYmUivVi2L7CDgllrICswB84ScjHhUml0BGia0rvci87z6XSZgbUpwXxcwEcUOZ0gUZ3QjwfggJX51nRQo1q5XZw+N5NwtagQTDHDCO28P0LbzbL1jshMNJm1Zz7rA9zp9dKST7+FTBDSwbfSjExAU+U64W5s4gKSBL/EivEhXo6IJTj+fsw83mAzKJq+9cq2gRUaO6l6qpodZR78zpE8WePwsutTYPr/rhdzfK0hHFMa0RN9NrFuFcjqBqHtxvNxk1oUWL6oK161iCUuvkHAKtyz/vvI7fVcbFTV1zfinOSMNrCiTXNhbM=
+          # OAuth client secret for authentik sign-in.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-oidc
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                client_secret: AgCfqU1u9ivws5EK23CSNUFsifS1Dq2tlU9bSrMD8fdyIun89wdqZmKj7qlPCQvJx48obk3XRtmaRKJmdIySgN2l71lzHE9sqNMHPY9cEoKWMlW7eZo+oTS8mctS9mrKkVnROc0DlLu3718cN5+wcyKpyPYBi23QNdEQZ6bw0pWLZvzXTP3z1lhgmubFghANyrFVLF6spDVelHwGZxazLD5grMsOR8tTTJQuRjN/kFno7ELgtntIep076VPUysowVJA7aqUR+GqlvBKWa4Qh3o4GE7SStPjKOlnCB/ytksaTiHst9uBXG693kaoXCfTI70Axo6A5STnE0J5VoL9klL7eOWjI9SymrAOLMl57roQamgRShQ1N3c6gEQjg+42DzlLBQPlMrheLzBlYdGeJWSUlNXIsJfI/KPeHkx0CvkKLBpAxP43lEtjJNiNJPkTg0k3017+RoEmkmO4WyRClPCfLuXzRDh04dpunC7y46+OwLYej9SLaTgtMtdJG7zNm7afkfXA5yV3EsL8WmxRgv0oOXBjm2Lv5+zdoIfa1/8RSN1PExDhApjUM800pFlJ6uposKrq/Ec4a5XKhAa4gbau0hvWlPKvb7PM3ZjpN8TRDT9gUWSJ0JDo9a7CNuF7Ni6hr3BJqQ79EPROAJbZRfvnHOvMjyoVkvN5nxRtwmuNzaWz2MpGNNTAkLyvO0WCTABH6M0s0BrrHCs+i6VEbLQePgFdqo4ZRG/9W+fiRyTbSi81TWrxk6AuMrOG0P27wnaGT11CfJwla/P4KOEvb8W/M
+          # Password of the limited pilot API user (see docs/operations/airflow.md).
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-pilot
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                password: AgApnyM6r6wkjmxshSKSnfnno+ZMG2ptFxoJMKDGHAyPxco1+CjwXse3nYcsIErVbgZTb9q4kk2nAwg8NbVB5peLjitWQGyQpkunJxpxGdwzQh9kW8gADgBAt3fiCLcXVlZN66QlbRL4ScGOBmtR3xAblEdkYFVwDUS5zuc8KEe9+oVQHJq3TPLn+RMaFu/SPOh+p7IDBUZ/MG1WT1vb+6xt2qcd+gnkOynNG1APRPtDta+ZWTSWMK0Q4A/afF19inFF2aGdXUe2WHYPogeTPU/WiV61fBGOJwEZxqqKbw05wfJ84kVpiht4zAJeTioKGYT3OpocCCBOy6o66MZeOB0VglMGAmpBt/RU42Uc9vT47E4VgNVHVs65nVYzWkO0IAbKfDICym61S/PDN9gGAyDQNkgLHHwj3C+h5oKHk7f0elv7RKlJn5xIec7em4GOlq7K5zd20iUOxnHRHj0QCaFYoaOkpH+kgEmrz0fTEFyhnR+qsFf1HM2h5wj1qNjKN0Xo/jktpja4/vqjfAMrLysI2dnfmICq6Ccnit5byLR7myOjkhPOQZGuqdearRtj3tibyJc1W4zPd98uHaVTiI9QF+RwLxqupySuzhuqOwTvgOp8GufaBbEMlcXHy6ubsXkwCAyQfKJM3lFc31um/P/tnEW1Oa6db4cFjNjEXoNXxEGHXxSHjjwxw8p49D/WoqkqB1RSQ9tWLcsRg8YbKtJ3GymFeYZcfORWqsX2nqQ/xA==
   destination:
     server: https://kubernetes.default.svc
     namespace: airflow
