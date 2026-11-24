@@ -161,31 +161,19 @@ spec:
               namespace: "{{ .Release.Namespace }}"
             spec:
               replicas: 2
-              # Mostly manual curation (mirrors the retired homer-legacy-jyje's
-              # config.yml) to keep the curated card layout, but n8n is opted in
-              # to Ingress-based auto-discovery as a worked example: matching on
-              # the chart's own standard label (app.kubernetes.io/name=n8n) scopes
-              # this to just that one Ingress instead of "match everything"
-              # (the unset default), which would duplicate every other app's card.
+              # Every card is written by hand under homerConfig.services below.
+              # Automatic discovery is off: both selectors only match objects that
+              # carry homer.jyje.online/discovery=enabled, and nothing does. The
+              # operator has no switch to turn discovery off (an unset selector
+              # means "match everything"), so a selector that matches nothing is
+              # how it is switched off. To discover an Ingress again, give it the
+              # label and its item.homer.rajsingh.info/* annotations.
               ingressSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - n8n
-                      - mungchilog
-                      - open-webui
-                      - litellm
-                      - portainer
-                      - hermes-agent
-                      - argocd-server
-                      - homer
-                      - grafana
-                      - authentik
-                  - key: homer.jyje.online/discovery
-                    operator: NotIn
-                    values:
-                      - disabled
+                matchLabels:
+                  homer.jyje.online/discovery: enabled
+              httpRouteSelector:
+                matchLabels:
+                  homer.jyje.online/discovery: enabled
               assets:
                 configMapRef:
                   name: homer-assets
@@ -252,44 +240,126 @@ spec:
                   - name: "About"
                     icon: "fas fa-user-astronaut"
                     url: "#about"
-                # Almost every card is discovered automatically from each app's
-                # Ingress annotations (see ingressSelector above), which build the
-                # groups via service.homer.rajsingh.info/name:
-                #   1. Applications — n8n, Open WebUI, LiteLLM, Hermes Agent
-                #   2. Dashboards   — Grafana, Homer
-                #   3. Management   — Argo CD, Portainer, authentik, then Gameplane
-                # Group names carry a numeric prefix everywhere they're set
-                # (here and in each app's Ingress annotations) because the
-                # operator renders groups sorted alphabetically by name, not
-                # in declaration/discovery order — this is the only way to
-                # force a specific display order.
-                # Gameplane and external links are intentionally manual. Infisical
-                # is intentionally hidden from the dashboard for now.
+                # Every card is written here by hand. Automatic discovery from
+                # Ingress annotations is off (see ingressSelector above), so a new
+                # app needs a card added to its group below. Group names carry a
+                # numeric prefix because the operator renders groups sorted
+                # alphabetically by name, so this is the only way to force a
+                # specific display order. Infisical is intentionally hidden from the
+                # dashboard for now.
                 services:
-                  # Same group name as the discovered Management cards, so the
-                  # operator merges them. The icon repeats the one the Ingress
-                  # annotations set, because the manual definition wins.
+                  - parameters:
+                      name: "1. Applications"
+                      icon: "fas fa-rocket"
+                      logo: "https://raw.githubusercontent.com/kubernetes/community/master/icons/png/resources/labeled/ns-128.png"
+                    items:
+                      - parameters:
+                          name: "Airflow"
+                          logo: "https://raw.githubusercontent.com/apache/airflow-site/main/landing-pages/site/static/images/airflow-logo.svg"
+                          subtitle: "Workflow scheduler"
+                          tag: "airflow #workflow #dag #scheduler #orchestration"
+                          url: "https://airflow.app.jyje.online"
+                          type: "Ping"
+                      - parameters:
+                          name: "Hermes Agent"
+                          logo: "https://hermes-agent.nousresearch.com/docs/img/logo.png"
+                          subtitle: "Multi-provider LLM agent"
+                          tag: "hermes-agent #llm #agent #dashboard"
+                          url: "https://hermes-henry.app.jyje.online"
+                          type: "Ping"
+                          endpoint: "https://hermes-henry.app.jyje.online/api/health"
+                          method: "GET"
+                      - parameters:
+                          name: "LiteLLM"
+                          logo: "https://docs.litellm.ai/img/brand/litellm-monogram-blue.svg"
+                          subtitle: "LLM API gateway / proxy"
+                          tag: "litellm #llm #proxy #gateway #openai"
+                          url: "https://litellm.app.jyje.online"
+                          type: "Ping"
+                      - parameters:
+                          name: "Mungchilog"
+                          logo: "https://raw.githubusercontent.com/jyje/mungchilog/prd/apps/web/public/pwa-512.png"
+                          subtitle: "Personal travel itinerary"
+                          tag: "mungchilog #travel #maps #itinerary"
+                          url: "https://mungchilog.app.jyje.online"
+                          type: "Ping"
+                          endpoint: "https://mungchilog.app.jyje.online/healthz"
+                      - parameters:
+                          name: "n8n"
+                          logo: "https://avatars.githubusercontent.com/u/45487711"
+                          subtitle: "Workflow automation"
+                          tag: "n8n #workflow #automation #cicd"
+                          url: "https://n8n.app.jyje.online"
+                          type: "Ping"
+                      - parameters:
+                          name: "Open WebUI (AI Chat)"
+                          logo: "https://docs.openwebui.com/images/logo.png"
+                          subtitle: "Interactive LLM with Ollama, OpenAI"
+                          tag: "open-webui #ollama #openai #gpt #llm"
+                          url: "https://llm.app.jyje.online"
+                          type: "Ping"
+                  - parameters:
+                      name: "2. Dashboards"
+                      icon: "fas fa-chart-line"
+                      logo: "https://raw.githubusercontent.com/kubernetes/community/master/icons/png/resources/labeled/ns-128.png"
+                    items:
+                      - parameters:
+                          name: "Grafana"
+                          logo: "https://grafana.com/static/img/menu/grafana2.svg"
+                          subtitle: "Cluster monitoring"
+                          tag: "grafana #monitoring #dashboard #lgtm"
+                          url: "https://grafana.app.jyje.online"
+                          type: "Ping"
+                          endpoint: "https://grafana.app.jyje.online/api/health"
+                      - parameters:
+                          name: "Homer"
+                          logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
+                          subtitle: "This dashboard"
+                          tag: "homer #dashboard #monitoring"
+                          url: "https://app.jyje.online"
+                          type: "Ping"
                   - parameters:
                       name: "3. Management"
                       icon: "fas fa-microchip"
                     items:
-                      # Manual: this card has to survive the move from the bridge
-                      # Ingress to the HTTPRoute. Items sort by name, and a lower
-                      # "order" sorts later, so -1 keeps it at the bottom of the
-                      # group (the order parameter needs homer-operator 1.2.4).
+                      - parameters:
+                          name: "Argo CD"
+                          logo: "https://argo-cd.readthedocs.io/en/stable/assets/logo.png"
+                          subtitle: "App deployment"
+                          tag: "argocd #argo #gitops #cicd"
+                          url: "https://cd.app.jyje.online"
+                          type: "Ping"
+                      - parameters:
+                          name: "authentik"
+                          logo: "https://goauthentik.io/img/icon.png"
+                          subtitle: "Cluster SSO"
+                          tag: "authentik #sso #oidc #iam"
+                          url: "https://authentik.app.jyje.online"
+                          type: "Ping"
+                          endpoint: "https://authentik.app.jyje.online/-/health/ready/?"
+                      - parameters:
+                          name: "Portainer"
+                          logo: "https://avatars.githubusercontent.com/u/22225832"
+                          subtitle: "Cluster administration"
+                          tag: "portainer #admin #catalog"
+                          url: "https://portainer.app.jyje.online"
+                          type: "Ping"
                       - parameters:
                           name: "Gameplane"
                           logo: "https://avatars.githubusercontent.com/u/339341021"
                           subtitle: "Kubernetes-native game server control panel"
                           tag: "gameplane #game-server #control-panel #self-hosted"
                           url: "https://gameplane.app.jyje.online"
-                          target: "_blank"
-                          # A plain request to the dashboard root answers 404, so
-                          # ping the health endpoint instead. CORS for the
-                          # dashboard origin is set on the Gameplane Ingress.
                           type: "Ping"
                           endpoint: "https://gameplane.app.jyje.online/healthz"
                           method: "GET"
+                          target: "_blank"
+                          # Items sort by name, and a lower "order" sorts later, so
+                          # -1 keeps this card at the bottom of the group (the order
+                          # parameter needs homer-operator 1.2.4). A plain request to
+                          # the dashboard root answers 404, so the health endpoint is
+                          # pinged. CORS for the dashboard origin is set on the
+                          # Gameplane Ingress.
                           order: "-1"
                   # Branding links do not have an Ingress backing them.
                   - parameters:
@@ -316,17 +386,13 @@ spec:
             metadata:
               name: homer
               namespace: "{{ .Release.Namespace }}"
-              # Unlike vendored charts, this is a raw resource we fully control,
-              # so a custom discovery label can be added directly (no need to
-              # match on a pre-existing standard label).
               labels:
                 app.kubernetes.io/name: homer
               annotations:
                 cert-manager.io/cluster-issuer: higress-letsencrypt-prod
                 nginx.ingress.kubernetes.io/ssl-redirect: "true"
-                # Discovered by this same Dashboard CR via ingressSelector
-                # (matchExpressions: app.kubernetes.io/name in [...]) — the
-                # dashboard discovers its own Ingress.
+                # The Homer annotations are kept for reference. Discovery is off, so the
+                # card comes from homerConfig.services above.
                 item.homer.rajsingh.info/name: "Homer"
                 item.homer.rajsingh.info/subtitle: "This dashboard"
                 item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png"
