@@ -1,0 +1,75 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: airflow-pg
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/jyje/manifest-group-0.1.0
+    helm:
+      valuesObject:
+        manifests:
+          # Credentials of the database owner. The same password is inside the
+          # airflow-metadata connection string of the airflow Application.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-pg-creds
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                password: AgAmjinT9wW3lVuvwt49y4wfGdx/Cq/a2HmvEjbgf1Vh+pfNIXhtmDXRQnpsWXJJbQTqZy5AVbNOKRAdrkeEYOENDELMvHEbXjamWtFSyCfrnBJ5IfMYRxASLD8+8hskD8OQZLwTVigRgv42gPVP/2PKVIh60vxOa37OnPQ48RUA9YAkwBEd58A0LcaOcuL/iuZcO4UthDWj5v1gkQzjpXHizEvj0W+HEuYIPoJEVl2WAYFvchPvdSPqiVLHynl2dvnYUsPW9ruhKiXmsFf0Gjwqnc6QzM0CCMYgu/rG4AhH413V9UxnpJR9xz5zPmQWZVfdfsz22jNJGd0uwZJHUQwBWqt3lKD4VUZ8iUrQ5/Ry0ym57LeTN10E8k6EP0KU6eGhRqU+75lx6FoL8E3mO58rRgDbPEAXcMTECBkq34C74xaxGBTnW5SPMtBQ+gPxX+xV6Gwawkx6WpUFzJrJSq1weMEl9488M/IgWzy/55RIcHx7tUVm0PgfOrPPmI8X5hV8W6Y6d7qaHkMQuY1v4aRwnO8M7MsQUfOEztiV0u0kF4BbcNPD29I0W6GELFscA4lsdbFPeO3ya5NSUjtiD9ye70M9zusfuOsqWB95f8FNJTGprUiPkR1nr2ZW0qiLnSRYS647bC2kD6XQbduFnqZTzMpSNM0ozkNJfk27pACGgBRBoZMT1UsFm+46up6tRfL13HoADeedMoXKPo6kUCd5y/mPFbfzrCqKRJspsgAx2g==
+                username: AgAstY77AwaKYxU5+FlE5fyJmYxyKY1V7OX+F3CFw54Vqi9ucpx1B0nMemPCHtlwFK+F4E1iUrjwJsOhxmJ2aABg9Dtp3HcYEK2BXg/wLn8zPvufH3NBMZHV39t+7RWZOhEqin3MOQbtUpgNI4c6+/kKp6CuqBZTTa61FZv1ZcwGQjoc9p1ng+BouyGKtvOa9M5/XcuUjFp6Di3zHe8gVUKUTbnUgSBcxrQm6T/7BLWrdC85xfu0wUHdWc2KwxIiSa1fGeVOSvhJRPUVC6Zeed4xqIIbEiIVujCh0EtK59RZMZUpZgFj21xLMf+ZDR7T3Un5FepG85r9CCB+H+ifMetrZV3UaSvSID0WXjQQRIf4J2+v1YZ+WblOAMmkBWJQKDPu7uHyACT5xGJsBEBEVEgRS/78CrZfmGAyT5sCI5iOI+N+VU0TFp1m1BV8E0VW6A8/O+c51AM7ZdzqXuFGQLAAQgGUrM7OhtGF7+V8Ny7EdOJ7fg/U+vVv1Vir1mwPsean/AWdWJhGmlQBwQIbCMxkvOn9yaOo/HpNBGdlsD9gEkqfuVPn+ATxcgWxDcnZ1GSOX9yOuVrJU5l1Np3UHDd1w0yoNPXQRyp66RyKtXEmCi+ybd/tzcPLpQJAV5o73oSp1CcdnQmxDv3naeuwwk0DiWcLY1CbV/evl1UM+hu4hcdXx2wVw15hnimU4vbZOgiYjmj7xcOG
+              template:
+                type: kubernetes.io/basic-auth
+                metadata:
+                  name: airflow-pg-creds
+          # CloudNativePG PostgreSQL cluster for the Airflow metadata database.
+          - apiVersion: postgresql.cnpg.io/v1
+            kind: Cluster
+            metadata:
+              name: airflow-pg
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              instances: 2
+              imageName: ghcr.io/cloudnative-pg/postgresql:18.3-system-trixie
+              storage:
+                size: 2Gi
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+                limits:
+                  memory: 512Mi
+              bootstrap:
+                initdb:
+                  database: airflow
+                  owner: airflow
+                  secret:
+                    name: airflow-pg-creds
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: DoNotSchedule
+                  labelSelector:
+                    matchLabels:
+                      cnpg.io/cluster: airflow-pg
+              failoverDelay: 30
+              # Same values as litellm-pg: the CNPG defaults cause false
+              # failovers on short network blips and a too small WAL window.
+              postgresql:
+                parameters:
+                  wal_sender_timeout: 60s
+                  wal_receiver_timeout: 60s
+                  wal_keep_size: 2048MB
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: airflow
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

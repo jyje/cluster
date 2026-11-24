@@ -1,0 +1,209 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: airflow
+spec:
+  project: ai
+  source:
+    repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: helm/airflow/airflow-1.22.0
+    helm:
+      valueFiles:
+        - values.yaml
+      valuesObject:
+        # The chart defaults to Airflow 3.2.2 and CeleryExecutor. Pin what the
+        # pilot (pilot-airflow-portability) needs. Tracking issue: #407.
+        airflowVersion: "3.4.0"
+        defaultAirflowTag: "3.4.0"
+        executor: KubernetesExecutor
+        # One task, one Pod. No Redis, no Celery workers, no Flower, no statsd.
+        # The triggerer is off until a DAG needs deferrable operators.
+        redis:
+          enabled: false
+        statsd:
+          enabled: false
+        triggerer:
+          enabled: false
+        # The metadata database is the CloudNativePG cluster of the airflow-pg
+        # Application, not the bundled PostgreSQL subchart.
+        postgresql:
+          enabled: false
+        data:
+          metadataSecretName: airflow-metadata
+        fernetKeySecretName: airflow-fernet
+        apiSecretKeySecretName: airflow-api-secret
+        jwtSecretName: airflow-jwt
+        config:
+          api:
+            base_url: https://airflow.app.jyje.online
+            # Fewer API workers keep the memory small on a Raspberry Pi.
+            workers: "1"
+          core:
+            load_examples: "False"
+        # The chart jobs use Helm hooks. Argo CD does not run those, so they
+        # are Argo CD sync hooks that delete themselves after they succeed.
+        migrateDatabaseJob:
+          useHelmHooks: false
+          jobAnnotations:
+            argocd.argoproj.io/hook: Sync
+            argocd.argoproj.io/hook-delete-policy: HookSucceeded
+        createUserJob:
+          useHelmHooks: false
+          jobAnnotations:
+            argocd.argoproj.io/hook: Sync
+            argocd.argoproj.io/hook-delete-policy: HookSucceeded
+          defaultUser:
+            username: admin
+            email: admin@example.invalid
+            firstName: admin
+            lastName: user
+          # The password comes from the Secret airflow-admin, not from values.
+          env:
+            - name: AIRFLOW_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-admin
+                  key: password
+          args:
+            - bash
+            - -c
+            - |-
+              exec airflow users create "$@"
+            - --
+            - -r
+            - Admin
+            - -u
+            - admin
+            - -e
+            - admin@example.invalid
+            - -f
+            - admin
+            - -l
+            - user
+            - -p
+            - $(AIRFLOW_ADMIN_PASSWORD)
+        # DAGs come from the public pilot repository, read only.
+        dags:
+          gitSync:
+            enabled: true
+            repo: https://github.com/jyje/pilot-airflow-portability.git
+            branch: main
+            ref: main
+            subPath: src/dags
+            period: 60s
+        # Task Pods are short lived, so the API server reads task logs from a
+        # shared volume.
+        logs:
+          persistence:
+            enabled: true
+            size: 2Gi
+            storageClassName: subdir-usb
+        ingress:
+          apiServer:
+            enabled: true
+            ingressClassName: higress
+            annotations:
+              cert-manager.io/cluster-issuer: higress-letsencrypt-prod
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+              # The limit is per route, not per client. It slows down password
+              # guessing on the token endpoint.
+              higress.io/route-limit-rps: "20"
+              item.homer.rajsingh.info/name: "Airflow"
+              item.homer.rajsingh.info/subtitle: "Workflow scheduler"
+              item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/apache/airflow-site/main/landing-pages/site/static/images/airflow-logo.svg"
+              item.homer.rajsingh.info/tag: "airflow #workflow #dag"
+              item.homer.rajsingh.info/type: "Ping"
+              service.homer.rajsingh.info/name: "1. Applications"
+              service.homer.rajsingh.info/icon: "fas fa-rocket"
+            hosts:
+              - name: airflow.app.jyje.online
+                tls:
+                  enabled: true
+                  secretName: airflow.app.jyje.online
+        # Small requests: the nodes are already fairly full. Measure after the
+        # first run and tune.
+        apiServer:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+        scheduler:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              memory: 1Gi
+        dagProcessor:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+        workers:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+        extraResources:
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-metadata
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                connection: AgBkf8RHc5zWJaFUHyBVFTVvuB399C9iSPUoisKRlJsaffGkHP0OX/ZWh6+n37N7GpE85WvvozcPK7FpX3IP+3IkezC+GkzKVmflZvb9pZYLtfdzibxaGecm3ZAOUiT9S/oO1HBKUX2G9PzsZ7Y0giJqm7QkLnnvFdwKfyO42maxlnFMidmzDw9fAub6IUXUXdLBB1a0NuEedDOf3HZS7GDoZzFJodQYgXVH63FpSPbZpsK+ElUGG9gqY7Tq4qy3FnZY3puTOWPTpo/RBUaCZna04ipq/Tz/d+7wdsBjmEXblTCqcDd6NWvzeshmty6FBSKDreaoCeIauqWAd6BGr/VPhsE+QXmQIK6LPp+g4ESgaIkYkw6yI4vj5pYf23jHA3DyHKoq+0SZeAPpDXyyTD9SKoSQgNNjRWCrql9ddSP4P9mdt+PZ0HHssEXEXpSzogzPpkXS6K3Di6gngTkm7myzJzBtKoZxeHd4P2xZMejjL71jiQa48Aap2tfFTVRcf47uqHoino4pFmb5GmnhpRc1A45IZkCwDSYxLh4yCVoLbHdVYPQm2gUEf7eDyPRTOtIQbLK7tqFrI8xFvd7p4gK3WQ1n3zmLyTef58fE7YF8QPWKqx781Rq6EWFVlpd1JqXib7HG/tH5+zMhaLn281eH+iE896UN8SEv62IumQfKS8/RxGR4Rv4sO5Cnjm6ZA1Ca6VT9pRlgu9TDfvfviU4xI1mLanzntbIPf2PMKQFakrXYkBEH/k1hHhiP0jcnz733OAZxEKdgL132Hl4pYJRFWip2ZAWjOv/aV9XNapj/V4xXesqccpBmY1+mh7cTNfkRBHISyw==
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-fernet
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                fernet-key: AgBih10msPypZmUUjK7YqHghehz4ftbmXY9LF/st/kXXZh4jlKChXWTJGzprUMJwi2iGUq/ucHWxVbUQlccTT3f9uDN4X1VFb8ujj0z9DItP7BlIAxEN/EyB5YuXq7iauvfpo/1a+MI5uA4Wnfrhf7lA5H/sZQKn8F8vwaY32yvsUz9iawZqE4XdtK8WTh2j2KgJFOc34vMmw4FSEPj7XdsA7x86th5k/LLcV617QQ3aS1qBbRsK+Si+Aq9V7a7Rc8GeJ8bbXUxYW+/0Md1iJPM2eUgmcta6WgVLGV8kvRNc/0P141U7fkBfZT39ZayCrHi0IA2b7iYpeQrQE/7G56WUy52ibiz7tR+rREX1OPm1qyXghXT+UYFSOIU5kv8bqscGyABYy0A8dPwQ5zEg8YyMuATcuiuafP0vkLw/QT+MdWJSl3Nx+SpFNdQ2C8sVatw4t6/fKGesLRDoTlbhLw4l5doxgF107dnkzxcphuKJiktgwkjW491Ul+UTpcPwb3VtILTflBdmKhKPk702ba7ORG+XyviQQwOJzr4UhPy326IRXUlEBBLw3DRiclGhYu0BH6W87msoHV2t6mNqK4k24t/tt2VJncrXPM8Wj6gvifubP9BNMS+esiWrVBVemCdDVlce4PVVorFTqlNAWmAA5kyfy+KYBXM6dVfKq8qC8YhBdkgUEGzfw1pc4nU299P4IzAM4A+jVeM4mFdMfuuYz2iDVB0BTQ7Nk/sblhH7uIRijJCluxQFYBgcJg==
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-api-secret
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                api-secret-key: AgBw8H7PlesF8ruxGV7UBspWn9Abwhum7Pimh6aRf5YMErtKlUNkr1hCJTeUrjoxzkjbM2D2F/fZHOnMNtAtNmguB0x333q0VNJViNmgXLAkAbfi3BpmAOiSUOHFKqO0begikkYCuFBtTbQ4DLFc/I3a2w1+Bfn4XfZUKtdaUmocOgSPP2G0oOdhFwqsNcPt7NphbAhvjiVUHSVU3MWlvuHA+v2nrbzvbJObMvX8TvBwodbwLUfFm6byvX+o0hebZuKpbTfukwfrdMqscyPw8ZQFQS3DV3ScElMSrhX+OxhG+0ytYH8XhMjBXRqicte7GWkI6IACtUg36LNkPPy8qfEymLHVf3v+A2UIAX1j5QkeZkx13V5oKhM6+nXSfle+nmLmjTAWW27k+vQxOwbyRplP6r3fhipJVWey8IFdvsoQBnlFuHi5QC1fRaZUSviyAlLKSx0QgAyBcbxTlVuIJKcf9bwZTF+R3WJvaGFdRPJSdD72anI7DT3qGi3Cy9Fe+Awwa3lMC8p7M/S3/N/YeJVvhb4FXikayLjbpFBtlnRKapV3nvsAXLNPfq1/AIlXuRqiZZHVFceR+bjAdvAPsnJADwFILwiB52JpqCXRogCtUZUC/oGxieI//XaosV0rctucJWWTV4wwHP0XQHAgDYD/TA/7p6dgYlwUStqriLStuEq9nSwgB2LgVXSYeuGacqqX+m/biuthGX22sWw/5DqrXPIsPxF2tDSl+KNOf6eLNXZsLBFFnha0G6rD
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-jwt
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                jwt-secret: AgCnPgc6r9xOr/jrrWluh6JgY+bjv8+6R1jUBy7n+5JdrkMaANcg/bN9fQ4Sy9Eown8Ulutkhukfi4bcNhYXxEExXLCBybzpZdRSf/m7UDDudeaL7rJWiib2cRIgw+UBmHYwDG5nj8mKJtDfHWajOFlfqnE94QU7o0sBHOAk5HmKQdpHUhv/le5djPt1koItpfUz7aiOrFX44rhJOlCGq/pjctus3aMM769QbN8HXaCpk1+qeW0AYMVKfUUEgU1z2qzF9ZjjH1YleZY00GEl/VFKt9V2knjo58zM1+F9jm9ODgapFi1ZSlsNU4S6tPx5ZYU5ESV8Z5nJHXczzYvQBwddRUp17iNXJwbRKMegWrz0Ij4Ft6FrDX/kgTcCQnYIPp5Dj2DiEaspIR40LfM44UlyLiWFQrYsV1xpdRZ0APMvwpIwtiUebI9+ZytuXR21enXDkY6d3H0+LEe8SF77vOZ/1f0wR9WzGoEJqQBe50xp5BMUfqhR67ACfxtwm9BHY44jNM+z2nmZZ4WAguS60f/dBZliv4wpVOPJ9BnyqAmcuR4B3siCt+kxzDroBrjSLjHIYhRqUpL/LI891VvQqXykKS41pT/YZS71YA++Ij/VZoH06bZ19XpxZLg1+ScYSS2YrchiLfgjNoSyesFaHhfEsICsEgAmecGCE7KhAyEEo8jx8RwUlyyBfuVtO4pdUX7pOKJ/S6LZWPeizAPKqYXyXsUfGTYURYvdwJ9zS5wrl1PPt9/3fvB/cYNH0T+yQ4HnToJQ4grKSwVkiJ6gV8aJ
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: airflow-admin
+              namespace: "{{ .Release.Namespace }}"
+            spec:
+              encryptedData:
+                password: AgBi/Al3fprHghnCa43sPrREM1pCd1NE4QM+BINipIdPkmR3OSyJ/uj+9hIBSIjSKKIKYLTDPBJI9awrKLVEaRWiLHvQECyRlptV2DNz9mjS5Uj36hsPdjZP/Uu14xpf5ALHGppK7t5BhkJ5EI6oLRPlUWKQ3RjxlEVGJzvpi4Huf/y+Poagx3Wn+eXSgTCyiPJV14M3EcNSPa4+oqKdzrW+wwWNYUe8Cn7sU353kfBcZHayOOhxBcbO/zc3TVFzEd0UlzgEPjs4YdtNc4ZsOIdTZoOTo1jlchXC8R8McnKQm8jHqHkM306lid+KHTjzl0Z1WHfX8UGWhQh5tmQh8JcCSUB+y1CzTRNruTIC6MBSHwNZ3zjs76jxV0oBJSuqEuT1uucpQUmfZpWzZxOlRByJctgwYwSKcLC9sYpyKoETBYmUivVi2L7CDgllrICswB84ScjHhUml0BGia0rvci87z6XSZgbUpwXxcwEcUOZ0gUZ3QjwfggJX51nRQo1q5XZw+N5NwtagQTDHDCO28P0LbzbL1jshMNJm1Zz7rA9zp9dKST7+FTBDSwbfSjExAU+U64W5s4gKSBL/EivEhXo6IJTj+fsw83mAzKJq+9cq2gRUaO6l6qpodZR78zpE8WePwsutTYPr/rhdzfK0hHFMa0RN9NrFuFcjqBqHtxvNxk1oUWL6oK161iCUuvkHAKtyz/vvI7fVcbFTV1zfinOSMNrCiTXNhbM=
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: airflow
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
