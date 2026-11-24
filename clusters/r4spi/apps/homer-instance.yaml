@@ -182,6 +182,7 @@ spec:
                       - homer
                       - grafana
                       - authentik
+                      - airflow
                   - key: homer.jyje.online/discovery
                     operator: NotIn
                     values:

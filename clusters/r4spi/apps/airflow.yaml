@@ -112,7 +112,7 @@ spec:
               item.homer.rajsingh.info/name: "Airflow"
               item.homer.rajsingh.info/subtitle: "Workflow scheduler"
               item.homer.rajsingh.info/logo: "https://raw.githubusercontent.com/apache/airflow-site/main/landing-pages/site/static/images/airflow-logo.svg"
-              item.homer.rajsingh.info/tag: "airflow #workflow #dag"
+              item.homer.rajsingh.info/tag: "airflow #workflow #dag #scheduler #orchestration"
               item.homer.rajsingh.info/type: "Ping"
               service.homer.rajsingh.info/name: "1. Applications"
               service.homer.rajsingh.info/icon: "fas fa-rocket"
@@ -123,6 +123,10 @@ spec:
                   secretName: airflow.app.jyje.online
         # Requests follow the measured use of each component, not a guess.
         apiServer:
+          # Homer finds the Ingress by this label (see ingressSelector in
+          # homer-instance.yaml). The chart does not set it.
+          labels:
+            app.kubernetes.io/name: airflow
           # The API server needs more than the default 60 seconds to start on
           # these nodes, because it syncs the role permissions into the
           # database first. Give the startup probe 5 minutes, so the Pod is
