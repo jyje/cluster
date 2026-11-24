@@ -1,5 +1,24 @@
 # Repository instructions
 
+## Language: English only for public text
+
+**Write everything that lands in this public repository in English. No Korean (Hangul), with no exceptions.**
+
+This covers:
+
+- Pull request titles and descriptions
+- Issue titles, descriptions and comments, including tracking-issue evidence and edits to existing comments
+- PR review comments and replies
+- Commit messages
+- Code comments, YAML comments and `PATCH.md` files
+
+Rules:
+
+- Write the English text first. Do not draft in Korean and translate afterwards.
+- Chat replies to the user may follow the user's language. Anything published to GitHub or committed to the repository may not.
+- Documentation follows the existing rule: English is the default, and a Korean twin is allowed only as a separate `*-ko.md` file next to it.
+- If Korean text was already published by mistake, rewrite it in English right away (edit the comment or PR body in place).
+
 ## Helm chart updates
 
 Track each chart update in an issue from vendoring through verified deployment.
