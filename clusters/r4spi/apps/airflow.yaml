@@ -123,6 +123,12 @@ spec:
                   secretName: airflow.app.jyje.online
         # Requests follow the measured use of each component, not a guess.
         apiServer:
+          # The API server needs more than the default 60 seconds to start on
+          # these nodes, because it syncs the role permissions into the
+          # database first. Give the startup probe 5 minutes, so the Pod is
+          # not killed halfway.
+          startupProbe:
+            failureThreshold: 30
           # Sign-in through authentik. The client secret is read from the
           # Secret airflow-oidc. FAB maps the authentik groups in the ID token
           # to Airflow roles, so nobody is named here.
