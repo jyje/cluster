@@ -30,6 +30,7 @@ spec:
             - authentik-argocd-oidc
             - authentik-gameplane-oidc
             - authentik-owner
+            - authentik-airflow-oidc
           # RBAC group hierarchy — no credentials involved, so a plain
           # ConfigMap (not a SealedSecret) is the right home for it.
           configMaps:
@@ -397,6 +398,23 @@ spec:
               template:
                 metadata:
                   name: authentik-gameplane-oidc
+                type: Opaque
+
+          # Sign-in for Airflow. Airflow needs a client secret (a confidential
+          # client), so the blueprint is sealed with the secret inside it. The
+          # same secret is sealed again as airflow-oidc in the Airflow
+          # Application. The application is bound to AuthentikAdmin (and
+          # ClusterAdmin through the group hierarchy) only.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-airflow-oidc
+            spec:
+              encryptedData:
+                airflow-oidc.yaml: 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
+              template:
+                metadata:
+                  name: authentik-airflow-oidc
                 type: Opaque
 
           # The owner account blueprint: matched by email, promoted to
