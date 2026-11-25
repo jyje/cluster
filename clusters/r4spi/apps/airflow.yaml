@@ -47,7 +47,7 @@ spec:
             dag_importer_configs: '[{"classpath":"airflow.sdk.importers.yaml_importer.YamlDagImporter"}]'
           sdk:
             coordinators: '{"pilot-node":{"classpath":"airflow.sdk.coordinators.node.NodeCoordinator","kwargs":{"node_executable":"/opt/airflow/pilot-profile/runtime/node"}},
-              "pilot-go":{"classpath":"airflow.sdk.coordinators.executable.ExecutableCoordinator"}, "pilot-java":{"classpath":"airflow.sdk.coordinators.java.JavaCoordinator","kwargs":{"java_executable":"/opt/airflow/pilot-profile/runtime/openjdk/bin/java"}}}'
+              "pilot-go":{"classpath":"airflow.sdk.coordinators.executable.ExecutableCoordinator"}, "pilot-java":{"classpath":"airflow.sdk.coordinators.java.JavaCoordinator","kwargs":{"java_executable":"/opt/airflow/pilot-profile/runtime/openjdk/bin/java","task_startup_timeout":45}}}'
             queue_to_coordinator: '{"typescript":"pilot-node","golang":"pilot-go","jvm":"pilot-java"}'
         # The chart jobs use Helm hooks. Argo CD does not run those, so they
         # are Argo CD sync hooks that delete themselves after they succeed.
