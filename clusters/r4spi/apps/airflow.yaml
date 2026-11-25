@@ -4,8 +4,8 @@ metadata:
   name: airflow
 spec:
   project: ai
-  source:
-    repoURL: https://github.com/jyje/cluster
+  sources:
+  - repoURL: https://github.com/jyje/cluster
     targetRevision: main
     path: helm/airflow/airflow-1.22.0
     helm:
@@ -41,6 +41,14 @@ spec:
             workers: "1"
           core:
             load_examples: "False"
+          dag_processor:
+            dag_bundle_config_list: '[{"name":"dags-folder","classpath":"airflow.dag_processing.bundles.local.LocalDagBundle","kwargs":{}},
+              {"name":"pilot-e03","classpath":"airflow.dag_processing.bundles.local.LocalDagBundle","kwargs":{"path":"/opt/airflow/pilot-profile/dags"}}]'
+            dag_importer_configs: '[{"classpath":"airflow.sdk.importers.yaml_importer.YamlDagImporter"}]'
+          sdk:
+            coordinators: '{"pilot-node":{"classpath":"airflow.sdk.coordinators.node.NodeCoordinator","kwargs":{"node_executable":"/opt/airflow/pilot-profile/runtime/node"}},
+              "pilot-go":{"classpath":"airflow.sdk.coordinators.executable.ExecutableCoordinator"}, "pilot-java":{"classpath":"airflow.sdk.coordinators.java.JavaCoordinator","kwargs":{"java_executable":"/opt/airflow/pilot-profile/runtime/openjdk/bin/java"}}}'
+            queue_to_coordinator: '{"typescript":"pilot-node","golang":"pilot-go","jvm":"pilot-java"}'
         # The chart jobs use Helm hooks. Argo CD does not run those, so they
         # are Argo CD sync hooks that delete themselves after they succeed.
         migrateDatabaseJob:
@@ -183,6 +191,27 @@ spec:
             limits:
               memory: 1Gi
         dagProcessor:
+          extraVolumes:
+          - name: pilot-e03-dags
+            configMap:
+              name: pilot-e03-dags
+          extraVolumeMounts:
+          - name: logs
+            mountPath: /opt/airflow/pilot-profile
+            subPath: .pilot-mixed-profile-20261124
+            readOnly: true
+          - name: pilot-e03-dags
+            mountPath: /opt/airflow/pilot-profile/dags/reconcile.py
+            subPath: reconcile.py
+            readOnly: true
+          - name: pilot-e03-dags
+            mountPath: /opt/airflow/pilot-profile/dags/chain.yaml
+            subPath: chain.yaml
+            readOnly: true
+          - name: pilot-e03-dags
+            mountPath: /opt/airflow/pilot-profile/dags/settlement.min.mjs
+            subPath: settlement.min.mjs
+            readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -190,6 +219,28 @@ spec:
             limits:
               memory: 768Mi
         workers:
+          kubernetes:
+            extraVolumes:
+            - name: pilot-e03-dags
+              configMap:
+                name: pilot-e03-dags
+            extraVolumeMounts:
+            - name: logs
+              mountPath: /opt/airflow/pilot-profile
+              subPath: .pilot-mixed-profile-20261124
+              readOnly: true
+            - name: pilot-e03-dags
+              mountPath: /opt/airflow/pilot-profile/dags/reconcile.py
+              subPath: reconcile.py
+              readOnly: true
+            - name: pilot-e03-dags
+              mountPath: /opt/airflow/pilot-profile/dags/chain.yaml
+              subPath: chain.yaml
+              readOnly: true
+            - name: pilot-e03-dags
+              mountPath: /opt/airflow/pilot-profile/dags/settlement.min.mjs
+              subPath: settlement.min.mjs
+              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -255,6 +306,9 @@ spec:
             spec:
               encryptedData:
                 password: AgApnyM6r6wkjmxshSKSnfnno+ZMG2ptFxoJMKDGHAyPxco1+CjwXse3nYcsIErVbgZTb9q4kk2nAwg8NbVB5peLjitWQGyQpkunJxpxGdwzQh9kW8gADgBAt3fiCLcXVlZN66QlbRL4ScGOBmtR3xAblEdkYFVwDUS5zuc8KEe9+oVQHJq3TPLn+RMaFu/SPOh+p7IDBUZ/MG1WT1vb+6xt2qcd+gnkOynNG1APRPtDta+ZWTSWMK0Q4A/afF19inFF2aGdXUe2WHYPogeTPU/WiV61fBGOJwEZxqqKbw05wfJ84kVpiht4zAJeTioKGYT3OpocCCBOy6o66MZeOB0VglMGAmpBt/RU42Uc9vT47E4VgNVHVs65nVYzWkO0IAbKfDICym61S/PDN9gGAyDQNkgLHHwj3C+h5oKHk7f0elv7RKlJn5xIec7em4GOlq7K5zd20iUOxnHRHj0QCaFYoaOkpH+kgEmrz0fTEFyhnR+qsFf1HM2h5wj1qNjKN0Xo/jktpja4/vqjfAMrLysI2dnfmICq6Ccnit5byLR7myOjkhPOQZGuqdearRtj3tibyJc1W4zPd98uHaVTiI9QF+RwLxqupySuzhuqOwTvgOp8GufaBbEMlcXHy6ubsXkwCAyQfKJM3lFc31um/P/tnEW1Oa6db4cFjNjEXoNXxEGHXxSHjjwxw8p49D/WoqkqB1RSQ9tWLcsRg8YbKtJ3GymFeYZcfORWqsX2nqQ/xA==
+  - repoURL: https://github.com/jyje/cluster
+    targetRevision: main
+    path: manifests/airflow/pilot-e03
   destination:
     server: https://kubernetes.default.svc
     namespace: airflow

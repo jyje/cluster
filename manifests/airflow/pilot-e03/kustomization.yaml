@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: airflow
+configMapGenerator:
+  - name: pilot-e03-dags
+    files:
+      - reconcile.py
+      - settlement.min.mjs
+      - chain.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"

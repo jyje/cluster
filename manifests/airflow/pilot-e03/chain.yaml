@@ -1,0 +1,48 @@
+$schema: https://airflow.apache.org/schemas/dag/2026-10-30.json
+dag_id: pilot_mixed_language_chain
+schedule: null
+is_paused_upon_creation: false
+tasks:
+  - id: start
+    uses: airflow.providers.standard.operators.bash.BashOperator
+    with:
+      bash_command: "printf 'start\\n'"
+  - id: python
+    uses: airflow.providers.standard.operators.bash.BashOperator
+    with:
+      bash_command: >-
+        python -c 'import sys; print(sys.argv[1] + "-python")' "$VALUE"
+      append_env: true
+      env:
+        VALUE: {$x: start}
+  - id: typescript
+    queue: typescript
+    run:
+      value: {$x: python}
+  - id: javascript
+    queue: typescript
+    run:
+      value: {$x: typescript}
+  - id: go
+    queue: golang
+    run:
+      value: {$x: javascript}
+  - id: java
+    queue: jvm
+    needs: [go]
+    run: {}
+  - id: kotlin
+    queue: jvm
+    needs: [java]
+    run: {}
+  - id: scala
+    queue: jvm
+    needs: [kotlin]
+    run: {}
+  - id: yaml
+    uses: airflow.providers.standard.operators.bash.BashOperator
+    with:
+      bash_command: |-
+        printf '%s-yaml\n' "$VALUE"
+      env:
+        VALUE: {$x: scala}
