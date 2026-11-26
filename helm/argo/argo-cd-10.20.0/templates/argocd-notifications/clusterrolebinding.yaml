@@ -1,0 +1,16 @@
+{{- if and .Values.notifications.enabled .Values.createClusterRoles (or .Values.notifications.clusterRoleRules.enabled (index .Values.configs.params "application.namespaces") (eq (toString (index .Values.configs.params "notificationscontroller.selfservice.enabled")) "true") .Values.notifications.clusterRoleRules.rules) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "argo-cd.notifications.fullname" . }}
+  labels:
+    {{- include "argo-cd.labels" (dict "context" . "component" .Values.notifications.name "name" .Values.notifications.name) | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "argo-cd.notifications.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "argo-cd.notifications.serviceAccountName" . }}
+  namespace: {{ include "argo-cd.namespace" . }}
+{{- end }}
