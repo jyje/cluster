@@ -47,7 +47,7 @@ The 8gears release did not set a key, so n8n created one inside the data volume,
 2. Render the chart with the Application values and compare names:
    ```bash
    yq '.spec.source.helm.valuesObject' clusters/r4spi/apps/n8n.yaml > /tmp/n8n-values.yaml
-   helm template n8n helm/n8n-io/n8n-1.20.0 -f /tmp/n8n-values.yaml -n n8n
+   helm template n8n helm/n8n-io/n8n-1.21.0 -f /tmp/n8n-values.yaml -n n8n
    ```
 3. Try the new chart and image on a copy. Restore the backup into a new PVC in a scratch namespace and install the chart there with `ingress.enabled=false`, `persistence.existingClaim=<restored-pvc>` and the same Secret. Port-forward and check that sign-in, credentials and one workflow work. Block external side effects (disable schedule triggers) while testing.
 
