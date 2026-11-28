@@ -6,16 +6,16 @@ spec:
   project: base
   source:
     repoURL: https://github.com/jyje/pifanctl
-    targetRevision: aba63731a4e71776f0e39b4586019e64e429aeca
+    targetRevision: aa1352d207afa8bfad3c03038072e6e3f3cae998
     path: charts/pifanctl-operator
     helm:
       valuesObject:
         operatorId: pifanctl-v1-staging
         image:
           repository: ghcr.io/jyje/pifanctl
-          # Stable Python 3.14 runtime (pifanctl 1.5.1). TLS verification stays enabled;
+          # Stable Python 3.14 runtime (pifanctl 1.5.2). TLS verification stays enabled;
           # the cluster CA now carries Key Usage, see docs/operations/cluster-ca-key-usage.md.
-          tag: v1.5.1
+          tag: v1.5.2
           pullPolicy: IfNotPresent
         agent:
           mode: managed
