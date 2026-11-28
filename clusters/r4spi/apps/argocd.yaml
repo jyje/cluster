@@ -98,6 +98,10 @@ spec:
             # Chart 10.20.0 no longer creates the notifications ClusterRole by
             # default. Keep it so the controller's permissions do not change.
             enabled: true
+        redis:
+          # The secret-init container calls the Kubernetes API. Chart 10.20.0
+          # turns the token mount off by default, which makes it crash loop.
+          automountServiceAccountToken: true
         repoServer:
           replicas: 2
         extraObjects:
