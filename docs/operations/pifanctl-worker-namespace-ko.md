@@ -91,7 +91,7 @@ PR을 되돌립니다. 오퍼레이터가 릴리스 네임스페이스로 돌아
 
 ## 이전 후 (별도의 나중 변경)
 
-- 릴리스 네임스페이스에 `pod-security.kubernetes.io/enforce: restricted` 레이블을 붙입니다(예: `managedNamespaceMetadata`). 옛 작업자와 에이전트가 사라진 뒤에만 합니다. 그렇지 않으면 그곳의 새 Pod가 거부됩니다.
+- 릴리스 네임스페이스에는 Application의 `managedNamespaceMetadata`로 `pod-security.kubernetes.io/enforce: restricted` 레이블을 붙였습니다. 변경 전 서버 dry run에서 위반하는 Pod는 없었습니다. 임시 부하 Pod나 점검 Pod처럼 `pifanctl`에서 새로 띄우는 것은 이 수준을 만족해야 하며, 그렇지 않으면 다른 네임스페이스에서 실행합니다. 옛 작업자의 남은 plan ConfigMap은 직접 삭제합니다.
 - `workerAdmission.enabled: true`로 켜고 실제 작업자가 승인되는지 확인합니다.
 - 선택으로 한 노드에서 먼저 `networkPolicy.workerEgress.enabled: true`를 켜고 `nodeTemperatures`가 `Fresh`로 유지되는지 확인합니다.
 
