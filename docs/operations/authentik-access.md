@@ -104,6 +104,21 @@ A complete example is
 [`examples/hermes-dashboard-blueprint.yaml`](examples/hermes-dashboard-blueprint.yaml),
 and the Hermes specific steps are in [hermes-dashboard.md](hermes-dashboard.md).
 
+## Roles inside an application
+
+Admitting a person is not the same as giving them a role. When an application has its own roles, apply these rules:
+
+1. **Map groups to roles, never people.** The application reads the `groups` claim of the authentik token and maps `AuthentikAdmin` and `ClusterAdmin` to its admin role. No email or user name appears in git. The owner gets the admin role because the owner blueprint keeps the account in `AuthentikAdmin`.
+2. **Give everyone else the lowest role.** A person who signs in without a matching group must end up with no rights, or read only rights.
+3. **Seal the client secret twice.** The same value goes into the sealed blueprint (namespace `authentik`) and into a SealedSecret of the application namespace.
+4. **Keep one local account as a fallback** and keep its password in the cluster, so a broken SSO does not lock you out.
+5. **Test with the owner account** after the rollout, and check the role in the application.
+
+| Application | Admin role | Document |
+| --- | --- | --- |
+| Airflow | `Admin` | [airflow.md](airflow.md) |
+| LiteLLM | `proxy_admin` | [litellm-sso.md](litellm-sso.md) |
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
