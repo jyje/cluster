@@ -1,3 +1,0 @@
-# Values file for chart testing
-# CRDs are installed separately in the CI workflow
-installCRDs: false

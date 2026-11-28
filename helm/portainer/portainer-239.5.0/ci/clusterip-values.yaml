@@ -1,3 +1,0 @@
-# Test scenario: ClusterIP service (typical production setup behind an ingress)
-service:
-  type: ClusterIP

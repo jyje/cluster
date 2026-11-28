@@ -115,6 +115,13 @@ Pull a Helm chart from an external repo (or OCI) at a specific version and store
 10. **Point the Application at the new chart**
     Vendoring alone deploys nothing. Update `path:` in `clusters/*/apps/<app>.yaml` to the new directory, normally in a separate PR from the vendoring. When upgrading many charts at once, follow the `helm-batch-upgrade` skill, including its cleanup rule for old chart directories.
 
+## Retention
+
+Keep at most the last 3 deployed versions of each chart, plus referenced and pending versions. The full rule is in
+the "Vendored chart retention" section of `AGENTS.md`. After a rollout is verified, run
+`python3 scripts/prune_vendored_charts.py` (add `--apply` to remove) and open a separate PR for the deletions.
+Never remove chart directories as part of a vendoring or deployment PR.
+
 ## Convention summary
 
 - **Storage path:** `helm/<group>/<chart-name>-<version>/`
