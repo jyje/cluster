@@ -66,18 +66,34 @@ spec:
             email: admin@example.invalid
             firstName: admin
             lastName: user
-          # The password comes from the Secret airflow-admin, not from values.
+          # Passwords come from Secrets, not from values. This job creates the
+          # admin user and the limited pilot API user.
           env:
             - name: AIRFLOW_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: airflow-admin
                   key: password
+            - name: AIRFLOW_PILOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-pilot
+                  key: password
           args:
             - bash
             - -c
             - |-
-              exec airflow users create "$@"
+              set -e
+              airflow users create "$@"
+              # The pilot user may only read and run pilot_portability and read
+              # its task states and XComs. Every command is idempotent, so the
+              # job can run on every sync. An existing user is left unchanged.
+              airflow roles create PilotRunner
+              airflow roles add-perms PilotRunner -r "DAG:pilot_portability" -a can_read can_edit
+              airflow roles add-perms PilotRunner -r "DAG Runs" -a can_read can_create
+              airflow roles add-perms PilotRunner -r "Task Instances" -a can_read
+              airflow roles add-perms PilotRunner -r "XComs" -a can_read
+              airflow users create -r PilotRunner -u pilot -e pilot@example.invalid -f Pilot -l Runner -p "$AIRFLOW_PILOT_PASSWORD"
             - --
             - -r
             - Admin
