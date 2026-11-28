@@ -61,7 +61,7 @@ What those Applications compose into, bottom-up:
 | **Edge / Ingress** | Higress, MetalLB (L2) | the gateway has its own LoadBalancer address that no node owns, see [Decisions](#design-decisions) |
 | **Certificates** | cert-manager + Let's Encrypt (HTTP-01) | ClusterIssuers delivered as L4 inline manifests (`extraObjects`) |
 | **Service Mesh** | Istio Ambient | *evaluation / temporarily disabled* |
-| **Storage** | Longhorn (block), SeaweedFS (object), NFS (legacy) | hybrid governance |
+| **Storage** | NFS Subdir External Provisioner (USB) | single default StorageClass; Longhorn and SeaweedFS are no longer deployed |
 | **Stateful data** | CloudNativePG, Qdrant | Postgres for metadata, vectors for RAG |
 | **LLMOps** | LiteLLM proxy → NIM / Ollama / OpenAI, Open WebUI | multi-backend gateway |
 | **Agents** | Hermes (Discord) | see [hermes-agents.md](../operations/hermes-agents.md) |

@@ -14,8 +14,8 @@ secrets — is declared in this repository and reconciled automatically by ArgoC
 > For the macro-level design — delivery layers, logical stack, and the design
 > decisions behind them — see [architecture/cluster-design.md](architecture/cluster-design.md).
 
-The cluster deliberately uses enterprise-grade tooling (service mesh, distributed
-storage, LLM proxy, vector DB) to prove that production patterns scale *down*
+The cluster deliberately uses enterprise-grade tooling (service mesh, database
+operator, LLM proxy, vector DB) to prove that production patterns scale *down*
 to constrained hardware, not just up.
 
 **Design principles:**
@@ -181,8 +181,7 @@ Runbooks and tuning notes live under `docs/operations/`. Current entries:
 | Service Mesh | [Istio Ambient](https://istio.io/latest/docs/ambient/) *(evaluation)* |
 | Ingress | [Higress](https://higress.io/) (Envoy based, reads the nginx annotations) |
 | Load Balancer | MetalLB (L2) |
-| Distributed Block | [Longhorn](https://longhorn.io/) |
-| Object Storage | [SeaweedFS](https://github.com/seaweedfs/seaweedfs) |
+| Storage | [NFS Subdir External Provisioner](https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner) |
 | Secrets | [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) |
 | LLM Proxy | [LiteLLM](https://github.com/BerriAI/litellm) |
 | LLM UI | [Open WebUI](https://github.com/open-webui/open-webui) |
