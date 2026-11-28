@@ -23,6 +23,9 @@ spec:
         # to their own namespace so the release namespace can later be restricted.
         # Needs a maintenance window: see docs/operations/pifanctl-worker-namespace.md.
         workerNamespace: pifanctl-workers
+        # Only the known worker shape may be created in pifanctl-workers by the operator.
+        workerAdmission:
+          enabled: true
         networkPolicy:
           monitoringNamespaceSelector:
             kubernetes.io/metadata.name: observability

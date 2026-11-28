@@ -95,7 +95,7 @@ the same failsafe gap again.
 ## After the move (separate, later changes)
 
 - The release namespace is labeled `pod-security.kubernetes.io/enforce: restricted` through `managedNamespaceMetadata` on the Application. A server dry run before the change reported no violating Pod. Anything else started in `pifanctl`, such as a temporary load or probe Pod, must meet that level or run in another namespace. The leftover plan ConfigMap of the old worker is deleted by hand.
-- Set `workerAdmission.enabled: true` and confirm the real worker is admitted.
+- `workerAdmission.enabled: true` limits what the operator can create in `pifanctl-workers`. Before enabling it, the live worker Deployment was compared with the policy rules and matched all of them. After the sync, confirm that the policy and binding exist and that the operator logs no admission denial.
 - Optionally set `networkPolicy.workerEgress.enabled: true` on one node first and confirm `nodeTemperatures` stays `Fresh`.
 
 ## Tests
