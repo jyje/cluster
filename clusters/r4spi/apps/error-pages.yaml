@@ -7,7 +7,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/error-pages/error-pages-4.2.7
+    path: helm/error-pages/error-pages-4.2.8
     helm:
       valuesObject:
         config:
