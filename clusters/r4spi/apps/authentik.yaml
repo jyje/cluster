@@ -31,6 +31,7 @@ spec:
             - authentik-gameplane-oidc
             - authentik-owner
             - authentik-airflow-oidc
+            - authentik-litellm-oidc
           # RBAC group hierarchy — no credentials involved, so a plain
           # ConfigMap (not a SealedSecret) is the right home for it.
           configMaps:
@@ -415,6 +416,23 @@ spec:
               template:
                 metadata:
                   name: authentik-airflow-oidc
+                type: Opaque
+
+          # Sign-in for the LiteLLM admin UI. LiteLLM needs a client secret (a
+          # confidential client), so the blueprint is sealed with the secret
+          # inside it. The same secret is sealed again as litellm-oidc in the
+          # LiteLLM Application. The application is bound to AuthentikAdmin (and
+          # ClusterAdmin through the group hierarchy) only.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: authentik-litellm-oidc
+            spec:
+              encryptedData:
+                litellm-oidc.yaml: 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
+              template:
+                metadata:
+                  name: authentik-litellm-oidc
                 type: Opaque
 
           # The owner account blueprint: matched by email, promoted to

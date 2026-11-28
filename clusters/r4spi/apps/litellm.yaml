@@ -359,6 +359,32 @@ spec:
               secretKeyRef:
                 name: litellm-creds
                 key: openrouter.api.key
+          # Sign-in to the admin UI through authentik. Roles come from the
+          # authentik groups in the token, so nobody is named here. The master
+          # key API is not affected. See docs/operations/litellm-sso.md.
+          - name: PROXY_BASE_URL
+            value: "https://litellm.app.jyje.online"
+          - name: GENERIC_CLIENT_ID
+            value: "litellm"
+          - name: GENERIC_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: litellm-oidc
+                key: client_secret
+          - name: GENERIC_AUTHORIZATION_ENDPOINT
+            value: "https://authentik.app.jyje.online/application/o/authorize/"
+          - name: GENERIC_TOKEN_ENDPOINT
+            value: "https://authentik.app.jyje.online/application/o/token/"
+          - name: GENERIC_USERINFO_ENDPOINT
+            value: "https://authentik.app.jyje.online/application/o/userinfo/"
+          - name: GENERIC_SCOPE
+            value: "openid profile email"
+          - name: GENERIC_ROLE_MAPPINGS_GROUP_CLAIM
+            value: "groups"
+          - name: GENERIC_ROLE_MAPPINGS_ROLES
+            value: "{'proxy_admin': ['AuthentikAdmin', 'ClusterAdmin']}"
+          - name: GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE
+            value: "internal_user_viewer"
           - name: DISABLE_METRICS
             value: "True"
           - name: TELEMETRY
@@ -459,6 +485,19 @@ spec:
               template:
                 metadata:
                   name: litellm-creds
+                type: Opaque
+
+          # OAuth client secret for authentik sign-in.
+          - apiVersion: bitnami.com/v1alpha1
+            kind: SealedSecret
+            metadata:
+              name: litellm-oidc
+            spec:
+              encryptedData:
+                client_secret: AgAkXIfI/cCOUVipKa/8WZ0ilQKnfx0SIgr9v5vLTdJ6CrWWWSuufCUG/hl1SyBjt4LPjeOuz8mysGQ+rrokoc/o0scCeI2asakHIXOae9GFh2Ga+vLIqH93jrxRKqbTButCR9nelLzaoqPqMCHkSD9zFM3Iuflc95evy7yHa3eK6xkSttvORhT5tSdLqRYEGmmnz9bUhHP6rSpmP5n678wGnv5p5zIdRUCp+b45wdmwqgTpOT5DCuun8JHqqRNTY7Lj+rw0wYc1e7vNc6KY5NxH0w6aD13hZ0d2yVZ2MvnoBkyApFEODvXe1r+O8yjrGVfuSe8JtNakHi/e+V8WBLlhveU7sGgQlNDxhjc1zf+AWFPZy8d24cRVp20d4UrIHoTbWLDq0CsDwHHMgcfUmN9u1+n9/wg6gHPLAATbvkf+1CZuK4pmytEplhT042cXhZUjAieRjTIArIq8b2FcqOtm4Otr+HOiKZkvk7kHHc+tyGPQANw5rr50EkzgAtDL2c9xa/p1anYlfSnsCFEHDrnD//Ya5EmO3p9OOtlfgrFv7bKLeYS/WEZs5Pe6fmnhl2wFaAVYVU5U2YcfM295psIMcE8m4fERewGwgKoCzDVm8Wh0IGkvdwWJ9QqwwEYKFlvWnSAf4ylTQDg+Ns/oggaZDmDtaKYB7Rc+/CJocCc5ESSu5sbCvTe7m/tXQKoySwap6L8HO4toBJiVgfWqdrIjdw0oHcgRJ5w/KbPbQj1xL5YsUS9Z6jOcZmSjy+3/jV2Zr+gzK6LP1ZnQhd/4m6Si
+              template:
+                metadata:
+                  name: litellm-oidc
                 type: Opaque
 
           # NVIDIA GenAI → OpenAI adapter for non-OpenAI-compatible image models (e.g. flux.2-klein-4b)
