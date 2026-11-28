@@ -239,7 +239,7 @@ publishing a stable v1 release.
 ## v1 managed runtime and RPM feedback
 
 The current deployment is `clusters/r4spi/apps/pifanctl-v1-staging.yaml`.
-It pins the released v1.5.1 operator chart source and `v1.5.1` Python 3.14 runtime, uses four
+It pins the released v1.5.2 operator chart source and `v1.5.2` Python 3.14 runtime, uses four
 managed temperature agents and one worker for the shared rack fan. The legacy
 chart declaration does not run another actuator.
 
@@ -456,3 +456,20 @@ then refresh the parent and verify the child revision and actual runtime.
 The CRD addition is additive and stays installed; do not delete CRDs. Preserve
 resource UIDs, finalizers, rack membership and the single actuator identity, and do
 not start another fan writer by hand.
+
+## v1.5.2 GitOps rollout (2026-11-28)
+
+The Application pins the released chart at
+`aa1352d207afa8bfad3c03038072e6e3f3cae998` and image
+`ghcr.io/jyje/pifanctl:v1.5.2`. The release keeps the operator `/readyz` ready while
+a reconcile pass runs (jyje/pifanctl#104) and includes a Python dependency update.
+A server-side diff against the live cluster showed only the operator and agent image
+changes. The worker Deployment follows the operator image, so the worker is replaced
+once. While no worker holds a fresh heartbeat the Fan is not regulating, see
+[pifanctl-worker-namespace.md](pifanctl-worker-namespace.md) for what was observed.
+
+### Rollback
+
+Revert this Application's source to
+`aba63731a4e71776f0e39b4586019e64e429aeca` and image to `v1.5.1` through GitOps.
+Both releases use the same CRDs, namespaces and feedback settings.
