@@ -115,10 +115,8 @@ cnpg, qdrant = doc.icon_row(mx_data, DATA_W, MID_Y + MID_H / 2 - 30, [
 
 # -- Storage ------------------------------------------------------------
 doc.box(mx_storage, MID_Y, STORAGE_W, MID_H, "platform", COLOR["platform"], "Storage")
-longhorn, seaweed, nfs = doc.icon_row(mx_storage, STORAGE_W, MID_Y + MID_H / 2 - 30, [
-    ("icon", vendored("longhorn.png"), "Longhorn", 50, 9),
-    ("icon", vendored("seaweedfs.png"), "SeaweedFS", 50, 9),
-    ("mono", "NFS", "NFS (legacy)", COLOR["platform"], 50, 9),
+nfs, = doc.icon_row(mx_storage, STORAGE_W, MID_Y + MID_H / 2 - 30, [
+    ("mono", "NFS", "NFS Subdir (USB)", COLOR["platform"], 50, 9),
 ])
 
 # -- Observability ------------------------------------------------------
