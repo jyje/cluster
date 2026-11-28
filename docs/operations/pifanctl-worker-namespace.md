@@ -94,7 +94,7 @@ the same failsafe gap again.
 
 ## After the move (separate, later changes)
 
-- Label the release namespace `pod-security.kubernetes.io/enforce: restricted` (for example with `managedNamespaceMetadata`). Do this only after the old workers and agents are gone, or new Pods there are rejected.
+- The release namespace is labeled `pod-security.kubernetes.io/enforce: restricted` through `managedNamespaceMetadata` on the Application. A server dry run before the change reported no violating Pod. Anything else started in `pifanctl`, such as a temporary load or probe Pod, must meet that level or run in another namespace. The leftover plan ConfigMap of the old worker is deleted by hand.
 - Set `workerAdmission.enabled: true` and confirm the real worker is admitted.
 - Optionally set `networkPolicy.workerEgress.enabled: true` on one node first and confirm `nodeTemperatures` stays `Fresh`.
 

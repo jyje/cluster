@@ -98,6 +98,11 @@ spec:
   syncPolicy:
     automated:
       selfHeal: true
+    # The release namespace holds only the operator, which meets the restricted level.
+    # Workers and agents run in pifanctl-workers.
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: restricted
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
