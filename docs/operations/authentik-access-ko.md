@@ -51,6 +51,21 @@
 
 전체 예시는 [`examples/hermes-dashboard-blueprint.yaml`](examples/hermes-dashboard-blueprint.yaml)이고, Hermes 관련 절차는 [hermes-dashboard-ko.md](hermes-dashboard-ko.md)에 있습니다.
 
+## 애플리케이션 안의 역할
+
+사람을 들여보내는 것과 역할을 주는 것은 다릅니다. 애플리케이션에 자체 역할이 있으면 다음 규칙을 따릅니다.
+
+1. **사람이 아니라 그룹을 역할에 매핑합니다.** 애플리케이션은 authentik 토큰의 `groups` 클레임을 읽어 `AuthentikAdmin`과 `ClusterAdmin`을 관리자 역할에 매핑합니다. git에는 이메일이나 사용자 이름이 없습니다. 소유자는 소유자 블루프린트가 계정을 `AuthentikAdmin`에 유지하므로 관리자 역할을 받습니다.
+2. **나머지 사람에게는 가장 낮은 역할을 줍니다.** 맞는 그룹 없이 로그인한 사람은 권한이 없거나 읽기 전용이어야 합니다.
+3. **클라이언트 시크릿은 두 번 봉인합니다.** 같은 값을 봉인된 블루프린트(`authentik` 네임스페이스)와 애플리케이션 네임스페이스의 SealedSecret에 넣습니다.
+4. **로컬 계정 하나를 예비로 남기고** 비밀번호를 클러스터에 둡니다. SSO가 고장 나도 잠기지 않게 합니다.
+5. **배포 뒤에 소유자 계정으로 확인**하고, 애플리케이션 안에서 역할을 점검합니다.
+
+| 애플리케이션 | 관리자 역할 | 문서 |
+| --- | --- | --- |
+| Airflow | `Admin` | [airflow-ko.md](airflow-ko.md) |
+| LiteLLM | `proxy_admin` | [litellm-sso-ko.md](litellm-sso-ko.md) |
+
 ## 문제 해결
 
 | 증상 | 가능한 원인 |
