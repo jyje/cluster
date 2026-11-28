@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Offline compatibility guard for the Argo CD 3.5 to 3.6 chart upgrade.
+"""Offline compatibility guard for an Argo CD chart upgrade.
+
+Usage: check_argocd_chart_upgrade.py <old chart directory> <new chart directory>
 
 Requires helm and mikefarah/yq. It renders using the Application values in
 memory and reports schema paths only, never rendered manifests or values.
@@ -15,8 +17,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "clusters/r4spi/apps/argocd.yaml"
-OLD = ROOT / "helm/argo/argo-cd-10.4.2"
-NEW = ROOT / "helm/argo/argo-cd-10.12.0"
 IGNORED = {"description", "title", "example", "examples", "externalDocs"}
 
 
@@ -82,9 +82,9 @@ def identities(documents):
                                for d in documents)
 
 
-def main():
+def main(old_chart, new_chart):
     values = command(["yq", "-o=json", ".spec.source.helm.valuesObject // {}", str(APP)])
-    before, after = render(OLD, values), render(NEW, values)
+    before, after = render(old_chart, values), render(new_chart, values)
     if identities(before) != identities(after):
         raise ValueError("Rendered resource identities changed; review the resource diff")
     old_crds, new_crds = crds(before), crds(after)
@@ -119,8 +119,10 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit(__doc__)
     try:
-        main()
+        main(Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve())
     except (RuntimeError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)

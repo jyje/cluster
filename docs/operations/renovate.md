@@ -45,6 +45,12 @@ The Helm PR check verifies the target branch and the additions under one version
 Promotion follows the separate
 [Helm vendoring review](../../.claude/skills/helm-chart-vendor/SKILL.md).
 
+## Retention
+
+Vendoring only adds directories. Old versions are removed separately: at most the last 3 deployed versions of each
+chart are kept, plus referenced and pending versions. See "Vendored chart retention" in
+[AGENTS.md](../../AGENTS.md) and run [the pruning script](../../scripts/prune_vendored_charts.py).
+
 ## Scheduled and manual Helm scans
 
 The daily run scans every catalog chart and runs ordinary dependency and vulnerability checks in a separate job.

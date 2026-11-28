@@ -30,6 +30,30 @@ Track each chart update in an issue from vendoring through verified deployment.
 
 Renovate's auto-closed dashboard is not evidence of deployment. If a dashboard can close before live verification, use a linked rollout tracking issue that stays open until the steps above are complete. Do not include credentials or private infrastructure details in public issues or PRs.
 
+## Vendored chart retention
+
+Keep at most the **last 3 deployed versions** of each vendored chart. "Deployed" means an Argo CD Application on `main` pointed at that directory. A chart is identified by its group directory and the name in `Chart.yaml`.
+
+Also keep:
+
+- every directory an Application references now,
+- every version newer than the newest referenced one (waiting for review and deployment), and
+- the newest version of a chart listed in `helm-sources/catalog.yaml` that has not been deployed yet.
+
+Remove everything else, including versions that were skipped and charts that were never deployed. Charts written in this repository (`helm/jyje/`, `helm/homer-legacy-jyje`) are not vendored and stay. Removed versions remain available in git history.
+
+Apply the rule after a rollout is verified. Run it from a full clone of an up-to-date `main`, and put the deletions in their own PR, separate from vendoring and deployment PRs:
+
+```bash
+python3 scripts/prune_vendored_charts.py
+```
+
+```bash
+python3 scripts/prune_vendored_charts.py --apply
+```
+
+Do not delete chart directories by hand. If the script's selection looks wrong, fix the script and its test in `tests/test_prune_vendored_charts.py`.
+
 ## Manifest layout
 
 Keep each workload in its own manifest file. Do not mix resources that serve different workloads, applications or namespaces in one YAML file, even when they share a directory or an Argo CD Application. For example, the UDP game Gateway and the Henry web Gateway live in separate files.
