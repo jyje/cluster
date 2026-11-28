@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/jyje/cluster
     targetRevision: main
-    path: helm/argo/argo-cd-10.18.2
+    path: helm/argo/argo-cd-10.20.0
     helm:
       valuesObject:
         fullnameOverride: argocd
@@ -93,6 +93,11 @@ spec:
               service.homer.rajsingh.info/icon: "fas fa-microchip"
             ingressClassName: higress
             tls: true
+        notifications:
+          clusterRoleRules:
+            # Chart 10.20.0 no longer creates the notifications ClusterRole by
+            # default. Keep it so the controller's permissions do not change.
+            enabled: true
         repoServer:
           replicas: 2
         extraObjects:
